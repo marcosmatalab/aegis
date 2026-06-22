@@ -106,7 +106,7 @@ pytest
 | **F1.x** | OTel → Langfuse tracing of each request (observability) | ⬜ planned |
 | **F2** | Input/output guardrails: prompt-injection scan (OWASP LLM01), PII redaction (regex default, Presidio optional), allow/deny policy, basic toxicity — off by default | ✅ done |
 | **F3** | Evals L1 (session/goal) · L2 (trace/quality, G-Eval CoT) · L3 (tool correctness); golden set + `aegis eval run` + JSON report | ✅ done |
-| **F4** | Trajectory metrics (TrajectoryAccuracy, ToolCorrectness, T-Eval) + CLEAR; Agent-as-a-Judge | ⬜ planned |
+| **F4** | Trajectory metrics (TrajectoryAccuracy, ToolCorrectness, Progress Rate, T-Eval) + CLEAR; Agent-as-a-Judge | ✅ done |
 | **F5** | Judge calibration: human-labelled set + Cohen's κ reported | ⬜ planned |
 | **F6** | Automated red-team mapped to OWASP LLM Top 10 + OWASP Agentic (ASI) | ⬜ planned |
 | **F7** | CI gate: run evals + red-team per PR and **block merge** on regression | ⬜ planned |
@@ -147,6 +147,37 @@ aegis eval run --suite ci --output reports/ci.json
 ```
 
 > **Honesty (this matters):** the LLM-as-judge is treated as **directional** — a signal to validate against human labels (Cohen's κ, a later phase), **not ground truth**. The MockJudge is **purely lexical**: relevancy is token overlap and L2 **faithfulness is lexical containment, not entailment** — a reordered copy of the context scores 1.0 (see the golden case `reordered-copy-limitation`), and every deterministic L2 "pass" is therefore a lexical match (verbatim / permuted / subset), never a rewarded paraphrase. L3's order check is over tool *names*, so duplicate same-tool calls are order-insensitive (documented in the scorer). What the project actually sells is that the **eval gate catches regressions**, not that any single judge is correct. The golden set interleaves passing and failing cases — including several where one level passes while another fails — to demonstrate L1/L2/L3 are independent.
+
+---
+
+## Trajectory metrics, CLEAR & Agent-as-a-Judge (F4)
+
+F4 adds richer, mostly-deterministic **trajectory** scoring on top of L3, a per-run **CLEAR** scorecard, and an **Agent-as-a-Judge** that evaluates the *process* — all offline, surfaced in the same `aegis eval run` report.
+
+**Trajectory metrics** (each 0..1, computed over the golden trajectory; they share L3's matcher):
+
+| Metric | What it measures | Distinct from |
+|--------|------------------|---------------|
+| **ToolCorrectness** | F1 over exact (name+args) matches, order-insensitive | the order-sensitive metrics below |
+| **TrajectoryAccuracy** | similarity of the whole path to the golden path — LCS over full steps, normalized by the longer sequence (tolerant of insertions) | T-Eval (which is strict positional) |
+| **Progress Rate** | AgentBoard-style fraction of **milestones** (subgoals) reached, **order-independent**; milestones are explicit or derived from the expected tools | survives reordering, unlike Trajectory/T-Eval |
+| **T-Eval** | step-by-step planning: is the call at each **position** the expected one? strict positional match, so one early insertion penalizes every later step | TrajectoryAccuracy (which realigns via subsequence) |
+
+**CLEAR** (five dimensions per run) — and an explicit table of what is **measurable today** vs a **placeholder until F1.x** (live providers + OpenTelemetry):
+
+| Dimension | Status today | How it's computed |
+|-----------|--------------|-------------------|
+| **Accuracy** | ✅ measured | mean of the per-level eval scores (the suite `overall`) |
+| **Efficiency** | ✅ measured | useful (exact) tool calls / total calls — penalizes redundant, extra, wrong-args calls |
+| **Reliability** | ✅ measured (proxy) | end-to-end success rate (all applicable levels pass); cross-run flakiness deferred to F5+ |
+| **Cost** | ⚠️ **synthetic / placeholder** | mean of hand-authored `trace.cost_usd`; real cost needs provider token+price telemetry (**F1.x**) |
+| **Latency** | ⚠️ **synthetic / placeholder** | mean of hand-authored `trace.latency_ms`; real latency needs live request timing via OTel (**F1.x**) |
+
+Each CLEAR dimension carries its `status` (`measured` / `synthetic` / `placeholder`) in the JSON report and is flagged in the CLI summary, so Cost/Latency are never mistaken for real measurements. They only get a normalized 0..1 score when an optional budget/SLO (`AEGIS_CLEAR_*_BUDGET`) is set.
+
+**Agent-as-a-Judge** evaluates the trajectory itself — **loops**, **redundant steps**, and **error recovery** (via each call's `status`). It reuses F3's judge *pattern* (an async ABC + a deterministic mock + a clearly-stubbed real backend) but not F3's output-centric `Judge` interface.
+
+> **Honesty (same line as F3):** the `MockTrajectoryJudge` is an **illustrative heuristic, not a semantic judge** — it flags loops/redundancy by **literal pattern matching** over the recorded calls and infers recovery from the `status` field, with **fixed, arbitrary penalty weights** (so tests can assert exact numbers). It does not understand whether a step was *reasonable*. The real reasoning-LLM `agent` backend is a clear stub here. As with the F3 judge, the value is a **regression-catching signal**, not ground truth.
 
 ---
 
