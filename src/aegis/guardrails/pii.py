@@ -79,19 +79,25 @@ def detect(text: str) -> list[PIIMatch]:
     return matches
 
 
-def redact(text: str) -> tuple[str, tuple[str, ...]]:
-    """Replace each PII match with ``<ENTITY>``. Returns (text, sorted entities)."""
-    matches = detect(text)
+def redact_matches(text: str, matches: list[PIIMatch]) -> tuple[str, tuple[str, ...]]:
+    """Replace each match span with ``<ENTITY>``. Shared by every PII engine so
+    output is identical regardless of detector. Returns (text, sorted entities)."""
     if not matches:
         return text, ()
+    ordered = sorted(matches, key=lambda m: m.start)
     out: list[str] = []
     last = 0
-    for m in matches:
+    for m in ordered:
         out.append(text[last : m.start])
         out.append(f"<{m.entity}>")
         last = m.end
     out.append(text[last:])
     return "".join(out), tuple(sorted({m.entity for m in matches}))
+
+
+def redact(text: str) -> tuple[str, tuple[str, ...]]:
+    """Detect and redact PII with the deterministic regex engine."""
+    return redact_matches(text, detect(text))
 
 
 def scan(text: str) -> tuple[str, ...]:
