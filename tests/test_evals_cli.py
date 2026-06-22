@@ -58,8 +58,24 @@ def test_summary_includes_clear_and_trajectory_lines(tmp_path, capsys):
     assert "trajectory:" in summary
     assert "CLEAR:" in summary
     assert "accuracy=" in summary
-    # cost/latency have no trace on the default golden -> shown as placeholders
-    assert "cost=n/a(placeholder)" in summary
+    # the golden carries a synthetic trace case -> cost/latency are flagged synthetic
+    assert "(synthetic)" in summary
+
+
+def test_clear_placeholder_when_dataset_has_no_trace(tmp_path, capsys):
+    case = {
+        "id": "no-trace",
+        "user_goal": "g",
+        "input_messages": [{"role": "user", "content": "hi"}],
+        "expected_trajectory": [],
+        "success_criteria": {"must_include": ["ok"]},
+        "actual": {"final_output": "ok", "tool_calls": []},
+        "expected": {"l1_goal_met": True, "l2_faithful": None, "l3_trajectory_match": True},
+    }
+    ds = tmp_path / "g.jsonl"
+    ds.write_text(json.dumps(case), encoding="utf-8")
+    main(["eval", "run", "--dataset", str(ds), "--output", str(tmp_path / "r.json")])
+    assert "cost=n/a(placeholder)" in capsys.readouterr().out
 
 
 def test_report_json_has_clear_and_per_case_f4_fields(tmp_path):
