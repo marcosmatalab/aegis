@@ -3,8 +3,8 @@
 Settings load from environment variables (prefix ``AEGIS_``) and an optional
 ``.env`` file via pydantic-settings.
 
-F1 scope: this models ONLY the gateway/runtime fields plus optional provider
-API keys. Later-phase variables that already appear in ``.env.example``
+Scope: gateway/runtime fields, optional provider API keys, and the F2 guardrail
+toggles/thresholds. Later-phase variables that already appear in ``.env.example``
 (``DATABASE_URL``, ``OTEL_*``, ``LANGFUSE_*``, ``AEGIS_JUDGE_MODEL``,
 ``AEGIS_EVAL_FAIL_UNDER``) are intentionally ignored here via ``extra="ignore"``.
 """
@@ -12,6 +12,7 @@ API keys. Later-phase variables that already appear in ``.env.example``
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -52,6 +53,37 @@ class Settings(BaseSettings):
     google_api_key: str | None = Field(
         default=None, validation_alias=AliasChoices("GOOGLE_API_KEY")
     )
+
+    # --- F2 guardrails -------------------------------------------------------
+    # Master switch. Default FALSE so the gateway is a byte-identical passthrough
+    # (F1 behavior) unless guardrails are explicitly turned on. Every sub-flag is
+    # gated behind this: master off => the whole pipeline is a true no-op.
+    guardrails_enabled: bool = Field(
+        default=False, description="Master switch for the guardrails layer."
+    )
+    # Input guardrails (each gated behind the master switch).
+    gr_injection_enabled: bool = Field(default=True, description="Prompt-injection check (LLM01).")
+    gr_pii_redact_input: bool = Field(default=True, description="Redact PII before forwarding.")
+    gr_policy_enabled: bool = Field(default=True, description="Allow/deny policy engine.")
+    # Output guardrails.
+    gr_output_pii_enabled: bool = Field(default=True, description="Detect PII leak in the output.")
+    gr_output_pii_action: Literal["block", "redact"] = Field(
+        default="block", description="What to do on output PII."
+    )
+    gr_toxicity_enabled: bool = Field(default=True, description="Basic output toxicity check.")
+    gr_toxicity_threshold: float = Field(
+        default=0.5, ge=0.0, le=1.0, description="Toxicity score threshold to block."
+    )
+    # PII engine. "regex" is the always-on deterministic default (no extra deps);
+    # "presidio" uses Microsoft Presidio when the optional [guardrails] extra is
+    # installed (lazy-imported).
+    gr_pii_engine: Literal["regex", "presidio"] = Field(
+        default="regex", description="PII detection engine."
+    )
+    # Policy rules (deny/allow), each a regex matched case-insensitively. Set via
+    # JSON in the env (e.g. AEGIS_GR_POLICY_DENY='["\\bsecret\\b"]').
+    gr_policy_deny: list[str] = Field(default_factory=list, description="Deny regex rules.")
+    gr_policy_allow: list[str] = Field(default_factory=list, description="Allow-override regex.")
 
     @field_validator("log_level")
     @classmethod

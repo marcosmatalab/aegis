@@ -80,6 +80,23 @@ class ProviderNotConfiguredError(AegisError):
     code = "provider_not_configured"
 
 
+class GuardrailBlockedError(AegisError):
+    """Raised when an input/output guardrail blocks a request or response.
+
+    Rendered as HTTP 400 with ``type="guardrail_blocked"``; clients branch on
+    ``error.type``. ``code`` identifies which guardrail tripped (e.g.
+    ``prompt_injection``, ``policy_denied``, ``pii_leak``, ``toxicity``).
+    """
+
+    status_code = 400
+    type = "guardrail_blocked"
+
+    def __init__(self, message: str, *, code: str | None = None, param: str | None = None):
+        super().__init__(message)
+        self.code = code
+        self.param = param
+
+
 # --------------------------------------------------------------------------- #
 # Handlers
 # --------------------------------------------------------------------------- #
