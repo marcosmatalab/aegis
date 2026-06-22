@@ -59,3 +59,19 @@ def test_l2_matches_oracle(case):
         assert res.breakdown.get("applicable") is False
     else:
         assert res.passed is case.expected.l2_faithful
+
+
+_BY_ID = {c.id: c for c in CASES}
+
+
+def test_l2_sub_metrics_are_isolated_and_can_diverge():
+    # single-sub cases exercise exactly one sub-metric (a relevancy<->faithfulness
+    # swap would flip these), and the divergence case has differing sub-scores.
+    faith = asyncio.run(score_l2(_BY_ID["faithfulness-only"], MockJudge())).breakdown
+    assert "faithfulness" in faith and "relevancy" not in faith
+
+    rel = asyncio.run(score_l2(_BY_ID["relevancy-only"], MockJudge())).breakdown
+    assert "relevancy" in rel and "faithfulness" not in rel
+
+    div = asyncio.run(score_l2(_BY_ID["relevant-but-partly-unfaithful"], MockJudge())).breakdown
+    assert div["relevancy"] != div["faithfulness"]
