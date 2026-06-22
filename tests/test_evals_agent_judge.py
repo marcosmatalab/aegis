@@ -101,6 +101,14 @@ def test_unrecovered_error_larger_penalty():
     assert round(v.score, 3) == 0.7  # -0.3
 
 
+def test_error_then_ok_on_different_tool_is_not_recovery():
+    # recovery requires a later OK on the SAME tool; a later OK on a different
+    # tool must NOT count (pins the name-equality check in _error_recovery)
+    v = _assess(_case([_call("fetch", status="error"), _call("notify")]))
+    assert v.recovered_from_error is False
+    assert round(v.score, 3) == 0.7  # unrecovered penalty, not the recovered one
+
+
 def test_no_error_signal_means_recovery_none():
     assert _assess(_case([_call("a")])).recovered_from_error is None
 
