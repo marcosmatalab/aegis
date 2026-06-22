@@ -40,6 +40,15 @@ def test_ensemble_identical_members():
     assert _run(judge).score == 0.7
 
 
+def test_ensemble_median_even_count():
+    # median of an even count = mean of the two middle values (0.4, 0.6) -> 0.5
+    judge = EnsembleJudge(
+        [_FixedJudge(0.2), _FixedJudge(0.4), _FixedJudge(0.6), _FixedJudge(0.9)],
+        aggregate="median",
+    )
+    assert _run(judge).score == 0.5
+
+
 def test_empty_ensemble_rejected():
     with pytest.raises(ValueError):
         EnsembleJudge([])

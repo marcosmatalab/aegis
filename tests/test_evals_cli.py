@@ -33,6 +33,24 @@ def test_fail_under_blocks_when_explicit_and_below(tmp_path):
     assert rc == 1
 
 
+def test_fail_under_boundary_equal_passes(tmp_path):
+    # overall exactly 1.0 with --fail-under 1.0: strict `<` means it passes (rc 0)
+    case = {
+        "id": "a",
+        "user_goal": "g",
+        "input_messages": [{"role": "user", "content": "hi"}],
+        "expected_trajectory": [],
+        "success_criteria": {"must_include": ["ok"]},
+        "actual": {"final_output": "ok", "tool_calls": []},
+        "expected": {"l1_goal_met": True, "l2_faithful": None, "l3_trajectory_match": True},
+    }
+    ds = tmp_path / "g.jsonl"
+    ds.write_text(json.dumps(case), encoding="utf-8")
+    out = tmp_path / "r.json"
+    rc = main(["eval", "run", "--dataset", str(ds), "--output", str(out), "--fail-under", "1.0"])
+    assert rc == 0
+
+
 def test_geval_backend_fails_cleanly(tmp_path, capsys):
     out = tmp_path / "r.json"
     rc = main(["eval", "run", "--judge", "geval", "--output", str(out)])
