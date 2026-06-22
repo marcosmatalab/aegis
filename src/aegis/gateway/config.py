@@ -85,6 +85,23 @@ class Settings(BaseSettings):
     gr_policy_deny: list[str] = Field(default_factory=list, description="Deny regex rules.")
     gr_policy_allow: list[str] = Field(default_factory=list, description="Allow-override regex.")
 
+    # --- F3 evals / LLM-as-judge --------------------------------------------
+    # Backend for the L2 judge. "mock" is deterministic and keyless (the default,
+    # so the eval suite runs fully offline). "geval"/"ensemble" use a real LLM via
+    # a provider — a clear stub in F3, never importing a paid SDK.
+    judge_backend: Literal["mock", "geval", "ensemble"] = Field(
+        default="mock", description="L2 judge backend."
+    )
+    judge_model: str = Field(
+        default="anthropic/claude-opus-4-6", description="provider/model for the real judge."
+    )
+    judge_temperature: float = Field(
+        default=0.0, ge=0.0, le=2.0, description="Judge sampling temperature (0 = deterministic)."
+    )
+    judge_ensemble_size: int = Field(
+        default=3, ge=1, le=15, description="Number of judges in the ensemble backend."
+    )
+
     @field_validator("log_level")
     @classmethod
     def _normalize_log_level(cls, v: str) -> str:
