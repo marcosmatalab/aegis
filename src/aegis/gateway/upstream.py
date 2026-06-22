@@ -16,6 +16,7 @@ from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 from typing import Any
 
+from aegis.gateway.config import Settings, get_settings
 from aegis.gateway.errors import ProviderNotConfiguredError
 from aegis.gateway.schemas import (
     ChatCompletionChunk,
@@ -160,18 +161,29 @@ class MockProvider(Provider):
 # --------------------------------------------------------------------------- #
 # Factory
 # --------------------------------------------------------------------------- #
-def build_provider(name: str) -> Provider:
-    """Pure, keyless provider factory used by the gateway dependency and tests.
+def build_provider(name: str, settings: Settings | None = None) -> Provider:
+    """Provider factory used by the gateway dependency and tests.
 
-    F1 wires only ``"mock"``. Planned (NOT wired here): ``"anthropic"`` (primary
-    real provider, Claude), ``"openai"`` and ``"google"`` (Gemini). Selecting any
-    of those raises a clean ``ProviderNotConfiguredError`` instead of importing a
-    paid SDK.
+    ``"mock"`` is the keyless default (``settings`` ignored). ``"anthropic"`` is a
+    real adapter: its module is imported lazily here (so importing this module
+    never pulls the optional SDK) and it reads the API key from ``settings`` —
+    falling back to ``get_settings()`` when not provided. Missing key / missing
+    SDK surface as a clean ``ProviderNotConfiguredError`` (never an ImportError).
+    ``"openai"``/``"google"`` are still unwired.
     """
     if name == "mock":
         return MockProvider()
+    if name == "anthropic":
+        from aegis.gateway.providers.anthropic_provider import AnthropicProvider
+
+        settings = settings or get_settings()
+        return AnthropicProvider(
+            api_key=settings.anthropic_api_key,
+            default_max_tokens=settings.anthropic_max_tokens,
+            base_url=settings.anthropic_base_url,
+            timeout=settings.anthropic_timeout_s,
+        )
     raise ProviderNotConfiguredError(
-        f"Provider {name!r} is not configured in F1; only 'mock' is available. "
-        "Real providers (Anthropic/Claude as primary, plus OpenAI and Gemini) "
-        "arrive in a later phase."
+        f"Provider {name!r} is not configured; available: 'mock', 'anthropic'. "
+        "OpenAI and Gemini arrive in a later phase."
     )

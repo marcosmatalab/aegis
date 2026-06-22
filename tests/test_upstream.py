@@ -6,6 +6,7 @@ import asyncio
 
 import pytest
 
+from aegis.gateway.config import Settings
 from aegis.gateway.errors import ProviderNotConfiguredError
 from aegis.gateway.schemas import ChatCompletionRequest
 from aegis.gateway.upstream import (
@@ -84,11 +85,44 @@ def test_build_provider_returns_mock():
     assert provider.name == "mock"
 
 
-@pytest.mark.parametrize("name", ["anthropic", "openai", "google", "ghost"])
+@pytest.mark.parametrize("name", ["openai", "google", "ghost"])
 def test_build_provider_unconfigured_raises(name):
     with pytest.raises(ProviderNotConfiguredError) as exc:
         build_provider(name)
     assert name in str(exc.value)
+
+
+def test_build_provider_anthropic_without_key_raises():
+    # anthropic is now wired, but selecting it with no key is a clean 500-config
+    # error (never an ImportError), surfaced at construction. (model_copy forces
+    # the value past the env-alias so the test is hermetic.)
+    settings = Settings(_env_file=None).model_copy(update={"anthropic_api_key": None})
+    with pytest.raises(ProviderNotConfiguredError):
+        build_provider("anthropic", settings)
+
+
+def test_build_provider_anthropic_with_key_returns_provider():
+    # constructing the provider needs neither the SDK nor the network (the client
+    # is built lazily on first call); a key is enough to wire it.
+    from aegis.gateway.providers.anthropic_provider import AnthropicProvider
+
+    settings = Settings(_env_file=None).model_copy(update={"anthropic_api_key": "sk-ant-test"})
+    provider = build_provider("anthropic", settings)
+    assert isinstance(provider, AnthropicProvider)
+    assert isinstance(provider, Provider)
+    assert provider.name == "anthropic"
+
+
+def test_anthropic_provider_module_does_not_import_sdk():
+    # The optional SDK must never load on import (CI runs without it). Pop any
+    # cached refs and re-import the SDK-import-site module; it must not pull it in.
+    import importlib
+    import sys
+
+    sys.modules.pop("anthropic", None)
+    sys.modules.pop("aegis.gateway.providers.anthropic_provider", None)
+    importlib.import_module("aegis.gateway.providers.anthropic_provider")
+    assert "anthropic" not in sys.modules
 
 
 # --- MockProvider.complete -------------------------------------------------- #
