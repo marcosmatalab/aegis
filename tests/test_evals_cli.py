@@ -51,6 +51,33 @@ def test_fail_under_boundary_equal_passes(tmp_path):
     assert rc == 0
 
 
+def test_summary_includes_clear_and_trajectory_lines(tmp_path, capsys):
+    out = tmp_path / "r.json"
+    assert main(["eval", "run", "--output", str(out)]) == 0
+    summary = capsys.readouterr().out
+    assert "trajectory:" in summary
+    assert "CLEAR:" in summary
+    assert "accuracy=" in summary
+    # cost/latency have no trace on the default golden -> shown as placeholders
+    assert "cost=n/a(placeholder)" in summary
+
+
+def test_report_json_has_clear_and_per_case_f4_fields(tmp_path):
+    out = tmp_path / "r.json"
+    main(["eval", "run", "--output", str(out)])
+    report = json.loads(out.read_text(encoding="utf-8"))
+    assert set(report["clear"]) == {"cost", "latency", "efficiency", "accuracy", "reliability"}
+    assert report["clear"]["accuracy"]["status"] == "measured"
+    first = report["cases"][0]
+    assert set(first["trajectory"]) == {
+        "tool_correctness",
+        "trajectory_accuracy",
+        "progress_rate",
+        "t_eval",
+    }
+    assert "has_loop" in first["agent_judge"]
+
+
 def test_geval_backend_fails_cleanly(tmp_path, capsys):
     out = tmp_path / "r.json"
     rc = main(["eval", "run", "--judge", "geval", "--output", str(out)])

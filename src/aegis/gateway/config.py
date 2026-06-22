@@ -110,6 +110,16 @@ class Settings(BaseSettings):
         default="mock", description="Agent-as-a-Judge (trajectory) backend."
     )
 
+    # Optional CLEAR budgets/SLOs. When set, the Cost/Latency dimensions get a
+    # normalized 0..1 score (lower is better); otherwise only the raw value is
+    # reported. None by default — Cost/Latency stay synthetic until F1.x.
+    clear_cost_budget_usd: float | None = Field(
+        default=None, ge=0.0, description="Per-case cost budget for CLEAR Cost normalization."
+    )
+    clear_latency_budget_ms: float | None = Field(
+        default=None, ge=0.0, description="Per-case latency SLO for CLEAR Latency normalization."
+    )
+
     @field_validator("log_level")
     @classmethod
     def _normalize_log_level(cls, v: str) -> str:
