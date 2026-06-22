@@ -6,6 +6,7 @@ from collections.abc import AsyncIterator
 
 import pytest
 
+from aegis.gateway.errors import UpstreamProviderError
 from aegis.gateway.main import app
 from aegis.gateway.proxy import get_provider
 from aegis.gateway.schemas import ChatCompletionChunk, ChunkChoice, Delta
@@ -28,6 +29,29 @@ class _BoomProvider(Provider):
             choices=[ChunkChoice(index=0, delta=Delta(role="assistant"), finish_reason=None)],
         )
         raise RuntimeError("boom mid-stream")
+
+
+class _MappedErrorProvider(Provider):
+    """Raises a mapped AegisError mid-stream (e.g. an upstream rate limit)."""
+
+    name = "mapped"
+
+    async def complete(self, request):  # pragma: no cover - not used by these tests
+        raise RuntimeError("unused")
+
+    async def stream(self, request) -> AsyncIterator[ChatCompletionChunk]:
+        yield ChatCompletionChunk(
+            id="chatcmpl-x",
+            created=1,
+            model=request.model,
+            choices=[ChunkChoice(index=0, delta=Delta(role="assistant"), finish_reason=None)],
+        )
+        raise UpstreamProviderError(
+            "upstream rate limit exceeded",
+            status_code=429,
+            type="rate_limit_error",
+            code="rate_limit_exceeded",
+        )
 
 
 def test_content_type_is_event_stream(client, chat_payload):
@@ -115,4 +139,20 @@ def test_midstream_error_emits_error_frame_without_done(client, parse_sse):
     assert len(error_frames) == 1
     assert error_frames[0]["error"]["type"] == "api_error"
     # OpenAI sends no [DONE] after an error frame.
+    assert "[DONE]" not in resp.text
+
+
+def test_midstream_mapped_error_frame_carries_type_and_code(client, parse_sse):
+    # a mapped AegisError surfaces its real type/code in the SSE error frame
+    # (richer than the generic api_error), still with no [DONE].
+    app.dependency_overrides[get_provider] = lambda: _MappedErrorProvider()
+    resp = client.post(
+        "/v1/chat/completions",
+        json={"model": "m", "messages": [{"role": "user", "content": "hi"}], "stream": True},
+    )
+    assert resp.status_code == 200
+    error_frames = [f for f in parse_sse(resp) if isinstance(f, dict) and "error" in f]
+    assert len(error_frames) == 1
+    assert error_frames[0]["error"]["type"] == "rate_limit_error"
+    assert error_frames[0]["error"]["code"] == "rate_limit_exceeded"
     assert "[DONE]" not in resp.text

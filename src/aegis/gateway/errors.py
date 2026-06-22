@@ -80,6 +80,22 @@ class ProviderNotConfiguredError(AegisError):
     code = "provider_not_configured"
 
 
+class UnsupportedFeatureError(AegisError):
+    """Raised when a request uses a feature the real provider adapter does not
+    translate yet (tool-calling, non-text multimodal content). Rendered as a clean
+    HTTP 400 so the client sees exactly what is unsupported, rather than getting a
+    silently wrong (feature-dropped) answer."""
+
+    status_code = 400
+    type = "invalid_request_error"
+    code = "unsupported_by_provider"
+
+    def __init__(self, feature: str):
+        super().__init__(
+            f"The Anthropic adapter does not support {feature} yet (text completions only)."
+        )
+
+
 class GuardrailBlockedError(AegisError):
     """Raised when an input/output guardrail blocks a request or response.
 
@@ -93,6 +109,32 @@ class GuardrailBlockedError(AegisError):
 
     def __init__(self, message: str, *, code: str | None = None, param: str | None = None):
         super().__init__(message)
+        self.code = code
+        self.param = param
+
+
+class UpstreamProviderError(AegisError):
+    """Raised when a real upstream provider call fails, carrying the mapped OpenAI
+    status/type/code so the handler renders it precisely.
+
+    Gateway semantics: an upstream 5xx (or any unmapped status) becomes a 502 Bad
+    Gateway, a timeout a 504 — Aegis is the gateway, so it never masquerades an
+    upstream failure as its own opaque 500. Messages are generic by design so an
+    API key or upstream internals never leak to the client.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        status_code: int,
+        type: str,
+        code: str | None = None,
+        param: str | None = None,
+    ):
+        super().__init__(message)
+        self.status_code = status_code
+        self.type = type
         self.code = code
         self.param = param
 
