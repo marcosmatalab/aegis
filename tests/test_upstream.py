@@ -63,6 +63,13 @@ def test_canned_answer_fallback_without_user_text():
     assert _canned_answer(req).startswith("Hello!")
 
 
+def test_canned_answer_empty_user_content_falls_back():
+    # content="" is accepted (only None is rejected for a user turn) but the
+    # empty string is falsy, so the generic fallback answer is used.
+    req = _req(messages=[{"role": "user", "content": ""}])
+    assert _canned_answer(req).startswith("Hello!")
+
+
 def test_derive_created_is_positive():
     # All-zero hex prefix would give 0; the "or 1" guard prevents created == 0.
     assert _derive_created("00000000ffff") == 1
@@ -115,7 +122,9 @@ def test_complete_handles_multimodal_and_none_content():
         ]
     )
     resp = asyncio.run(MockProvider().complete(req))
-    assert resp.usage.total_tokens >= 0
+    # multimodal text part is flattened and echoed; None content contributes 0 tokens
+    assert resp.choices[0].message.content == "Echo: describe"
+    assert resp.usage.prompt_tokens == 1
     assert resp.choices[0].finish_reason == "stop"
 
 

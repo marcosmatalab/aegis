@@ -59,6 +59,11 @@ def test_user_message_requires_content():
         ChatMessage(role="user", content=None)
 
 
+def test_user_message_accepts_empty_string_content():
+    # Only None is rejected for a user turn; "" is a valid (if unusual) value.
+    assert ChatMessage(role="user", content="").content == ""
+
+
 def test_non_user_roles_may_omit_content():
     # assistant tool-call / tool result / system may legitimately omit content
     assert ChatMessage(role="assistant", content=None).content is None
