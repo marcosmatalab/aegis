@@ -132,6 +132,44 @@ class _BoomProvider(Provider):
         raise RuntimeError("boom mid-stream")
 
 
+class _LengthPiiProvider(Provider):
+    """Streams PII content and a non-'stop' terminal finish_reason ('length')."""
+
+    name = "lp"
+
+    async def complete(self, request):  # pragma: no cover - not used here
+        raise RuntimeError("unused")
+
+    async def stream(self, request) -> AsyncIterator[ChatCompletionChunk]:
+        meta = {"id": "chatcmpl-lp", "created": 1, "model": request.model}
+        yield ChatCompletionChunk(
+            **meta,
+            choices=[ChunkChoice(index=0, delta=Delta(role="assistant"), finish_reason=None)],
+        )
+        yield ChatCompletionChunk(
+            **meta,
+            choices=[
+                ChunkChoice(index=0, delta=Delta(content="email a@b.com"), finish_reason=None)
+            ],
+        )
+        yield ChatCompletionChunk(
+            **meta, choices=[ChunkChoice(index=0, delta=Delta(), finish_reason="length")]
+        )
+
+
+def test_guarded_redact_stream_preserves_finish_reason(guarded_client, parse_sse):
+    guarded_client(gr_pii_redact_input=False, gr_output_pii_action="redact")
+    app.dependency_overrides[get_provider] = lambda: _LengthPiiProvider()
+
+    with TestClient(app) as client:
+        resp = client.post(_URL, json=_payload("hi", stream=True))
+    chunks = [f for f in parse_sse(resp) if f != "[DONE]"]
+    # content was redacted, and the provider's 'length' finish_reason is preserved
+    assert any("<EMAIL_ADDRESS>" in c["choices"][0]["delta"].get("content", "") for c in chunks)
+    assert "a@b.com" not in resp.text
+    assert chunks[-1]["choices"][0]["finish_reason"] == "length"
+
+
 def test_provider_midstream_error_in_guarded_path_stays_api_error(guarded_client, parse_sse):
     # output guards active -> buffered path; a provider error is api_error, not guardrail_blocked
     guarded_client()  # sets the guardrail-pipeline override (master on)

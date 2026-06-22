@@ -113,7 +113,13 @@ async def _guarded_sse_generator(
         yield _error_frame(result.reason, "guardrail_blocked", code=result.code, param=result.param)
         return
     if result.redacted_text is not None and chunks:
+        # Re-emit the redacted content as role -> content -> terminal frames,
+        # carrying the provider's actual finish_reason from the last chunk (not a
+        # hardcoded "stop"). NOTE (F2 limitation): a streamed usage object on the
+        # final chunk is not reconstructed here; the mock never emits one.
         template = chunks[0]
+        last_choices = chunks[-1].choices
+        final_reason = last_choices[0].finish_reason if last_choices else "stop"
         yield _serialize_chunk(
             _chunk_like(template, delta=Delta(role="assistant"), finish_reason=None)
         )
@@ -121,7 +127,9 @@ async def _guarded_sse_generator(
             yield _serialize_chunk(
                 _chunk_like(template, delta=Delta(content=result.redacted_text), finish_reason=None)
             )
-        yield _serialize_chunk(_chunk_like(template, delta=Delta(), finish_reason="stop"))
+        yield _serialize_chunk(
+            _chunk_like(template, delta=Delta(), finish_reason=final_reason or "stop")
+        )
     else:
         for chunk in chunks:
             yield _serialize_chunk(chunk)
