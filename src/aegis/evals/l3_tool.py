@@ -10,6 +10,12 @@ Combines two sub-scores:
 ``score`` is their mean; ``passed`` requires an exact trajectory match (no
 missing/extra/wrong-args calls and correct order). Args are compared by value
 (dict equality), so key order does not matter.
+
+Known limitation: OrderAccuracy is computed over tool NAMES, so two calls to the
+SAME tool are order-insensitive for correctness (duplicate calls with permuted
+args still pass). Argument-order across same-named calls is intentionally not
+distinguished here; finer per-position arg-order sensitivity is a later
+trajectory-metrics concern (T-Eval), out of F3 scope.
 """
 
 from __future__ import annotations
