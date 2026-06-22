@@ -158,3 +158,39 @@ def test_judge_temperature_out_of_range_rejected(monkeypatch):
     monkeypatch.setenv("AEGIS_JUDGE_TEMPERATURE", "3.0")
     with pytest.raises(ValueError):
         Settings(_env_file=None)
+
+
+# --- real Anthropic adapter settings ---------------------------------------- #
+def test_anthropic_adapter_defaults(monkeypatch):
+    for var in (
+        "AEGIS_ANTHROPIC_MAX_TOKENS",
+        "AEGIS_ANTHROPIC_BASE_URL",
+        "AEGIS_ANTHROPIC_TIMEOUT_S",
+    ):
+        monkeypatch.delenv(var, raising=False)
+    s = Settings(_env_file=None)
+    assert s.anthropic_max_tokens == 4096
+    assert s.anthropic_base_url is None
+    assert s.anthropic_timeout_s == 60.0
+
+
+def test_anthropic_settings_override(monkeypatch):
+    monkeypatch.setenv("AEGIS_ANTHROPIC_MAX_TOKENS", "256")
+    monkeypatch.setenv("AEGIS_ANTHROPIC_BASE_URL", "http://localhost:9999")
+    monkeypatch.setenv("AEGIS_ANTHROPIC_TIMEOUT_S", "5")
+    s = Settings(_env_file=None)
+    assert s.anthropic_max_tokens == 256
+    assert s.anthropic_base_url == "http://localhost:9999"
+    assert s.anthropic_timeout_s == 5.0
+
+
+def test_anthropic_max_tokens_must_be_positive(monkeypatch):
+    monkeypatch.setenv("AEGIS_ANTHROPIC_MAX_TOKENS", "0")
+    with pytest.raises(ValueError):
+        Settings(_env_file=None)
+
+
+def test_anthropic_timeout_must_be_positive(monkeypatch):
+    monkeypatch.setenv("AEGIS_ANTHROPIC_TIMEOUT_S", "0")
+    with pytest.raises(ValueError):
+        Settings(_env_file=None)
