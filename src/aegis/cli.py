@@ -1,12 +1,12 @@
 """Aegis command-line interface (stdlib argparse, no extra deps).
 
 Subcommands:
-  ``aegis eval run`` — run the 3-level eval suite over a golden set and write a
+  ``aegis eval run`` — run the eval suite over a golden set (L1/L2/L3 + F4
+  trajectory metrics, the Agent-as-a-Judge, and the CLEAR dimensions) and write a
   JSON report.
 
-The ``--fail-under`` CI gate is an inert seam in F3: it only affects the exit
-code when explicitly passed. The real, baseline-comparing CI gate is a later
-phase (F7).
+The ``--fail-under`` CI gate is an inert seam: it only affects the exit code when
+explicitly passed. The real, baseline-comparing CI gate is a later phase (F7).
 """
 
 from __future__ import annotations
@@ -16,11 +16,24 @@ import sys
 import time
 
 from aegis.evals.dataset import DEFAULT_GOLDEN_PATH, GoldenDatasetError, load_golden
+from aegis.evals.judge.agent import build_trajectory_judge
 from aegis.evals.judge.factory import build_judge
 from aegis.evals.judge.geval import JudgeNotConfiguredError
 from aegis.evals.persistence import DEFAULT_REPORTS_DIR, write_report
 from aegis.evals.runner import run_suite
 from aegis.gateway.config import get_settings
+
+_CLEAR_ORDER = ("cost", "latency", "efficiency", "accuracy", "reliability")
+
+
+def _format_clear(dim: dict) -> str:
+    """Compact one-token rendering of a CLEAR dimension, marking synthetic data."""
+    if not dim["applicable"]:
+        return f"{dim['name']}=n/a({dim['status']})"
+    if dim["score"] is not None:
+        suffix = "" if dim["status"] == "measured" else f"({dim['status']})"
+        return f"{dim['name']}={dim['score']:.3f}{suffix}"
+    return f"{dim['name']}={dim['value']:.3g}{dim['unit']}({dim['status']})"
 
 
 def _eval_run(args: argparse.Namespace) -> int:
@@ -31,7 +44,16 @@ def _eval_run(args: argparse.Namespace) -> int:
     try:
         cases = load_golden(args.dataset)
         judge = build_judge(settings)
-        report = run_suite(cases, judge, suite=args.suite, created=int(time.time()))
+        traj_judge = build_trajectory_judge(settings)
+        report = run_suite(
+            cases,
+            judge,
+            traj_judge,
+            suite=args.suite,
+            created=int(time.time()),
+            latency_budget_ms=settings.clear_latency_budget_ms,
+            cost_budget_usd=settings.clear_cost_budget_usd,
+        )
     except (GoldenDatasetError, JudgeNotConfiguredError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
@@ -44,6 +66,11 @@ def _eval_run(args: argparse.Namespace) -> int:
         agg = report.levels.get(level)
         if agg:
             print(f"  {level}: mean={agg.mean_score:.3f} passed={agg.passed}/{agg.scored}")
+    if report.trajectory:
+        traj = "  ".join(f"{k}={v['mean_score']:.3f}" for k, v in report.trajectory.items())
+        print(f"  trajectory: {traj}")
+    if report.clear:
+        print(f"  CLEAR: {'  '.join(_format_clear(report.clear[k]) for k in _CLEAR_ORDER)}")
     print(f"overall={report.overall_score:.3f}  report={out}")
 
     if args.fail_under is not None and report.overall_score < args.fail_under:
