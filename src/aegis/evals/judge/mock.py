@@ -5,11 +5,16 @@ Two transparent heuristics so tests can assert exact numbers:
   * faithfulness = fraction of the output's content tokens that also appear in
     the context.
 
-IMPORTANT: faithfulness here is LEXICAL CONTAINMENT, not real entailment — a
-reordered copy of the context scores 1.0. This is an intentional, documented
-limitation of the deterministic mock (and a known weakness of cheap judges); the
-real value is that the eval GATE catches regressions, not that the judge is
-ground truth. The real (G-Eval) judge is a separate, clearly-stubbed backend.
+IMPORTANT: both heuristics are purely LEXICAL — relevancy rewards token overlap
+and faithfulness rewards token containment, neither understands meaning. A
+reordered copy of the context scores faithfulness 1.0, and the mock can only
+reward outputs that lexically overlap the reference/context (verbatim, permuted,
+or subset) — it CANNOT reward a genuine paraphrase. So every "pass" the
+MockJudge produces is a lexical match, by construction. This is an intentional,
+documented limitation of the deterministic mock (and a known weakness of cheap
+judges); the real value is that the eval GATE catches regressions, not that the
+judge is ground truth. The real (G-Eval) judge is a separate, clearly-stubbed
+backend.
 """
 
 from __future__ import annotations
