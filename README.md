@@ -173,7 +173,7 @@ F4 adds richer, mostly-deterministic **trajectory** scoring on top of L3, a per-
 | **Cost** | ⚠️ **synthetic / placeholder** | mean of hand-authored `trace.cost_usd`; real cost needs provider token+price telemetry (**F1.x**) |
 | **Latency** | ⚠️ **synthetic / placeholder** | mean of hand-authored `trace.latency_ms`; real latency needs live request timing via OTel (**F1.x**) |
 
-Each CLEAR dimension carries its `status` (`measured` / `synthetic` / `placeholder`) in the JSON report and is flagged in the CLI summary, so Cost/Latency are never mistaken for real measurements. They only get a normalized 0..1 score when an optional budget/SLO (`AEGIS_CLEAR_*_BUDGET`) is set.
+Each CLEAR dimension carries its `status` (`measured` / `synthetic` / `placeholder`) in the JSON report and is flagged in the CLI summary, so Cost/Latency are never mistaken for real measurements — and the synthetic basis discloses how many cases actually carried a trace (e.g. `1/32 traced cases`). They only get a normalized 0..1 score when an optional budget/SLO (`AEGIS_CLEAR_COST_BUDGET_USD` / `AEGIS_CLEAR_LATENCY_BUDGET_MS`) is set.
 
 **Agent-as-a-Judge** evaluates the trajectory itself — **loops**, **redundant steps**, and **error recovery** (via each call's `status`). It reuses F3's judge *pattern* (an async ABC + a deterministic mock + a clearly-stubbed real backend) but not F3's output-centric `Judge` interface.
 
