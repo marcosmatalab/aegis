@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from aegis.gateway.errors import (
+    GuardrailBlockedError,
     ProviderNotConfiguredError,
     _param_from_loc,
     error_response,
@@ -65,6 +66,12 @@ def client():
     async def boom_generic():
         raise ValueError("kaboom")
 
+    @app.get("/boom-guardrail")
+    async def boom_guardrail():
+        raise GuardrailBlockedError(
+            "Blocked by input guardrail.", code="prompt_injection", param="messages[0]"
+        )
+
     return TestClient(app, raise_server_exceptions=False)
 
 
@@ -120,3 +127,13 @@ def test_unhandled_exception_returns_opaque_500(client):
     err = _assert_envelope(resp)
     assert err["type"] == "api_error"
     assert "kaboom" not in resp.text  # internal detail not leaked
+
+
+def test_guardrail_blocked_error_renders_cleanly(client):
+    resp = client.get("/boom-guardrail")
+    assert resp.status_code == 400
+    err = _assert_envelope(resp)
+    assert err["type"] == "guardrail_blocked"
+    assert err["code"] == "prompt_injection"
+    assert err["param"] == "messages[0]"
+    assert err["message"] == "Blocked by input guardrail."

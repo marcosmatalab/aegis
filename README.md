@@ -2,7 +2,7 @@
 
 > A reliability + security + governance gateway for LLMs and agents — an OpenAI-compatible proxy that sits *in front of* any model and adds input/output guardrails, three-level trajectory evals, OWASP-mapped automated red-teaming, OpenTelemetry observability, and a CI gate that fails the build when quality or safety regress.
 
-> **⚠️ Status: under active construction (pre-alpha).** Working today: the OpenAI-compatible `/v1/chat/completions` proxy (F1) with SSE streaming, backed by a deterministic, keyless **mock provider** — no real model is wired yet. The planned primary real provider is **Anthropic (Claude)**, with OpenAI and Gemini as additional options. Guardrails, evals, red-team and governance (the components below) land incrementally through the phased roadmap.
+> **⚠️ Status: under active construction (pre-alpha).** Working today: the OpenAI-compatible `/v1/chat/completions` proxy (F1) with SSE streaming, plus an input/output **guardrails** layer (F2) — prompt-injection detection, PII redaction, allow/deny policy, and basic toxicity — all backed by a deterministic, keyless **mock provider** (no real model wired yet). The planned primary real provider is **Anthropic (Claude)**, with OpenAI and Gemini as additional options. Evals, red-team and governance land incrementally through the phased roadmap.
 
 ---
 
@@ -104,7 +104,7 @@ pytest
 | **F0** | Skeleton: packaging, CI, `/health` gateway | ✅ done |
 | **F1** | OpenAI-compatible proxy (`/v1/chat/completions`): drop-in `base_url`, SSE streaming, deterministic mock provider, OpenAI error envelope | ✅ done |
 | **F1.x** | OTel → Langfuse tracing of each request (observability) | ⬜ planned |
-| **F2** | Input/output guardrails: prompt-injection scan, PII (Presidio), toxicity, schema | ⬜ planned |
+| **F2** | Input/output guardrails: prompt-injection scan (OWASP LLM01), PII redaction (regex default, Presidio optional), allow/deny policy, basic toxicity — off by default | ✅ done |
 | **F3** | Evals L1 (session/goal) · L2 (trace/quality, G-Eval CoT) · L3 (tool correctness); persist verdicts | ⬜ planned |
 | **F4** | Trajectory metrics (TrajectoryAccuracy, ToolCorrectness, T-Eval) + CLEAR; Agent-as-a-Judge | ⬜ planned |
 | **F5** | Judge calibration: human-labelled set + Cohen's κ reported | ⬜ planned |
@@ -112,6 +112,21 @@ pytest
 | **F7** | CI gate: run evals + red-team per PR and **block merge** on regression | ⬜ planned |
 | **F8** | Governance mapping (EU AI Act Art.15 / NIST AI RMF / ISO 42001) → evidence PDF | ⬜ planned |
 | **F9** | Polished dashboard, trends, 2-min demo | ⬜ planned |
+
+---
+
+## Guardrails (F2)
+
+A defense-in-depth layer around the proxy — cheap deterministic checks first, a costlier check only if needed. **Disabled by default** (`AEGIS_GUARDRAILS_ENABLED=false`): with it off, the gateway is a byte-identical F1 passthrough.
+
+- **Input** — prompt-injection detection (deterministic patterns mapped to **OWASP LLM01**, tuned to avoid false positives on legitimate code/prose); **PII redaction** before the request reaches the provider (email, phone, credit card via Luhn, Spanish **DNI/NIE** via the mod-23 checksum); an allow/deny **policy** engine.
+- **Output** — **PII-leak** detection (block or redact) and **basic** deterministic **toxicity** detection.
+- **Blocking** returns a clean OpenAI error — HTTP 400, `type: "guardrail_blocked"`, with a `code` (`prompt_injection`, `policy_denied`, `pii_leak`, `toxicity`). This works in streaming too: input blocks are a normal JSON 400; output blocks emit a guardrail error frame (no `[DONE]`).
+- **PII engine** — the deterministic regex engine is the default (no extra deps, CI-fast). **Microsoft Presidio** is an optional richer engine: `pip install -e ".[guardrails]"` and set `AEGIS_GR_PII_ENGINE=presidio` (also needs a spaCy model).
+
+> **Streaming trade-off:** when output guardrails are active, the stream is buffered and scanned before any byte is sent (leak-safe), so streaming is effectively non-incremental in that mode. With output guardrails off, streaming is fully incremental as in F1.
+
+Each toggle and threshold is configurable via `AEGIS_GR_*` settings (see [.env.example](.env.example)).
 
 ---
 
