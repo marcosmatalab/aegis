@@ -113,6 +113,32 @@ class GuardrailBlockedError(AegisError):
         self.param = param
 
 
+class UpstreamProviderError(AegisError):
+    """Raised when a real upstream provider call fails, carrying the mapped OpenAI
+    status/type/code so the handler renders it precisely.
+
+    Gateway semantics: an upstream 5xx (or any unmapped status) becomes a 502 Bad
+    Gateway, a timeout a 504 — Aegis is the gateway, so it never masquerades an
+    upstream failure as its own opaque 500. Messages are generic by design so an
+    API key or upstream internals never leak to the client.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        status_code: int,
+        type: str,
+        code: str | None = None,
+        param: str | None = None,
+    ):
+        super().__init__(message)
+        self.status_code = status_code
+        self.type = type
+        self.code = code
+        self.param = param
+
+
 # --------------------------------------------------------------------------- #
 # Handlers
 # --------------------------------------------------------------------------- #
