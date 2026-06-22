@@ -80,3 +80,21 @@ def test_duplicate_same_name_permuted_args_passes():
     assert res.passed is True
     assert res.breakdown["exact"] == 2
     assert res.breakdown["order"] == 1.0
+
+
+def test_all_tools_missing_when_expected():
+    res = score_l3(_case([_t("a"), _t("b")], []))
+    assert res.passed is False
+    assert res.breakdown["missing"] == 2
+    assert res.breakdown["tool_f1"] == 0.0
+    assert res.breakdown["order"] == 0.0
+
+
+def test_nested_and_list_args_compared_by_value():
+    res = score_l3(
+        _case(
+            [{"name": "f", "arguments": {"a": {"x": [1, 2]}, "b": [3]}}],
+            [{"name": "f", "arguments": {"b": [3], "a": {"x": [1, 2]}}}],
+        )
+    )
+    assert res.passed is True

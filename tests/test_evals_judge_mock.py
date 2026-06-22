@@ -63,3 +63,11 @@ def test_deterministic_across_calls():
     a = _score("relevancy", "the cat sat on the mat", reference="a cat on the mat")
     b = _score("relevancy", "the cat sat on the mat", reference="a cat on the mat")
     assert a == b
+
+
+def test_f1_both_empty_is_one():
+    from aegis.evals.judge.mock import _f1
+
+    # both empty -> 1.0 (vacuously identical); pins the intentional semantics
+    assert _f1(set(), set()) == 1.0
+    assert _f1(set(), {"x"}) == 0.0
