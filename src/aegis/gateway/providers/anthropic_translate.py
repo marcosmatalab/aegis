@@ -73,8 +73,10 @@ def _flatten_text(content: str | list[dict[str, Any]] | None) -> str:
         return ""
     if isinstance(content, str):
         return content
-    parts = (p.get("text", "") for p in content if isinstance(p, dict))
-    return " ".join(t for t in parts if t).strip()
+    # Concatenate text parts verbatim (no separator, no strip) — mirrors the
+    # response-side _text_from_blocks so request/response flattening can never
+    # diverge and the user's prompt text is never silently mutated.
+    return "".join(p.get("text", "") for p in content if isinstance(p, dict))
 
 
 def ensure_text_only(request: ChatCompletionRequest) -> None:
@@ -85,6 +87,10 @@ def ensure_text_only(request: ChatCompletionRequest) -> None:
     for message in request.messages:
         if message.role == "tool":
             raise UnsupportedFeatureError("tool-result messages")
+        # Assistant turns replaying tool calls (extra="allow" keeps tool_calls)
+        # are tool-calling too — reject rather than silently drop them.
+        if message.model_extra and message.model_extra.get("tool_calls"):
+            raise UnsupportedFeatureError("tool calling")
         if isinstance(message.content, list):
             for part in message.content:
                 if isinstance(part, dict) and part.get("type", "text") != "text":
@@ -111,11 +117,18 @@ def to_anthropic_params(request: ChatCompletionRequest, default_max_tokens: int)
     """Translate an OpenAI request into Anthropic ``messages.create`` kwargs."""
     ensure_text_only(request)
     system, messages = hoist_system(request.messages)
+    # Anthropic REQUIRES max_tokens; OpenAI makes it optional. Use explicit None
+    # checks (not truthiness) so an explicit 0 is honored, not silently replaced
+    # by the default (Anthropic then rejects 0 as a clean 400).
+    max_tokens = request.max_completion_tokens
+    if max_tokens is None:
+        max_tokens = request.max_tokens
+    if max_tokens is None:
+        max_tokens = default_max_tokens
     params: dict[str, Any] = {
         "model": strip_model_prefix(request.model),
         "messages": messages,
-        # Anthropic REQUIRES max_tokens; OpenAI makes it optional.
-        "max_tokens": request.max_completion_tokens or request.max_tokens or default_max_tokens,
+        "max_tokens": max_tokens,
     }
     if system:
         params["system"] = system

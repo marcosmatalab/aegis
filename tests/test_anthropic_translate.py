@@ -129,6 +129,47 @@ def test_text_only_multimodal_parts_are_allowed():
     assert params["messages"] == [{"role": "user", "content": "hi there"}]
 
 
+def test_multimodal_text_parts_concatenated_verbatim():
+    # parts concatenated with NO injected separator and NO strip (mirrors the
+    # response-side join); the user's text is never mutated
+    req = _req(
+        messages=[
+            {
+                "role": "user",
+                "content": [{"type": "text", "text": "line1\n"}, {"type": "text", "text": "line2"}],
+            }
+        ]
+    )
+    params = to_anthropic_params(req, 4096)
+    assert params["messages"] == [{"role": "user", "content": "line1\nline2"}]
+
+
+def test_string_content_is_not_trimmed():
+    req = _req(messages=[{"role": "user", "content": "  hello  "}])
+    assert to_anthropic_params(req, 4096)["messages"][0]["content"] == "  hello  "
+
+
+def test_max_tokens_zero_is_honored_not_replaced_by_default():
+    # explicit 0 must not be silently swallowed by the `or default` falsy trap
+    assert to_anthropic_params(_req(max_completion_tokens=0), 4096)["max_tokens"] == 0
+    assert to_anthropic_params(_req(max_tokens=0), 4096)["max_tokens"] == 0
+
+
+def test_rejects_assistant_tool_calls_in_history():
+    req = _req(
+        messages=[
+            {"role": "user", "content": "hi"},
+            {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [{"id": "t1", "type": "function", "function": {"name": "f"}}],
+            },
+        ]
+    )
+    with pytest.raises(UnsupportedFeatureError):
+        to_anthropic_params(req, 4096)
+
+
 # --- response translation --------------------------------------------------- #
 def test_from_anthropic_message_maps_everything():
     msg = {
