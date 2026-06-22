@@ -2,7 +2,7 @@
 
 > A reliability + security + governance gateway for LLMs and agents — an OpenAI-compatible proxy that sits *in front of* any model and adds input/output guardrails, three-level trajectory evals, OWASP-mapped automated red-teaming, OpenTelemetry observability, and a CI gate that fails the build when quality or safety regress.
 
-> **⚠️ Status: under active construction (pre-alpha).** This repository currently contains only the project skeleton and a minimal gateway. The components below describe the target design; each lands incrementally through the phased roadmap.
+> **⚠️ Status: under active construction (pre-alpha).** Working today: the OpenAI-compatible `/v1/chat/completions` proxy (F1) with SSE streaming, backed by a deterministic, keyless **mock provider** — no real model is wired yet. The planned primary real provider is **Anthropic (Claude)**, with OpenAI and Gemini as additional options. Guardrails, evals, red-team and governance (the components below) land incrementally through the phased roadmap.
 
 ---
 
@@ -64,7 +64,7 @@ The differentiator is **evaluation depth**: not just scoring the final output, b
 
 ## Quickstart
 
-> The minimal gateway (a `/health` endpoint) runs today. Everything else is on the roadmap.
+> The `/health` probe and the `/v1/chat/completions` proxy (on the mock provider) run today. Guardrails, evals and red-team are on the roadmap.
 
 ```bash
 # 1. Clone and enter
@@ -76,15 +76,22 @@ python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 
-# 3. Configure
-cp .env.example .env               # fill in provider keys when proxying lands
+# 3. Configure (optional — defaults to the keyless mock provider)
+cp .env.example .env
 
 # 4. Run the gateway
 uvicorn aegis.gateway.main:app --reload --port 8080
 curl http://localhost:8080/health  # -> {"status":"ok","version":"0.1.0"}
 
-# 5. Lint + test
+# 5. Call it like the OpenAI API (drop-in: point any client's base_url here)
+curl http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"mock/echo-1","messages":[{"role":"user","content":"hello"}]}'
+# Add "stream": true for an SSE stream of chat.completion.chunk frames.
+
+# 6. Lint + test
 ruff check .
+ruff format --check .
 pytest
 ```
 
@@ -94,8 +101,9 @@ pytest
 
 | Phase | Deliverable | Status |
 |-------|-------------|--------|
-| **F0** | Skeleton: packaging, CI, `/health` gateway | 🟡 in progress |
-| **F1** | OpenAI-compatible proxy (`/v1/chat/completions`) with streaming + OTel → Langfuse tracing | ⬜ planned |
+| **F0** | Skeleton: packaging, CI, `/health` gateway | ✅ done |
+| **F1** | OpenAI-compatible proxy (`/v1/chat/completions`): drop-in `base_url`, SSE streaming, deterministic mock provider, OpenAI error envelope | ✅ done |
+| **F1.x** | OTel → Langfuse tracing of each request (observability) | ⬜ planned |
 | **F2** | Input/output guardrails: prompt-injection scan, PII (Presidio), toxicity, schema | ⬜ planned |
 | **F3** | Evals L1 (session/goal) · L2 (trace/quality, G-Eval CoT) · L3 (tool correctness); persist verdicts | ⬜ planned |
 | **F4** | Trajectory metrics (TrajectoryAccuracy, ToolCorrectness, T-Eval) + CLEAR; Agent-as-a-Judge | ⬜ planned |
