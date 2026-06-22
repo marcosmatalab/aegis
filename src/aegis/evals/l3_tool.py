@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from aegis.evals.models import EvalCase, ToolCall
 from aegis.evals.result import ScoreResult
+from aegis.evals.trajectory import match_trajectory
 
 
 def _lcs_len(a: list[str], b: list[str]) -> int:
@@ -45,41 +46,11 @@ def score_l3(case: EvalCase) -> ScoreResult:
             "L3", 1.0, True, (), {"exact": 0, "wrong_args": 0, "missing": 0, "extra": 0}
         )
 
-    exp_matched = [False] * len(expected)
-    act_used = [False] * len(actual)
+    m = match_trajectory(expected, actual)
+    tool_f1 = m.tool_f1()  # one side empty (other not) -> 0.0; both-empty handled above
 
-    # pass 1: exact (name + args) matches
-    for i, e in enumerate(expected):
-        for j, a in enumerate(actual):
-            if not act_used[j] and a.name == e.name and a.arguments == e.arguments:
-                exp_matched[i] = True
-                act_used[j] = True
-                break
-
-    # pass 2: remaining same-name calls -> wrong args
-    wrong_args = 0
-    for i, e in enumerate(expected):
-        if exp_matched[i]:
-            continue
-        for j, a in enumerate(actual):
-            if not act_used[j] and a.name == e.name:
-                act_used[j] = True
-                wrong_args += 1
-                break
-
-    exact = sum(exp_matched)
-    missing = len(expected) - exact - wrong_args
-    extra = len(actual) - exact - wrong_args
-
-    if not expected or not actual:
-        tool_f1 = 0.0  # one side empty, the other not -> all extra or all missing
-    else:
-        precision = exact / len(actual)
-        recall = exact / len(expected)
-        tool_f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) else 0.0
-
-    # both-empty already returned 1.0 above; here an empty expected means actual
-    # has spurious calls, so order is 0.0 (nothing expected was produced in order).
+    # an empty expected means actual has spurious calls, so order is 0.0 (nothing
+    # expected was produced in order).
     order = (
         0.0
         if not expected
@@ -87,15 +58,15 @@ def score_l3(case: EvalCase) -> ScoreResult:
     )
 
     score = (tool_f1 + order) / 2
-    passed = missing == 0 and extra == 0 and wrong_args == 0 and order == 1.0
+    passed = m.missing == 0 and m.extra == 0 and m.wrong_args == 0 and order == 1.0
 
     reasons: list[str] = []
-    if missing:
-        reasons.append(f"{missing} expected tool call(s) missing")
-    if extra:
-        reasons.append(f"{extra} unexpected tool call(s)")
-    if wrong_args:
-        reasons.append(f"{wrong_args} tool call(s) with wrong arguments")
+    if m.missing:
+        reasons.append(f"{m.missing} expected tool call(s) missing")
+    if m.extra:
+        reasons.append(f"{m.extra} unexpected tool call(s)")
+    if m.wrong_args:
+        reasons.append(f"{m.wrong_args} tool call(s) with wrong arguments")
     if order < 1.0 and not reasons:
         reasons.append("tool calls out of order")
 
@@ -105,10 +76,10 @@ def score_l3(case: EvalCase) -> ScoreResult:
         passed,
         tuple(reasons),
         {
-            "exact": exact,
-            "wrong_args": wrong_args,
-            "missing": missing,
-            "extra": extra,
+            "exact": m.exact,
+            "wrong_args": m.wrong_args,
+            "missing": m.missing,
+            "extra": m.extra,
             "tool_f1": tool_f1,
             "order": order,
         },
