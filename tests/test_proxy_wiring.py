@@ -36,9 +36,11 @@ def test_default_provider_wires_to_mock(monkeypatch):
 
 
 def test_settings_drive_provider_selection(monkeypatch):
-    # Proves the dependency actually reads settings.default_provider rather than
-    # hardcoding a provider: selecting an unwired one yields the clean error.
+    # Proves the dependency reads settings.default_provider: anthropic is wired but
+    # selecting it WITHOUT a key is a clean provider_not_configured 500 (not a
+    # crash). Clear the key so the path is deterministic regardless of the env.
     monkeypatch.setenv("AEGIS_DEFAULT_PROVIDER", "anthropic")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     get_settings.cache_clear()
     with TestClient(app) as test_client:
         resp = test_client.post("/v1/chat/completions", json=_PAYLOAD)

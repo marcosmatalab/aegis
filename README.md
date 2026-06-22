@@ -64,7 +64,7 @@ The differentiator is **evaluation depth**: not just scoring the final output, b
 
 ## Quickstart
 
-> The `/health` probe and the `/v1/chat/completions` proxy (on the mock provider) run today. Guardrails, evals and red-team are on the roadmap.
+> The `/health` probe and the `/v1/chat/completions` proxy run today — on the keyless deterministic mock by default, or against **real Claude** (see [Real provider](#real-provider--anthropic--claude)). Evals and red-team are on the roadmap.
 
 ```bash
 # 1. Clone and enter
@@ -127,6 +127,48 @@ A defense-in-depth layer around the proxy — cheap deterministic checks first, 
 > **Streaming trade-off:** when output guardrails are active, the stream is buffered and scanned before any byte is sent (leak-safe), so streaming is effectively non-incremental in that mode. With output guardrails off, streaming is fully incremental as in F1.
 
 Each toggle and threshold is configurable via `AEGIS_GR_*` settings (see [.env.example](.env.example)).
+
+---
+
+## Real provider — Anthropic / Claude
+
+The gateway can forward to **real Claude** behind the same `Provider` interface as the mock. The `anthropic` SDK is an **optional extra**, lazy-imported only when selected, so the default install and CI stay keyless and SDK-free.
+
+```bash
+pip install -e ".[anthropic]"          # install the optional SDK
+export ANTHROPIC_API_KEY=sk-ant-...    # key is read from the env only, never hardcoded/logged
+export AEGIS_DEFAULT_PROVIDER=anthropic
+uvicorn aegis.gateway.main:app --port 8080
+# Now any OpenAI client pointed at this base_url talks to Claude. The leading
+# "anthropic/" in a model id is stripped (e.g. "anthropic/claude-opus-4-8").
+```
+
+**What the adapter covers (be honest about the edges):**
+
+- ✅ **Text** chat completions, **non-streaming and streaming (SSE)** — OpenAI→Anthropic request translation (system/developer messages hoisted into the top-level `system`, `max_tokens` defaulted since Anthropic requires it, `stop`/`temperature`/`top_p`) and Anthropic→OpenAI response translation (text, `usage`, `stop_reason`→`finish_reason`, model echo).
+- ⚠️ **Text only for now.** **Tool-calling** and **non-text multimodal** (images) are **not translated yet** — a request using them is **rejected** with a clean `400 invalid_request_error` (`code: unsupported_by_provider`) rather than silently dropped. **Tool-calling is the tracked next phase**, not an open-ended deferral.
+- **Streaming:** `finish_reason` is taken from Anthropic's `message_delta` event (not `message_stop`) so it is never null. A usage chunk is emitted only when the request sets `stream_options.include_usage` (OpenAI's contract). A failure mid-stream surfaces as an SSE error frame (the HTTP 200 is already committed), carrying the mapped `type`/`code`; no `[DONE]` follows.
+
+**Documented divergences from OpenAI:**
+
+- `temperature` is **clamped to [0, 1]** (Anthropic's max is 1; OpenAI allows 2) — a value like `1.5` is accepted and capped rather than erroring.
+- `created` is a synthesized wall-clock timestamp (Anthropic does not return one), so the real-provider path is **not** byte-deterministic like the mock.
+- An unrecognized `stop_reason` falls back to `finish_reason: "stop"`.
+
+**Error mapping** (upstream failure → OpenAI envelope; messages are generic so no key/internals leak):
+
+| Anthropic | HTTP | `type` | `code` |
+|---|---|---|---|
+| 401 | 401 | `authentication_error` | `upstream_authentication` |
+| 403 | 403 | `permission_error` | `upstream_permission_denied` |
+| 404 | 404 | `not_found_error` | `upstream_model_not_found` |
+| 429 (+`Retry-After`) | 429 | `rate_limit_error` | `rate_limit_exceeded` |
+| 400 | 400 | `invalid_request_error` | `upstream_invalid_request` |
+| any other (e.g. 413) / 5xx | **502** | `api_error` | `upstream_error` |
+| timeout | **504** | `api_error` | `upstream_timeout` |
+| connection | **502** | `api_error` | `upstream_unavailable` |
+
+Selecting `anthropic` with **no key** or **without the SDK installed** is a clean `provider_not_configured` (HTTP 500) — never an `ImportError`. The whole adapter is unit-tested offline with a fake client (no key, no SDK, no network); one **skippable live test** runs only when `ANTHROPIC_API_KEY` is set and the SDK is installed.
 
 ---
 

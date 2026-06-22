@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from aegis.gateway.config import Settings, get_settings
-from aegis.gateway.errors import GuardrailBlockedError
+from aegis.gateway.errors import AegisError, GuardrailBlockedError
 from aegis.gateway.schemas import (
     ChatCompletionChunk,
     ChatCompletionRequest,
@@ -40,7 +40,7 @@ _STREAM_ERROR_MESSAGE = "The server had an error while streaming your request."
 
 def get_provider(settings: Settings = Depends(get_settings)) -> Provider:
     """FastAPI dependency returning the active provider (overridable in tests)."""
-    return build_provider(settings.default_provider)
+    return build_provider(settings.default_provider, settings)
 
 
 def _error_frame(
@@ -48,6 +48,18 @@ def _error_frame(
 ) -> str:
     payload = {"error": {"message": message, "type": type_, "param": param, "code": code}}
     return f"data: {json.dumps(payload, separators=(',', ':'))}\n\n"
+
+
+def _exception_frame(exc: Exception) -> str:
+    """SSE error frame for a mid-stream failure (headers/200 already committed).
+
+    A mapped ``AegisError`` (e.g. an upstream rate_limit_error / unsupported
+    feature) carries its real type/code so the client sees the precise reason;
+    anything unexpected stays the opaque generic ``api_error`` (unchanged F1/F2
+    behavior). No ``[DONE]`` follows an error, matching OpenAI."""
+    if isinstance(exc, AegisError):
+        return _error_frame(exc.message, exc.type, code=exc.code, param=exc.param)
+    return _error_frame(_STREAM_ERROR_MESSAGE, "api_error")
 
 
 def _serialize_chunk(chunk: ChatCompletionChunk) -> str:
@@ -71,7 +83,7 @@ async def _sse_generator(provider: Provider, request: ChatCompletionRequest) -> 
         # Headers/200 already sent; emit an OpenAI error frame and terminate
         # WITHOUT a [DONE] sentinel (OpenAI sends no [DONE] after an error).
         log.exception("Error during streaming: %s", exc)
-        yield _error_frame(_STREAM_ERROR_MESSAGE, "api_error")
+        yield _exception_frame(exc)
         return
     yield SSE_DONE
 
@@ -102,7 +114,7 @@ async def _guarded_sse_generator(
             chunks.append(chunk)
     except Exception as exc:
         log.exception("Error during streaming: %s", exc)
-        yield _error_frame(_STREAM_ERROR_MESSAGE, "api_error")
+        yield _exception_frame(exc)
         return
 
     text = "".join(
