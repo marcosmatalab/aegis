@@ -64,6 +64,69 @@ def test_deterministic_report():
     assert a == b
 
 
+# --- F4: trajectory metrics, agent-judge, CLEAR ----------------------------- #
+def _tool_case(case_id, **overrides):
+    base = {
+        "expected_trajectory": [{"name": "t", "arguments": {}}],
+        "actual": {"final_output": "ok", "tool_calls": [{"name": "t", "arguments": {}}]},
+    }
+    base.update(overrides)
+    return _case(case_id, **base)
+
+
+def test_report_includes_trajectory_and_agent_judge_per_case():
+    report = run_suite([_tool_case("a")], MockJudge())
+    row = report.cases[0]
+    assert set(row.trajectory) == {
+        "tool_correctness",
+        "trajectory_accuracy",
+        "progress_rate",
+        "t_eval",
+    }
+    assert "score" in row.agent_judge and "has_loop" in row.agent_judge
+
+
+def test_report_includes_clear_five_dimensions():
+    report = run_suite([_case("a")], MockJudge())
+    assert set(report.clear) == {"cost", "latency", "efficiency", "accuracy", "reliability"}
+    assert report.clear["accuracy"]["score"] == report.overall_score
+    # no trace on the case -> cost/latency are honest placeholders
+    assert report.clear["cost"]["status"] == "placeholder"
+    assert report.clear["latency"]["status"] == "placeholder"
+
+
+def test_clear_cost_latency_synthetic_with_trace():
+    report = run_suite([_tool_case("a", trace={"cost_usd": 0.01, "latency_ms": 50.0})], MockJudge())
+    assert report.clear["cost"]["status"] == "synthetic"
+    assert report.clear["cost"]["value"] == 0.01
+    assert report.clear["latency"]["value"] == 50.0
+    assert report.clear["cost"]["score"] is None  # no budget passed
+
+
+def test_clear_budget_normalizes_score():
+    report = run_suite(
+        [_tool_case("a", trace={"latency_ms": 250.0})],
+        MockJudge(),
+        latency_budget_ms=1000.0,
+    )
+    assert report.clear["latency"]["score"] == 0.75
+
+
+def test_suite_trajectory_aggregate_present():
+    report = run_suite([_tool_case("a")], MockJudge())
+    assert report.trajectory["tool_correctness"]["mean_score"] == 1.0
+    assert report.trajectory["tool_correctness"]["scored"] == 1
+
+
+def test_agent_judge_flags_loop_in_report():
+    case = _tool_case(
+        "loopy",
+        actual={"final_output": "ok", "tool_calls": [{"name": "t"}, {"name": "t"}]},
+    )
+    report = run_suite([case], MockJudge())
+    assert report.cases[0].agent_judge["has_loop"] is True
+
+
 # --- persistence ------------------------------------------------------------ #
 def test_write_report_roundtrips_json(tmp_path):
     report = run_suite([_case("a")], MockJudge(), suite="unit", created=123)
