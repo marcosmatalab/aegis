@@ -18,6 +18,11 @@ class PolicyDecision:
     rule_id: str | None = None
 
 
+# Degenerate allow rules that match everything would silently nullify the entire
+# deny list — a security footgun — so they are ignored.
+_CATCH_ALL_ALLOW = {"", ".", ".*", ".+", "^.*$", "^.+$", "(.*)", "(.+)"}
+
+
 def _matches(pattern: str, text: str) -> bool:
     try:
         return re.search(pattern, text, re.IGNORECASE) is not None
@@ -26,8 +31,14 @@ def _matches(pattern: str, text: str) -> bool:
 
 
 def evaluate(text: str, *, deny: list[str], allow: list[str]) -> PolicyDecision:
-    """Allow overrides deny; otherwise the first matching deny rule blocks."""
+    """Allow overrides deny; otherwise the first matching deny rule blocks.
+
+    Catch-all allow rules (e.g. ``.`` / ``.*``) are ignored so a single
+    over-broad allow can never turn the whole deny list into a no-op.
+    """
     for rule in allow:
+        if rule.strip() in _CATCH_ALL_ALLOW:
+            continue
         if _matches(rule, text):
             return PolicyDecision("allow")
     for rule in deny:

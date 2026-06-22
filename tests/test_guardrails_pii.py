@@ -28,12 +28,20 @@ def test_redact_email():
 
 @pytest.mark.parametrize(
     "phone",
-    ["612345678", "612 345 678", "+34 612 345 678", "+34612345678", "612-345-678"],
+    ["612 345 678", "+34 612 345 678", "+34612345678", "612-345-678"],
 )
 def test_redact_phone_formats(phone):
     out, entities = redact(f"call {phone} now")
     assert "PHONE_NUMBER" in entities
     assert phone not in out
+
+
+@pytest.mark.parametrize("number", ["612345678", "700123456", "812345678", "987654321"])
+def test_bare_contiguous_nine_digits_not_treated_as_phone(number):
+    # ordinary invoice/part/order numbers must not be redacted as phones
+    out, entities = redact(f"reference {number} ok")
+    assert entities == ()
+    assert out == f"reference {number} ok"
 
 
 def test_redact_valid_dni():
@@ -110,5 +118,5 @@ def test_unicode_around_pii_preserved():
 
 
 def test_scan_reports_entities_without_redacting():
-    assert scan("write to a@b.com or call 612345678") == ("EMAIL_ADDRESS", "PHONE_NUMBER")
+    assert scan("write to a@b.com or call 612 345 678") == ("EMAIL_ADDRESS", "PHONE_NUMBER")
     assert scan("no pii here") == ()
