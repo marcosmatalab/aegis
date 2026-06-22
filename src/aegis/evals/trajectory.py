@@ -192,7 +192,12 @@ def t_eval(case: EvalCase) -> MetricScore:
     exp, act = _steps(case.expected_trajectory), _steps(case.actual.tool_calls)
     n = max(len(exp), len(act))
     if n == 0:
-        return MetricScore("t_eval", 1.0, True, {"matched": 0, "len_expected": 0, "len_actual": 0})
+        return MetricScore(
+            "t_eval",
+            1.0,
+            True,
+            {"matched": 0, "len_expected": 0, "len_actual": 0, "first_divergence": None},
+        )
 
     matched = 0
     first_divergence = None

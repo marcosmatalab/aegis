@@ -117,6 +117,7 @@ def _telemetry_dim(
     name: str,
     unit: str,
     values: list[float],
+    total: int,
     budget: float | None,
     real_source: str,
 ) -> ClearDimension:
@@ -131,15 +132,13 @@ def _telemetry_dim(
             f"PLACEHOLDER: no telemetry — needs {real_source} (F1.x)",
         )
     value = _mean(values)
-    return ClearDimension(
-        name,
-        "synthetic",
-        True,
-        _budget_score(value, budget),
-        value,
-        unit,
-        f"SYNTHETIC mean from case trace (hand-authored); real values need {real_source} (F1.x)",
+    # Disclose the denominator: only the traced subset contributes, so a single
+    # hand-authored datapoint is never mistaken for a suite-wide average.
+    basis = (
+        f"SYNTHETIC mean of {len(values)}/{total} traced cases (hand-authored); "
+        f"real values need {real_source} (F1.x)"
     )
+    return ClearDimension(name, "synthetic", True, _budget_score(value, budget), value, unit, basis)
 
 
 def compute_clear(
@@ -155,6 +154,7 @@ def compute_clear(
             "cost",
             "usd",
             [s.cost_usd for s in signals if s.cost_usd is not None],
+            len(signals),
             cost_budget_usd,
             "provider token usage + price telemetry",
         ),
@@ -162,6 +162,7 @@ def compute_clear(
             "latency",
             "ms",
             [s.latency_ms for s in signals if s.latency_ms is not None],
+            len(signals),
             latency_budget_ms,
             "live request timing via OpenTelemetry",
         ),
