@@ -53,6 +53,30 @@ class FakeAnthropic:
         self.messages = _FakeMessages(**kwargs)
 
 
+class _MidStreamFailMessages:
+    """Yields some events, then raises mid-iteration (a realistic transport error
+    on the real async stream, distinct from an error at create())."""
+
+    def __init__(self, events, error):
+        self._events = events
+        self._error = error
+
+    async def create(self, **params):
+        events, error = self._events, self._error
+
+        async def _gen():
+            for event in events:
+                yield event
+            raise error
+
+        return _gen()
+
+
+class _MidStreamFailAnthropic:
+    def __init__(self, events, error):
+        self.messages = _MidStreamFailMessages(events, error)
+
+
 _MSG = {
     "id": "msg_1",
     "content": [{"type": "text", "text": "Hi there"}],
@@ -139,6 +163,7 @@ def test_complete_rejects_unsupported_before_calling_upstream():
 def test_stream_yields_role_content_and_terminal():
     prov = _provider(events=_STREAM_EVENTS)
     chunks = _collect(prov.stream(_req()))
+    assert len(chunks) == 3  # exactly: role, content, terminal (no spurious chunks)
     assert chunks[0].choices[0].delta.role == "assistant"
     assert chunks[1].choices[0].delta.content == "Hi"
     assert chunks[-1].choices[0].finish_reason == "stop"  # from message_delta, not null
@@ -154,17 +179,34 @@ def test_stream_passes_stream_flag():
 def test_stream_includes_usage_when_requested():
     prov = _provider(events=_STREAM_EVENTS)
     chunks = _collect(prov.stream(_req(stream_options={"include_usage": True})))
+    # exactly one usage-bearing chunk, and it follows the terminal finish chunk
+    assert sum(c.usage is not None for c in chunks) == 1
+    assert chunks[-2].choices[0].finish_reason == "stop"
     last = chunks[-1]
     assert last.choices == []
     assert last.usage.prompt_tokens == 4
     assert last.usage.completion_tokens == 1
 
 
-def test_stream_maps_upstream_error():
+def test_stream_maps_upstream_error_at_create():
     prov = _provider(error=_StatusError(503))
     with pytest.raises(UpstreamProviderError) as exc:
         _collect(prov.stream(_req()))
     assert exc.value.status_code == 502  # 5xx -> 502 Bad Gateway
+
+
+def test_stream_maps_upstream_error_raised_mid_iteration():
+    # an error surfacing AFTER >=1 event was yielded is remapped too (a distinct
+    # path from an error at create()) -> still an UpstreamProviderError
+    events = [{"type": "message_start", "message": {"id": "m", "usage": {"input_tokens": 1}}}]
+    prov = AnthropicProvider(
+        api_key="sk-test",
+        default_max_tokens=10,
+        client=_MidStreamFailAnthropic(events, _StatusError(503)),
+    )
+    with pytest.raises(UpstreamProviderError) as exc:
+        _collect(prov.stream(_req()))
+    assert exc.value.status_code == 502
 
 
 # --- lazy SDK guard --------------------------------------------------------- #

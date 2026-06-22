@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 
 from aegis.gateway.errors import UnsupportedFeatureError
@@ -198,6 +200,22 @@ def test_from_anthropic_message_handles_missing_usage_and_id():
     assert resp.usage.total_tokens == 0
 
 
+def test_from_anthropic_message_accepts_attribute_objects():
+    # the REAL SDK returns pydantic objects (attribute access), not dicts — this
+    # exercises the getattr branch of _get that the live path actually hits
+    msg = SimpleNamespace(
+        id="msg_attr",
+        content=[SimpleNamespace(type="text", text="Hi")],
+        stop_reason="end_turn",
+        usage=SimpleNamespace(input_tokens=2, output_tokens=1),
+    )
+    resp = from_anthropic_message(msg, "m", created=1)
+    assert resp.id == "msg_attr"
+    assert resp.choices[0].message.content == "Hi"
+    assert resp.choices[0].finish_reason == "stop"
+    assert resp.usage.total_tokens == 3
+
+
 # --- streaming -------------------------------------------------------------- #
 def _events(stop_reason="end_turn"):
     return [
@@ -258,6 +276,30 @@ def test_stream_usage_chunk_when_requested():
     assert usage_chunk.usage.prompt_tokens == 5
     assert usage_chunk.usage.completion_tokens == 2
     assert usage_chunk.usage.total_tokens == 7
+
+
+def test_stream_accepts_attribute_event_objects():
+    # real SDK stream events are attribute objects, not dicts — exercise getattr
+    events = [
+        SimpleNamespace(
+            type="message_start",
+            message=SimpleNamespace(id="msg_a", usage=SimpleNamespace(input_tokens=2)),
+        ),
+        SimpleNamespace(
+            type="content_block_delta", delta=SimpleNamespace(type="text_delta", text="Hi")
+        ),
+        SimpleNamespace(
+            type="message_delta",
+            delta=SimpleNamespace(stop_reason="end_turn"),
+            usage=SimpleNamespace(output_tokens=1),
+        ),
+        SimpleNamespace(type="message_stop"),
+    ]
+    chunks = translate_stream_events(events, chunk_id="x", created=1, model="m")
+    assert chunks[0].choices[0].delta.role == "assistant"
+    assert chunks[1].choices[0].delta.content == "Hi"
+    assert chunks[-1].choices[0].finish_reason == "stop"
+    assert {c.id for c in chunks} == {"msg_a"}
 
 
 def test_stream_skips_empty_text_and_unknown_events():
