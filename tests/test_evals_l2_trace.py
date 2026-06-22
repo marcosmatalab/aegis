@@ -58,6 +58,12 @@ def test_not_applicable_without_reference_or_context():
     assert res.passed is False
 
 
+def test_empty_string_reference_treated_as_absent():
+    # symmetric with an empty context list -> L2 not applicable, not a hard 0
+    res = _l2(_case("anything", reference=""))
+    assert res.breakdown["applicable"] is False
+
+
 def test_only_reference_uses_relevancy_only():
     res = _l2(_case("cat sat", reference="cat sat"))
     assert "relevancy" in res.breakdown

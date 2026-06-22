@@ -64,6 +64,31 @@ def test_parse_rejects_bool_score():
         parse_verdict('{"score": true}')
 
 
+@pytest.mark.parametrize(
+    "raw",
+    [
+        '{"score": NaN}',
+        '{"score": Infinity}',
+        '{"score": -Infinity}',
+        '{"score": "nan"}',
+        '{"score": "inf"}',
+    ],
+)
+def test_parse_rejects_non_finite_scores(raw):
+    with pytest.raises(ValueError):
+        parse_verdict(raw)
+
+
+def test_parse_nested_brace_json_object():
+    score, _ = parse_verdict('{"reasoning": "x", "score": 0.5, "meta": {"k": 1}}')
+    assert score == 0.5
+
+
+def test_extract_json_reversed_braces_raises():
+    with pytest.raises(ValueError):
+        parse_verdict("} score 0.5 {")
+
+
 # --- prompt structure (Chain-of-Thought) ------------------------------------ #
 def test_build_prompt_is_chain_of_thought():
     prompt = build_prompt("relevancy", "the answer", reference="ref", context=["ctx"])
