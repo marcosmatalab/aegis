@@ -188,6 +188,15 @@ def test_stream_sequence_role_content_and_terminal_finish_reason():
     assert {c.created for c in chunks} == {7}
 
 
+def test_stream_adopts_real_message_id():
+    events = [
+        {"type": "message_start", "message": {"id": "msg_real", "usage": {"input_tokens": 1}}},
+        {"type": "message_stop"},
+    ]
+    chunks = translate_stream_events(events, chunk_id="placeholder", created=1, model="m")
+    assert {c.id for c in chunks} == {"msg_real"}
+
+
 def test_stream_finish_reason_length_from_message_delta():
     chunks = translate_stream_events(_events("max_tokens"), chunk_id="c", created=1, model="m")
     assert chunks[-1].choices[0].finish_reason == "length"
