@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from aegis.evals.models import EvalCase, ToolCall
+from aegis.evals.models import CaseTrace, EvalCase, Milestone, ToolCall
 
 
 def _case(**overrides):
@@ -85,3 +85,49 @@ def test_tool_calls_parse_into_models():
         )
     )
     assert case.expected_trajectory[0] == ToolCall(name="search", arguments={"q": "x"})
+
+
+# --- F4 schema additions ---------------------------------------------------- #
+def test_tool_call_status_defaults_ok_and_parses_error():
+    assert ToolCall(name="x").status == "ok"
+    assert ToolCall(name="x", status="error").status == "error"
+
+
+def test_tool_call_invalid_status_rejected():
+    with pytest.raises(ValidationError):
+        ToolCall(name="x", status="weird")
+
+
+def test_case_defaults_have_no_trace_and_no_milestones():
+    case = EvalCase.model_validate(_case())
+    assert case.trace is None
+    assert case.milestones == []
+
+
+def test_trace_parses_and_rejects_negatives():
+    case = EvalCase.model_validate(_case(trace={"latency_ms": 120.5, "cost_usd": 0.003}))
+    assert case.trace == CaseTrace(latency_ms=120.5, cost_usd=0.003)
+    with pytest.raises(ValidationError):
+        CaseTrace(latency_ms=-1.0)
+
+
+def test_trace_rejects_unknown_field():
+    with pytest.raises(ValidationError):
+        EvalCase.model_validate(_case(trace={"latency_ms": 1.0, "gpu": 2}))
+
+
+def test_milestone_requires_exactly_one_target():
+    assert Milestone(tool="search").tool == "search"
+    assert Milestone(output_contains="done").output_contains == "done"
+    with pytest.raises(ValidationError):
+        Milestone(description="neither")
+    with pytest.raises(ValidationError):
+        Milestone(tool="search", output_contains="done")
+
+
+def test_milestones_parse_on_case():
+    case = EvalCase.model_validate(
+        _case(milestones=[{"tool": "search"}, {"output_contains": "answer", "description": "ans"}])
+    )
+    assert [m.tool for m in case.milestones] == ["search", None]
+    assert case.milestones[1].output_contains == "answer"

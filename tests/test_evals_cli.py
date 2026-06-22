@@ -51,6 +51,49 @@ def test_fail_under_boundary_equal_passes(tmp_path):
     assert rc == 0
 
 
+def test_summary_includes_clear_and_trajectory_lines(tmp_path, capsys):
+    out = tmp_path / "r.json"
+    assert main(["eval", "run", "--output", str(out)]) == 0
+    summary = capsys.readouterr().out
+    assert "trajectory:" in summary
+    assert "CLEAR:" in summary
+    assert "accuracy=" in summary
+    # the golden carries a synthetic trace case -> cost/latency are flagged synthetic
+    assert "(synthetic)" in summary
+
+
+def test_clear_placeholder_when_dataset_has_no_trace(tmp_path, capsys):
+    case = {
+        "id": "no-trace",
+        "user_goal": "g",
+        "input_messages": [{"role": "user", "content": "hi"}],
+        "expected_trajectory": [],
+        "success_criteria": {"must_include": ["ok"]},
+        "actual": {"final_output": "ok", "tool_calls": []},
+        "expected": {"l1_goal_met": True, "l2_faithful": None, "l3_trajectory_match": True},
+    }
+    ds = tmp_path / "g.jsonl"
+    ds.write_text(json.dumps(case), encoding="utf-8")
+    main(["eval", "run", "--dataset", str(ds), "--output", str(tmp_path / "r.json")])
+    assert "cost=n/a(placeholder)" in capsys.readouterr().out
+
+
+def test_report_json_has_clear_and_per_case_f4_fields(tmp_path):
+    out = tmp_path / "r.json"
+    main(["eval", "run", "--output", str(out)])
+    report = json.loads(out.read_text(encoding="utf-8"))
+    assert set(report["clear"]) == {"cost", "latency", "efficiency", "accuracy", "reliability"}
+    assert report["clear"]["accuracy"]["status"] == "measured"
+    first = report["cases"][0]
+    assert set(first["trajectory"]) == {
+        "tool_correctness",
+        "trajectory_accuracy",
+        "progress_rate",
+        "t_eval",
+    }
+    assert "has_loop" in first["agent_judge"]
+
+
 def test_geval_backend_fails_cleanly(tmp_path, capsys):
     out = tmp_path / "r.json"
     rc = main(["eval", "run", "--judge", "geval", "--output", str(out)])
