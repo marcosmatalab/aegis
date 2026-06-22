@@ -12,6 +12,7 @@ Cohen's-kappa calibration vs human labels).
 from __future__ import annotations
 
 import json
+import math
 from typing import Any
 
 from aegis.evals.judge.base import Judge, JudgeVerdict
@@ -53,7 +54,12 @@ def parse_verdict(raw: str) -> tuple[float, str]:
         score = float(score.strip())
     if isinstance(score, bool) or not isinstance(score, (int, float)):
         raise ValueError(f"judge reply has no numeric score: {raw[:120]!r}")
-    return _clamp01(float(score)), str(data.get("reasoning", ""))
+    value = float(score)
+    # json.loads accepts NaN/Infinity, and "nan"/"inf" parse via float() — reject
+    # them so a degenerate judge reply can't produce a non-finite score.
+    if not math.isfinite(value):
+        raise ValueError(f"judge score is not finite: {raw[:120]!r}")
+    return _clamp01(value), str(data.get("reasoning", ""))
 
 
 def build_prompt(

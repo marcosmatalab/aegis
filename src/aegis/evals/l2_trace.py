@@ -28,7 +28,9 @@ async def score_l2(case: EvalCase, judge: Judge) -> ScoreResult:
     subs: list[tuple[str, float]] = []
     breakdown: dict[str, object] = {}
 
-    if case.reference_answer is not None:
+    # Truthy check (not is-not-None) so an empty/blank reference is treated as
+    # absent, symmetric with how an empty `context` list is skipped below.
+    if case.reference_answer and case.reference_answer.strip():
         verdict = await judge.score(_RELEVANCY, output, reference=case.reference_answer)
         subs.append(("relevancy", verdict.score))
         breakdown["relevancy"] = verdict.score
