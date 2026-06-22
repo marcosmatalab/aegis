@@ -84,3 +84,45 @@ def test_log_level_normalized_case(monkeypatch):
 
 def test_get_settings_is_cached():
     assert get_settings() is get_settings()
+
+
+# --- F2 guardrail settings -------------------------------------------------- #
+def test_guardrails_disabled_by_default(monkeypatch):
+    monkeypatch.delenv("AEGIS_GUARDRAILS_ENABLED", raising=False)
+    s = Settings(_env_file=None)
+    assert s.guardrails_enabled is False
+    # sub-flags default on, but are gated behind the master switch at runtime
+    assert s.gr_injection_enabled is True
+    assert s.gr_pii_redact_input is True
+    assert s.gr_policy_enabled is True
+    assert s.gr_output_pii_enabled is True
+    assert s.gr_toxicity_enabled is True
+    assert s.gr_output_pii_action == "block"
+    assert s.gr_pii_engine == "regex"
+    assert s.gr_toxicity_threshold == 0.5
+    assert s.gr_policy_deny == []
+    assert s.gr_policy_allow == []
+
+
+def test_guardrails_master_toggle(monkeypatch):
+    monkeypatch.setenv("AEGIS_GUARDRAILS_ENABLED", "true")
+    s = Settings(_env_file=None)
+    assert s.guardrails_enabled is True
+
+
+def test_toxicity_threshold_out_of_range_rejected(monkeypatch):
+    monkeypatch.setenv("AEGIS_GR_TOXICITY_THRESHOLD", "1.5")
+    with pytest.raises(ValueError):
+        Settings(_env_file=None)
+
+
+def test_invalid_pii_engine_rejected(monkeypatch):
+    monkeypatch.setenv("AEGIS_GR_PII_ENGINE", "magic")
+    with pytest.raises(ValueError):
+        Settings(_env_file=None)
+
+
+def test_policy_rules_parsed_from_json_env(monkeypatch):
+    monkeypatch.setenv("AEGIS_GR_POLICY_DENY", '["\\\\bsecret\\\\b", "forbidden"]')
+    s = Settings(_env_file=None)
+    assert s.gr_policy_deny == [r"\bsecret\b", "forbidden"]
