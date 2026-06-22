@@ -117,6 +117,24 @@ class Settings(BaseSettings):
         default=3, ge=1, le=15, description="Number of judges in the ensemble backend."
     )
 
+    # --- F4 Agent-as-a-Judge (trajectory) -----------------------------------
+    # Backend for the trajectory judge. "mock" is a deterministic, keyless
+    # pattern-based heuristic (the default, offline). "agent" uses a real LLM —
+    # a clear stub in F4, never importing a paid SDK.
+    agent_judge_backend: Literal["mock", "agent"] = Field(
+        default="mock", description="Agent-as-a-Judge (trajectory) backend."
+    )
+
+    # Optional CLEAR budgets/SLOs. When set, the Cost/Latency dimensions get a
+    # normalized 0..1 score (lower is better); otherwise only the raw value is
+    # reported. None by default — Cost/Latency stay synthetic until F1.x.
+    clear_cost_budget_usd: float | None = Field(
+        default=None, ge=0.0, description="Per-case cost budget for CLEAR Cost normalization."
+    )
+    clear_latency_budget_ms: float | None = Field(
+        default=None, ge=0.0, description="Per-case latency SLO for CLEAR Latency normalization."
+    )
+
     @field_validator("log_level")
     @classmethod
     def _normalize_log_level(cls, v: str) -> str:
