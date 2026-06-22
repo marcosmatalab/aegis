@@ -33,6 +33,13 @@ class GuardrailPipeline:
             self._pii_engine = select_pii_engine(self.settings)
         return self._pii_engine
 
+    @property
+    def output_active(self) -> bool:
+        """Whether any output check would run. When False, the proxy can stream
+        with the original (non-buffering) generator for F1-identical behavior."""
+        s = self.settings
+        return s.guardrails_enabled and (s.gr_toxicity_enabled or s.gr_output_pii_enabled)
+
     async def check_input(self, request: ChatCompletionRequest) -> GuardrailResult:
         s = self.settings
         if not s.guardrails_enabled:
