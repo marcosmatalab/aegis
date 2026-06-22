@@ -18,7 +18,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from aegis.gateway.errors import UnsupportedFeatureError
+from aegis.gateway.errors import UnsupportedFeatureError, UpstreamProviderError
 from aegis.gateway.schemas import (
     ChatCompletionChunk,
     ChatCompletionRequest,
@@ -242,3 +242,74 @@ def translate_stream_events(
     for event in events:
         out.extend(state.handle(event))
     return out
+
+
+# --------------------------------------------------------------------------- #
+# Error mapping — pure, duck-typed on ``status_code`` so it is testable with
+# plain fake exceptions (no SDK import). Messages are generic so no key/internal
+# detail leaks to the client.
+# --------------------------------------------------------------------------- #
+# status -> (openai type, code, client-facing message)
+_STATUS_MAP = {
+    401: ("authentication_error", "upstream_authentication", "upstream authentication failed"),
+    403: ("permission_error", "upstream_permission_denied", "upstream permission denied"),
+    404: ("not_found_error", "upstream_model_not_found", "upstream model not found"),
+    400: ("invalid_request_error", "upstream_invalid_request", "upstream rejected the request"),
+}
+
+
+def _retry_after(exc: Any) -> str | None:
+    headers = getattr(getattr(exc, "response", None), "headers", None)
+    if headers is None:
+        return None
+    try:
+        return headers.get("retry-after")
+    except AttributeError:
+        return None
+
+
+def map_anthropic_error(exc: Any) -> UpstreamProviderError:
+    """Map a (duck-typed) Anthropic SDK exception to an ``UpstreamProviderError``.
+
+    Reads only ``status_code`` and ``response.headers`` (never isinstance on SDK
+    classes), so it is testable with fakes. Catch-all: any unmapped status (e.g.
+    413) or a 5xx becomes a 502; timeouts a 504; connection errors a 502."""
+    status = getattr(exc, "status_code", None)
+
+    if status is None:  # no HTTP status -> timeout / connection / unknown
+        name = type(exc).__name__.lower()
+        if "timeout" in name:
+            return UpstreamProviderError(
+                "upstream request timed out",
+                status_code=504,
+                type="api_error",
+                code="upstream_timeout",
+            )
+        if "connection" in name:
+            return UpstreamProviderError(
+                "could not reach the upstream provider",
+                status_code=502,
+                type="api_error",
+                code="upstream_unavailable",
+            )
+        return UpstreamProviderError(
+            "upstream provider error", status_code=502, type="api_error", code="upstream_error"
+        )
+
+    if status == 429:
+        retry_after = _retry_after(exc)
+        message = "upstream rate limit exceeded"
+        if retry_after:
+            message += f" (retry after {retry_after}s)"
+        return UpstreamProviderError(
+            message, status_code=429, type="rate_limit_error", code="rate_limit_exceeded"
+        )
+
+    if status in _STATUS_MAP:
+        type_, code, message = _STATUS_MAP[status]
+        return UpstreamProviderError(message, status_code=status, type=type_, code=code)
+
+    # catch-all: any other status (413, 422, 5xx, ...) -> 502 Bad Gateway
+    return UpstreamProviderError(
+        "upstream provider error", status_code=502, type="api_error", code="upstream_error"
+    )
