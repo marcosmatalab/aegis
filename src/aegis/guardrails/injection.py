@@ -1,22 +1,24 @@
 """Deterministic prompt-injection detection, mapped to OWASP LLM01.
 
 Design bias: a guardrail that blocks legitimate traffic is worse than a
-permissive one, so every pattern is HIGH-CONFIDENCE and narrow:
+permissive one, so every pattern is HIGH-CONFIDENCE and narrow. The detector
+covers the most-abused, low-false-positive attack classes:
 
-  * an override directive needs the verb (ignore/disregard/forget/override/
-    bypass) AND a "previous/above/all/any" qualifier AND an instruction noun —
-    so "ignore the noise", "disregard my earlier email" or "the previous
-    instructions were unclear" do NOT match;
-  * a system-prompt leak needs an imperative verb (reveal/show/print/…) AND a
-    possessive (your/the/its) before "system prompt/instructions" — so
-    "what is a system prompt?" does NOT match;
-  * role-injection markers match ONLY chat-template tokens
-    (<|im_start|>system, [INST], <<SYS>>) — never a bare "system:" that appears
-    in code, logs or prose;
-  * jailbreak personas need an explicit jailbreak keyword (DAN, developer mode,
-    jailbroken, …) — so "act as a translator" does NOT match.
+  * override directives — verb (ignore/disregard/forget/override/bypass/reset)
+    + a "previous/above/all/your" qualifier + an instruction noun, OR the same
+    verb directly targeting the system prompt;
+  * system-prompt leaks — an imperative verb (reveal/show/tell/give/…) before a
+    possessive + "system prompt/instructions", an interrogative "what … your …
+    instructions", or a "repeat/print … (words|text|everything) … above" leak;
+  * role-injection markers — ONLY chat-template tokens (<|im_start|>system,
+    [INST], <<SYS>>); never a bare "system:";
+  * jailbreak personas — require an explicit keyword (DAN, developer mode, …);
+  * "new policy/instructions: … ignore/reveal …" override directives;
+  * a Spanish override directive ("ignora … instrucciones anteriores").
 
-The detector is pure and deterministic (no model, no network).
+Benign code, prose, and technical text (e.g. "what is a system prompt?",
+"print the text file", "show me the rules of chess") are designed to pass — see
+the large false-positive regression suite. Pure and deterministic.
 """
 
 from __future__ import annotations
@@ -25,7 +27,7 @@ import re
 from dataclasses import dataclass
 
 _NOUN = r"(?:instructions?|prompts?|rules?|directions?|commands?|guidelines?|constraints?)"
-_QUALIFIER = r"(?:previous|prior|above|preceding|earlier|foregoing|all|any)"
+_QUALIFIER = r"(?:previous|prior|above|preceding|earlier|foregoing|all|any|your)"
 _POSSESSIVE = r"(?:your|the|its)"
 _SYSTEM_TARGET = (
     r"(?:system\s+(?:prompt|message)|system\s+instructions?|"
@@ -37,18 +39,50 @@ _PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     (
         "override_instructions",
         re.compile(
-            rf"\b(?:ignore|disregard|forget|override|bypass)\b"
+            rf"\b(?:ignore|disregard|forget|override|bypass|reset)\b"
             rf"(?:\s+\w+){{0,3}}?\s+\b{_QUALIFIER}\b"
             rf"(?:\s+\w+){{0,3}}?\s+\b{_NOUN}\b",
             re.IGNORECASE,
         ),
     ),
     (
+        "override_system_prompt",
+        re.compile(
+            rf"\b(?:ignore|disregard|forget|override|bypass|reset)\b"
+            rf"(?:\s+\w+){{0,3}}?\s+{_SYSTEM_TARGET}\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
         "reveal_system_prompt",
         re.compile(
-            rf"\b(?:reveal|show|print|repeat|output|expose|divulge|disclose|leak|copy)\b"
-            rf"(?:\s+\w+){{0,3}}?\s+\b{_POSSESSIVE}\b"
-            rf"(?:\s+\w+){{0,2}}?\s+\b{_SYSTEM_TARGET}\b",
+            rf"\b(?:reveal|show|print|repeat|output|expose|divulge|disclose|leak|copy|tell|give|share|spell)\b"
+            rf"(?:\s+\w+){{0,3}}?\s+{_POSSESSIVE}(?:\s+\w+){{0,2}}?\s+{_SYSTEM_TARGET}\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "reveal_your_directives",
+        re.compile(
+            r"\b(?:reveal|show|print|repeat|output|tell|give|share|spell)\b"
+            r"(?:\s+\w+){0,3}?\s+your(?:\s+\w+){0,2}?\s+\b(?:instructions?|rules?|guidelines?|prompt)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "interrogative_leak",
+        re.compile(
+            rf"\b(?:what|which)\b(?:\s+\w+){{0,5}}?\s+your"
+            rf"(?:\s+\w+){{0,2}}?\s+\b(?:{_SYSTEM_TARGET}|instructions?|rules?|guidelines?)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "leak_repeat_above",
+        re.compile(
+            r"\b(?:repeat|print|output|echo|reproduce|spell\s+out)\b"
+            r"(?:\s+\w+){0,4}?\s+\b(?:words?|text|everything|prompt|instructions?|message)\b"
+            r"(?:\s+\w+){0,3}?\s+\b(?:above|verbatim|preceding|word\s+for\s+word)\b",
             re.IGNORECASE,
         ),
     ),
@@ -72,9 +106,19 @@ _PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     (
         "new_policy_override",
         re.compile(
-            r"\b(?:new|updated|revised)\s+(?:policy|rule|instruction|directive)\b\s*:?"
+            r"\b(?:new|updated|revised)\s+"
+            r"(?:policy|policies|rule|rules|instruction|instructions|directive|directives)\b\s*:?"
             r"(?:\s+\w+){0,4}?\s+"
-            r"\b(?:ignore|bypass|disable|execute|reveal|leak|without\s+confirmation)\b",
+            r"\b(?:ignore|bypass|disable|execute|reveal|leak|reset|without\s+confirmation)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "override_es",
+        re.compile(
+            r"\b(?:ignora|olvida|descarta|desestima|omite)\b"
+            r"(?:\s+\w+){0,3}?\s+\b(?:instrucciones|reglas|[óo]rdenes|indicaciones|directrices)\b"
+            r"(?:\s+\w+){0,2}?\s+\b(?:anteriores|previas|previos|precedentes|de\s+arriba)\b",
             re.IGNORECASE,
         ),
     ),
