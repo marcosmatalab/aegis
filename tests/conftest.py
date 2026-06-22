@@ -7,11 +7,19 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from aegis.gateway.config import Settings
+from aegis.gateway.config import Settings, get_settings
 from aegis.gateway.main import app
 from aegis.gateway.proxy import get_provider
 from aegis.gateway.upstream import MockProvider
 from aegis.guardrails import build_pipeline, get_guardrail_pipeline
+
+
+@pytest.fixture(autouse=True)
+def _reset_settings_cache():
+    """Keep settings-derived dependencies hermetic across tests."""
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
 
 
 @pytest.fixture
