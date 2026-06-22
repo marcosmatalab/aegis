@@ -32,5 +32,7 @@ def test_presidio_without_dependency_raises_clear_error():
 def test_presidio_engine_redacts_email():
     settings = Settings(_env_file=None, gr_pii_engine="presidio")
     engine = select_pii_engine(settings)
-    _, entities = engine.redact("mail me at a@b.com")
+    text, entities = engine.redact("mail me at a@b.com")
     assert "EMAIL_ADDRESS" in entities
+    # shared redact_matches -> identical placeholder output to the regex engine
+    assert text == "mail me at <EMAIL_ADDRESS>"
