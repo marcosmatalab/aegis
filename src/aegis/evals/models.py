@@ -12,7 +12,7 @@ hand-authored golden lines.
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -24,11 +24,17 @@ _ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 class ToolCall(BaseModel):
     """A single tool call: a flat name + already-parsed args (not the OpenAI
     nested ``{function: {arguments: json-string}}`` envelope), so L3 compares
-    deterministically and golden lines stay human-authorable."""
+    deterministically and golden lines stay human-authorable.
+
+    ``status`` is the call OUTCOME (F4), defaulting to ``"ok"`` so it never
+    affects L1/L3 (which compare only name+args) nor existing golden lines. The
+    Agent-as-a-Judge uses it to detect error recovery (an ``"error"`` call later
+    retried successfully)."""
 
     model_config = ConfigDict(extra="forbid")
     name: str = Field(min_length=1)
     arguments: dict[str, Any] = Field(default_factory=dict)
+    status: Literal["ok", "error"] = "ok"
 
 
 class CandidateOutput(BaseModel):
@@ -58,6 +64,42 @@ class ExpectedVerdict(BaseModel):
     l3_trajectory_match: bool
 
 
+class CaseTrace(BaseModel):
+    """Optional per-case run telemetry (F4) for the CLEAR Cost/Latency dimensions.
+
+    Every field is optional because Aegis still runs offline over a recorded
+    golden set on the deterministic mock provider — real latency/cost/token
+    telemetry arrives with live providers + OpenTelemetry (F1.x). Until then these
+    are SYNTHETIC placeholders, and CLEAR marks Cost/Latency accordingly."""
+
+    model_config = ConfigDict(extra="forbid")
+    latency_ms: float | None = Field(default=None, ge=0.0)
+    cost_usd: float | None = Field(default=None, ge=0.0)
+    prompt_tokens: int | None = Field(default=None, ge=0)
+    completion_tokens: int | None = Field(default=None, ge=0)
+
+
+class Milestone(BaseModel):
+    """An AgentBoard-style subgoal checkpoint for Progress Rate (F4).
+
+    A milestone is achieved ORDER-INDEPENDENTLY when either its ``tool`` was
+    called or its ``output_contains`` phrase is present in the final output.
+    Exactly one of the two must be set."""
+
+    model_config = ConfigDict(extra="forbid")
+    description: str = ""
+    tool: str | None = None
+    output_contains: str | None = None
+
+    @model_validator(mode="after")
+    def _exactly_one(self) -> Milestone:
+        has_tool = bool(self.tool)
+        has_output = bool(self.output_contains)
+        if has_tool == has_output:
+            raise ValueError("milestone must set exactly one of 'tool' or 'output_contains'")
+        return self
+
+
 class EvalCase(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -70,6 +112,8 @@ class EvalCase(BaseModel):
     success_criteria: SuccessCriteria = Field(default_factory=SuccessCriteria)
     actual: CandidateOutput
     expected: ExpectedVerdict
+    milestones: list[Milestone] = Field(default_factory=list)
+    trace: CaseTrace | None = None
     tags: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
