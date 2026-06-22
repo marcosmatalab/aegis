@@ -89,6 +89,15 @@ def test_cost_and_latency_are_synthetic_with_trace_and_no_score_without_budget()
     assert clear["latency"].value == 200.0 and clear["latency"].unit == "ms"
 
 
+def test_synthetic_basis_discloses_traced_denominator():
+    # only 1 of 3 cases carries a trace -> the basis must reveal the partial coverage
+    clear = compute_clear(
+        [_sig(cost_usd=0.02), _sig(), _sig()],
+        overall_score=1.0,
+    )
+    assert "1/3 traced cases" in clear["cost"].basis
+
+
 def test_budget_normalizes_to_score_lower_is_better():
     clear = compute_clear(
         [_sig(latency_ms=250.0, cost_usd=0.05)],
