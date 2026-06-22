@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from aegis.guardrails.policy import evaluate
 
 
@@ -44,3 +46,11 @@ def test_invalid_regex_falls_back_to_literal_substring():
 
 def test_empty_text():
     assert evaluate("", deny=[r"x"], allow=[]).action == "allow"
+
+
+@pytest.mark.parametrize("catch_all", [".", ".*", ".+", "", "^.*$"])
+def test_catch_all_allow_rule_is_ignored(catch_all):
+    # a catch-all allow must NOT nullify a real deny rule
+    decision = evaluate("forbidden content", deny=[r"forbidden"], allow=[catch_all])
+    assert decision.action == "deny"
+    assert decision.rule_id == "forbidden"

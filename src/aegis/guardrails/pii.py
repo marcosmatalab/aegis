@@ -4,8 +4,12 @@ Covers EMAIL_ADDRESS, PHONE_NUMBER (Spanish-format / +CC), CREDIT_CARD (validate
 with the Luhn checksum), and the Spanish national IDs ES_NIF (DNI) and ES_NIE —
 both validated with the mod-23 control-letter checksum so look-alikes with the
 wrong letter are NOT redacted. Matches are resolved in priority order and never
-overlap. No model, no network — always available and CI-fast. Microsoft Presidio
-is an optional richer engine added separately.
+overlap. No model, no network — always available and CI-fast.
+
+Known limitation: detectors are word-boundary anchored, so a sensitive value
+embedded inside a longer unbroken digit run (e.g. a card number concatenated
+with other digits) may escape. The optional Microsoft Presidio engine handles
+such cases better.
 """
 
 from __future__ import annotations
@@ -21,8 +25,15 @@ _NIE = re.compile(r"\b([XYZ])[-]?(\d{7})[-]?([A-Za-z])\b", re.IGNORECASE)
 _DNI = re.compile(r"\b(\d{8})[-]?([A-Za-z])\b")
 # 13-19 digits, optionally separated by single spaces/hyphens (candidate cards).
 _CARD = re.compile(r"\b\d(?:[ -]?\d){12,18}\b")
-# Spanish-format numbers (start 6-9, 9 digits) with an optional +CC prefix.
-_PHONE = re.compile(r"(?<!\d)(?:\+\d{1,3}[ -]?)?[6-9]\d{2}[ -]?\d{3}[ -]?\d{3}(?!\d)")
+# Spanish-format numbers (start 6-9, 9 digits). To avoid redacting ordinary
+# 9-digit numbers (invoice/part/order numbers), a bare contiguous run is NOT
+# treated as a phone: a match needs either a +CC prefix or grouping separators.
+_PHONE = re.compile(
+    r"(?<!\d)(?:"
+    r"\+\d{1,3}[ -]?[6-9]\d{2}[ -]?\d{3}[ -]?\d{3}"  # +CC prefix; separators optional
+    r"|[6-9]\d{2}[ -]\d{3}[ -]\d{3}"  # national form; separators required
+    r")(?!\d)"
+)
 
 
 @dataclass(frozen=True, slots=True)

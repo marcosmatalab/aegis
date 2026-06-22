@@ -4,8 +4,12 @@ Explicitly *basic*: a small curated lexicon of threat/harassment patterns with
 weights — NOT an ML classifier. The score is the summed weight of matched
 patterns (capped at 1.0); the output is blocked when ``score >= threshold``.
 Deterministic and offline. A real classifier (e.g. Llama Guard / Granite
-Guardian) is a later-phase upgrade. Weights are tuned so a single mild insult
-stays below the default 0.5 threshold while threats block on their own.
+Guardian) is a later-phase upgrade.
+
+Weight tiers (vs the default 0.5 threshold): threats/self-harm = 1.0 and
+insults = 0.6 both block on their own; only the mildest phrases (e.g.
+"shut up" = 0.4) stay below threshold unless they co-occur. Tune the threshold
+to taste.
 """
 
 from __future__ import annotations
