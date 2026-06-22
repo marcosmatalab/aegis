@@ -102,6 +102,14 @@ class Settings(BaseSettings):
         default=3, ge=1, le=15, description="Number of judges in the ensemble backend."
     )
 
+    # --- F4 Agent-as-a-Judge (trajectory) -----------------------------------
+    # Backend for the trajectory judge. "mock" is a deterministic, keyless
+    # pattern-based heuristic (the default, offline). "agent" uses a real LLM —
+    # a clear stub in F4, never importing a paid SDK.
+    agent_judge_backend: Literal["mock", "agent"] = Field(
+        default="mock", description="Agent-as-a-Judge (trajectory) backend."
+    )
+
     @field_validator("log_level")
     @classmethod
     def _normalize_log_level(cls, v: str) -> str:
