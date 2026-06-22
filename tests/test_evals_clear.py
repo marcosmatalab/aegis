@@ -113,3 +113,24 @@ def test_budget_normalizes_to_score_lower_is_better():
 def test_budget_clamps_to_zero_when_over_budget():
     clear = compute_clear([_sig(latency_ms=2000.0)], overall_score=1.0, latency_budget_ms=1000.0)
     assert clear["latency"].score == 0.0
+
+
+def test_zero_budget_falls_back_to_no_score_no_zero_division():
+    # 0.0 is an allowed configured budget (ge=0.0) -> guard returns None, no ZeroDivisionError
+    clear = compute_clear(
+        [_sig(latency_ms=100.0, cost_usd=0.05)],
+        overall_score=1.0,
+        latency_budget_ms=0.0,
+        cost_budget_usd=0.0,
+    )
+    assert clear["latency"].score is None
+    assert clear["cost"].score is None
+
+
+# --- empty suite ------------------------------------------------------------ #
+def test_empty_suite_reliability_and_efficiency_not_applicable():
+    clear = compute_clear([], overall_score=0.0)
+    assert clear["reliability"].applicable is False
+    assert clear["reliability"].score is None
+    assert clear["efficiency"].applicable is False
+    assert clear["cost"].status == "placeholder"

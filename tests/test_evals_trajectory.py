@@ -114,6 +114,16 @@ def test_trajectory_accuracy_insertion_penalized_by_longer_len():
     assert round(s, 3) == 0.667
 
 
+def test_trajectory_accuracy_uses_subsequence_not_contiguous_substring():
+    # interleaved noise: LCS subsequence [a,b,c]=3 over max len 5 -> 0.6.
+    # a contiguous-substring (mis)implementation would score 0.2 here, so this
+    # is the case that actually distinguishes the documented subsequence semantics.
+    case = _case([_t("a"), _t("b"), _t("c")], [_t("a"), _t("x"), _t("b"), _t("y"), _t("c")])
+    res = trajectory_accuracy(case)
+    assert res.score == 0.6
+    assert res.breakdown["lcs"] == 3
+
+
 def test_trajectory_accuracy_both_empty_is_one():
     assert trajectory_accuracy(_case([], [])).score == 1.0
 
