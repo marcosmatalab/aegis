@@ -126,3 +126,35 @@ def test_policy_rules_parsed_from_json_env(monkeypatch):
     monkeypatch.setenv("AEGIS_GR_POLICY_DENY", '["\\\\bsecret\\\\b", "forbidden"]')
     s = Settings(_env_file=None)
     assert s.gr_policy_deny == [r"\bsecret\b", "forbidden"]
+
+
+# --- F3 judge settings ------------------------------------------------------ #
+def test_judge_defaults(monkeypatch):
+    for var in ("AEGIS_JUDGE_BACKEND", "AEGIS_JUDGE_MODEL", "AEGIS_JUDGE_TEMPERATURE"):
+        monkeypatch.delenv(var, raising=False)
+    s = Settings(_env_file=None)
+    assert s.judge_backend == "mock"
+    assert s.judge_temperature == 0.0
+    assert s.judge_ensemble_size == 3
+
+
+def test_judge_model_read_from_aegis_prefixed_env(monkeypatch):
+    monkeypatch.setenv("AEGIS_JUDGE_MODEL", "anthropic/claude-opus-4-6")
+    assert Settings(_env_file=None).judge_model == "anthropic/claude-opus-4-6"
+
+
+def test_judge_backend_override(monkeypatch):
+    monkeypatch.setenv("AEGIS_JUDGE_BACKEND", "ensemble")
+    assert Settings(_env_file=None).judge_backend == "ensemble"
+
+
+def test_invalid_judge_backend_rejected(monkeypatch):
+    monkeypatch.setenv("AEGIS_JUDGE_BACKEND", "oracle")
+    with pytest.raises(ValueError):
+        Settings(_env_file=None)
+
+
+def test_judge_temperature_out_of_range_rejected(monkeypatch):
+    monkeypatch.setenv("AEGIS_JUDGE_TEMPERATURE", "3.0")
+    with pytest.raises(ValueError):
+        Settings(_env_file=None)
