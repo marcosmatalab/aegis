@@ -37,11 +37,13 @@ def get_provider(settings: Settings = Depends(get_settings)) -> Provider:
 def _serialize_chunk(chunk: ChatCompletionChunk) -> str:
     """Serialize a chunk as one SSE frame (compact JSON, like OpenAI).
 
-    Keeps ``finish_reason`` present at the choice level (``null`` mid-stream) but
-    drops ``None`` fields from ``delta`` so the terminal delta serializes as
-    ``{}`` — exactly what OpenAI emits.
+    Drops unset top-level optionals (``usage``, ``system_fingerprint``) so they
+    are omitted rather than emitted as ``null`` — matching OpenAI's default
+    stream. Also drops ``None`` fields from each ``delta`` so the terminal delta
+    serializes as ``{}``. ``finish_reason`` is preserved (even as ``null``
+    mid-stream) because it lives inside ``choices`` (never ``None`` at top level).
     """
-    data = chunk.model_dump()
+    data = {k: v for k, v in chunk.model_dump().items() if v is not None}
     for choice in data["choices"]:
         choice["delta"] = {k: v for k, v in choice["delta"].items() if v is not None}
     return f"data: {json.dumps(data, separators=(',', ':'))}\n\n"
@@ -53,7 +55,9 @@ async def _sse_generator(provider: Provider, request: ChatCompletionRequest) -> 
             yield _serialize_chunk(chunk)
     except Exception as exc:
         # Headers/200 are already sent once streaming starts, so we cannot fall
-        # back to a JSON error envelope; emit an OpenAI-style error frame instead.
+        # back to a JSON error envelope; emit an OpenAI-style error frame and
+        # terminate WITHOUT a [DONE] sentinel (OpenAI sends no [DONE] after an
+        # error — [DONE] signals clean completion).
         log.exception("Error during streaming: %s", exc)
         err = {
             "error": {
@@ -64,6 +68,7 @@ async def _sse_generator(provider: Provider, request: ChatCompletionRequest) -> 
             }
         }
         yield f"data: {json.dumps(err, separators=(',', ':'))}\n\n"
+        return
     yield SSE_DONE
 
 
