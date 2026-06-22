@@ -54,6 +54,21 @@ class Settings(BaseSettings):
         default=None, validation_alias=AliasChoices("GOOGLE_API_KEY")
     )
 
+    # --- Real Anthropic provider adapter ------------------------------------
+    # Used only when default_provider == "anthropic" (optional [anthropic] extra,
+    # lazy-imported). Auth is anthropic_api_key above (env ANTHROPIC_API_KEY).
+    anthropic_max_tokens: int = Field(
+        default=4096,
+        ge=1,
+        description="Default max_tokens for Anthropic (required upstream; optional in OpenAI).",
+    )
+    anthropic_base_url: str | None = Field(
+        default=None, description="Override the Anthropic API base URL (proxies/testing)."
+    )
+    anthropic_timeout_s: float = Field(
+        default=60.0, gt=0.0, description="Per-request timeout for Anthropic calls (seconds)."
+    )
+
     # --- F2 guardrails -------------------------------------------------------
     # Master switch. Default FALSE so the gateway is a byte-identical passthrough
     # (F1 behavior) unless guardrails are explicitly turned on. Every sub-flag is
