@@ -80,6 +80,22 @@ class ProviderNotConfiguredError(AegisError):
     code = "provider_not_configured"
 
 
+class UnsupportedFeatureError(AegisError):
+    """Raised when a request uses a feature the real provider adapter does not
+    translate yet (tool-calling, non-text multimodal content). Rendered as a clean
+    HTTP 400 so the client sees exactly what is unsupported, rather than getting a
+    silently wrong (feature-dropped) answer."""
+
+    status_code = 400
+    type = "invalid_request_error"
+    code = "unsupported_by_provider"
+
+    def __init__(self, feature: str):
+        super().__init__(
+            f"The Anthropic adapter does not support {feature} yet (text completions only)."
+        )
+
+
 class GuardrailBlockedError(AegisError):
     """Raised when an input/output guardrail blocks a request or response.
 
