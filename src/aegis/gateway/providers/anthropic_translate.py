@@ -198,8 +198,9 @@ class StreamTranslator:
     def handle(self, event: Any) -> list[ChatCompletionChunk]:
         etype = _get(event, "type")
         if etype == "message_start":
-            usage = _get(_get(event, "message"), "usage")
-            self.input_tokens = _get(usage, "input_tokens", 0) or 0
+            message = _get(event, "message")
+            self.id = _get(message, "id") or self.id  # adopt the real message id
+            self.input_tokens = _get(_get(message, "usage"), "input_tokens", 0) or 0
             return [self._chunk(delta=Delta(role="assistant"), finish_reason=None)]
         if etype == "content_block_delta":
             delta = _get(event, "delta")
