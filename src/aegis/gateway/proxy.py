@@ -10,11 +10,12 @@ stream uses the original, non-buffering F1 generator, so behavior is identical.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from collections.abc import AsyncIterator
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from aegis.gateway.config import Settings, get_settings
@@ -38,9 +39,52 @@ SSE_DONE = "data: [DONE]\n\n"
 _STREAM_ERROR_MESSAGE = "The server had an error while streaming your request."
 
 
-def get_provider(settings: Settings = Depends(get_settings)) -> Provider:
-    """FastAPI dependency returning the active provider (overridable in tests)."""
-    return build_provider(settings.default_provider, settings)
+async def get_provider(request: Request, settings: Settings = Depends(get_settings)) -> Provider:
+    """Return the active provider, built ONCE per app and cached on ``app.state``.
+
+    A real provider owns a network client (httpx pool); building it per request
+    would never reuse connections and would leak clients. So it is built LAZILY on
+    the first request, cached on ``app.state.provider``, and reused thereafter (the
+    lifespan closes it on shutdown). Construction stays lazy (never at startup) so
+    selecting ``anthropic`` with no key remains a 500 RESPONSE, not a startup crash.
+
+    Still overridable in tests: ``app.dependency_overrides[get_provider]`` replaces
+    this whole callable, so the cache is bypassed there.
+    """
+    state = request.app.state
+    lock = getattr(state, "provider_lock", None)
+    if lock is None:
+        # The lifespan normally creates the lock at startup; a bare TestClient(app)
+        # / ASGITransport runs no lifespan, so create it here on the running loop.
+        # NOTE: no await between the None-check and the assignment, so this block is
+        # atomic within the event loop — no other coroutine can interleave and
+        # create a second lock before this one is stored.
+        lock = asyncio.Lock()
+        state.provider_lock = lock
+
+    key = settings.default_provider
+    cached = getattr(state, "provider", None)
+    if cached is not None and getattr(state, "provider_key", None) == key:
+        return cached
+
+    async with lock:
+        # Re-check after acquiring: another request may have built it meanwhile.
+        cached = getattr(state, "provider", None)
+        if cached is not None and getattr(state, "provider_key", None) == key:
+            return cached
+        if cached is not None:
+            # The selected provider changed (e.g. mock -> anthropic). Clear the
+            # cache BEFORE awaiting the close so no concurrent reader serves the
+            # stale provider, then close it so its client/pool is not leaked.
+            state.provider = None
+            state.provider_key = None
+            await cached.aclose()
+        provider = build_provider(settings.default_provider, settings)  # may raise
+        # Store ONLY on success: a failed build (e.g. anthropic + no key raises) is
+        # never cached, so the next request re-raises and stays a clean 500.
+        state.provider = provider
+        state.provider_key = key
+        return provider
 
 
 def _error_frame(
