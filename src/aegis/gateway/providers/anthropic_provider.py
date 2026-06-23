@@ -14,6 +14,7 @@ divergences and the 400 rejection of tool-calling / non-text content).
 from __future__ import annotations
 
 import importlib.util
+import inspect
 import logging
 import time
 from collections.abc import AsyncIterator
@@ -120,3 +121,23 @@ class AnthropicProvider(Provider):
                     yield chunk
         except Exception as exc:
             raise self._mapped(exc) from exc
+
+    async def aclose(self) -> None:
+        """Close the underlying client (its httpx pool) if one was built.
+
+        Idempotent and a no-op when the client was never created (never force a
+        lazy build just to close it). Duck-types ``aclose`` then ``close`` — the
+        anthropic SDK exposes a coroutine ``close()``, httpx uses ``aclose()`` —
+        and awaits the result only if it is awaitable. ``self._client`` is cleared
+        BEFORE awaiting so a concurrent/second call is a clean no-op.
+        """
+        client = self._client
+        if client is None:
+            return
+        self._client = None
+        closer = getattr(client, "aclose", None) or getattr(client, "close", None)
+        if closer is None:
+            return
+        result = closer()
+        if inspect.isawaitable(result):
+            await result
