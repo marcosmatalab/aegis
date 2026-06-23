@@ -80,7 +80,13 @@ def parse_verdict(raw: str) -> tuple[float, str]:
         score = float(score.strip())
     if isinstance(score, bool) or not isinstance(score, (int, float)):
         raise ValueError(f"judge reply has no numeric score: {raw[:120]!r}")
-    value = float(score)
+    # An astronomically large JSON integer parses to a Python int that overflows
+    # float(); normalize that to ValueError so the whole "bad score" surface raises
+    # ValueError uniformly (and the GEvalJudge wrapper's neutral fallback covers it).
+    try:
+        value = float(score)
+    except OverflowError as exc:
+        raise ValueError(f"judge score is out of range: {raw[:120]!r}") from exc
     # json.loads accepts NaN/Infinity, and "nan"/"inf" parse via float() — reject
     # them so a degenerate judge reply can't produce a non-finite score.
     if not math.isfinite(value):
@@ -139,7 +145,7 @@ class GEvalJudge(Judge):
         response = await self.provider.complete(request)
         try:
             score, reasoning = parse_verdict(_reply_text(response))
-        except (ValueError, TypeError) as exc:
+        except (ValueError, TypeError, OverflowError) as exc:
             return JudgeVerdict(
                 _NEUTRAL_SCORE,
                 f"parse failure ({type(exc).__name__}): neutral fallback",
