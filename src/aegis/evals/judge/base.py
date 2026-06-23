@@ -17,6 +17,9 @@ class JudgeVerdict:
     reasoning: str
     criteria: str = ""
     judge: str = ""
+    # True when the judge reply could not be parsed and a neutral score was used
+    # as a fallback — surfaced so a parse failure is auditable, never silent.
+    parse_failed: bool = False
 
 
 class Judge(ABC):

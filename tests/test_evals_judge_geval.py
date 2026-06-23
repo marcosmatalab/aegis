@@ -49,6 +49,25 @@ def test_parse_tolerates_surrounding_prose():
     assert parse_verdict(raw)[0] == 0.6
 
 
+def test_parse_strips_json_code_fence():
+    raw = '```json\n{"reasoning": "fenced", "score": 0.7}\n```'
+    score, reasoning = parse_verdict(raw)
+    assert score == 0.7 and reasoning == "fenced"
+
+
+def test_parse_strips_bare_code_fence_with_prose_braces():
+    # a plain ``` fence, with braces in the surrounding prose that would otherwise
+    # confuse a naive first{/last} scan
+    raw = 'Result (format {k:v}):\n```\n{"score": 0.9}\n```\ndone.'
+    assert parse_verdict(raw)[0] == 0.9
+
+
+def test_judge_verdict_parse_failed_defaults_false():
+    from aegis.evals.judge.base import JudgeVerdict
+
+    assert JudgeVerdict(0.5, "x").parse_failed is False
+
+
 def test_parse_missing_score_raises():
     with pytest.raises(ValueError):
         parse_verdict('{"reasoning": "no score here"}')
