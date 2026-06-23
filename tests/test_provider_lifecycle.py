@@ -90,10 +90,14 @@ def test_anthropic_no_key_is_500_on_every_request(monkeypatch):
     assert r2.json()["error"]["code"] == "provider_not_configured"
 
 
-def test_concurrent_first_requests_build_exactly_once(monkeypatch):
-    # The synchronous TestClient serializes requests and would pass even without the
-    # lock; drive the ASGI app concurrently so a lockless build race would show up
-    # as build_count > 1.
+def test_concurrent_first_requests_share_one_cached_build(monkeypatch):
+    # Concurrent first-requests must all share ONE build — the bug this phase fixes
+    # was a per-request rebuild (no cache), which here would show as build_count==8.
+    # Driven via ASGITransport + gather so the requests genuinely overlap.
+    # HONESTY: with the current synchronous build there is no await inside the locked
+    # critical section, so this asserts the CACHE holds under concurrency (catches a
+    # no-cache regression); it does NOT distinguish locked from lockless. The asyncio
+    # lock is a defensive guard for a future await-in-critical-section.
     calls = _counting_build(monkeypatch)
     monkeypatch.setenv("AEGIS_DEFAULT_PROVIDER", "mock")
     get_settings.cache_clear()
@@ -130,6 +134,29 @@ def test_shutdown_closes_cached_provider(monkeypatch):
     # exiting the context ran lifespan shutdown -> the cached provider was closed
     assert provider.closed == 1
     assert app.state.provider is None
+
+
+def test_cache_switch_closes_old_provider_and_rebuilds(monkeypatch):
+    # When the configured provider name changes between requests, the cache must
+    # close the OLD provider (so its client/pool is not leaked) and build the new
+    # one — exercising the in-get_provider invalidation branch.
+    from fastapi.testclient import TestClient
+
+    calls = _counting_build(monkeypatch)
+    monkeypatch.setenv("AEGIS_DEFAULT_PROVIDER", "mock")
+    get_settings.cache_clear()
+    with TestClient(app) as client:
+        assert client.post("/v1/chat/completions", json=_PAYLOAD).status_code == 200
+        first = app.state.provider
+        assert first is not None and first.closed == 0
+        # flip the configured provider -> next request closes `first` and rebuilds
+        monkeypatch.setenv("AEGIS_DEFAULT_PROVIDER", "mockb")
+        get_settings.cache_clear()
+        assert client.post("/v1/chat/completions", json=_PAYLOAD).status_code == 200
+        second = app.state.provider
+    assert first.closed == 1  # old provider closed on the switch (no leak)
+    assert second is not first  # a new provider was built
+    assert calls == ["mock", "mockb"]  # one build per distinct configured name
 
 
 def test_shutdown_without_a_built_provider_does_not_error(monkeypatch):

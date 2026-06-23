@@ -269,6 +269,24 @@ def test_aclose_is_noop_when_client_never_built():
     assert prov._client is None
 
 
+def test_client_property_builds_once_and_is_reused(monkeypatch):
+    # The leak this phase fixes is a fresh client per use; prove the lazy .client
+    # property builds exactly once and returns the SAME object on repeated access.
+    builds: list[str] = []
+    sentinel = object()
+
+    def _fake_build(api_key, base_url, timeout):
+        builds.append(api_key)
+        return sentinel
+
+    monkeypatch.setattr("aegis.gateway.providers.anthropic_provider._build_client", _fake_build)
+    prov = AnthropicProvider(api_key="sk-test", default_max_tokens=10)  # no injected client
+    first = prov.client
+    second = prov.client
+    assert first is sentinel and second is sentinel and first is second
+    assert builds == ["sk-test"]  # built exactly once, then memoized
+
+
 # --- lazy SDK guard --------------------------------------------------------- #
 @pytest.mark.skipif(is_available(), reason="anthropic SDK is installed in this environment")
 def test_build_client_raises_clean_error_without_sdk():
