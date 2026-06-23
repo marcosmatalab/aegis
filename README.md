@@ -2,7 +2,7 @@
 
 > A reliability + security + governance gateway for LLMs and agents — an OpenAI-compatible proxy that sits *in front of* any model and adds input/output guardrails, three-level trajectory evals, OWASP-mapped automated red-teaming, OpenTelemetry observability, and a CI gate that fails the build when quality or safety regress.
 
-> **⚠️ Status: under active construction (pre-alpha).** Working today: the OpenAI-compatible `/v1/chat/completions` proxy (F1) with SSE streaming; an input/output **guardrails** layer (F2); and a 3-level **eval engine** (F3) with a golden anchor set and an `aegis eval run` CLI. Everything is backed by a deterministic, keyless **mock provider / mock judge** (no real model wired yet). The planned primary real provider is **Anthropic (Claude)**, with OpenAI and Gemini as additional options. Red-team, the CI gate and governance land incrementally through the phased roadmap.
+> **⚠️ Status: under active construction (pre-alpha).** Working today: the OpenAI-compatible `/v1/chat/completions` proxy (F1) with SSE streaming; input/output **guardrails** (F2); a 3-level **eval engine** (F3) with a golden anchor set and `aegis eval run`; **trajectory metrics + CLEAR** (F4); and **judge calibration** via Cohen's κ (F5, `aegis calibrate`). The **real Anthropic (Claude) provider** and a **real G-Eval-inspired judge** are wired behind the same ABCs; a deterministic, keyless **mock provider / mock judge** stays the default so the full suite and CI run offline with no key. Automated red-team (F6), the CI gate that blocks regressions (F7), and governance mapping (F8) land incrementally through the phased roadmap.
 
 ---
 
