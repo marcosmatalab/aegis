@@ -49,6 +49,11 @@ class TrajectoryJudge(ABC):
     @abstractmethod
     async def assess(self, case: EvalCase) -> TrajectoryVerdict: ...
 
+    async def aclose(self) -> None:
+        """Release any held resources on shutdown. No-op by default; the keyless
+        ``MockTrajectoryJudge`` inherits this unchanged."""
+        return None
+
 
 def _detect_loop(steps: list[tuple]) -> bool:
     """A loop = the same call back-to-back, or a repeated adjacent A->B->A->B cycle."""

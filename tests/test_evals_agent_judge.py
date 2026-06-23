@@ -113,6 +113,10 @@ def test_no_error_signal_means_recovery_none():
     assert _assess(_case([_call("a")])).recovered_from_error is None
 
 
+def test_mock_trajectory_judge_inherits_noop_aclose():
+    assert asyncio.run(MockTrajectoryJudge().aclose()) is None
+
+
 # --- determinism ------------------------------------------------------------ #
 def test_deterministic():
     case = _case([_call("a"), _call("b"), _call("a")])
