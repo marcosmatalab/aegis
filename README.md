@@ -64,7 +64,7 @@ The differentiator is **evaluation depth**: not just scoring the final output, b
 
 ## Quickstart
 
-> The `/health` probe and the `/v1/chat/completions` proxy run today — on the keyless deterministic mock by default, or against **real Claude** (see [Real provider](#real-provider--anthropic--claude)). Evals and red-team are on the roadmap.
+> The `/health` probe and the `/v1/chat/completions` proxy run today — on the keyless deterministic mock by default, or against **real Claude** (see [Real provider](#real-provider--anthropic--claude)). Evals run today (`aegis eval run`, `aegis calibrate`); automated red-team, the CI gate, and the dashboard are on the roadmap.
 
 ```bash
 # 1. Clone and enter
