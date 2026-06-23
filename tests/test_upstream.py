@@ -85,6 +85,11 @@ def test_build_provider_returns_mock():
     assert provider.name == "mock"
 
 
+def test_mock_provider_inherits_noop_aclose():
+    # MockProvider holds no resources; it inherits the ABC's no-op aclose unchanged
+    assert asyncio.run(MockProvider().aclose()) is None
+
+
 @pytest.mark.parametrize("name", ["openai", "google", "ghost"])
 def test_build_provider_unconfigured_raises(name):
     with pytest.raises(ProviderNotConfiguredError) as exc:

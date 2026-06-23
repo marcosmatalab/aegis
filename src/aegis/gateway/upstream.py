@@ -107,6 +107,15 @@ class Provider(ABC):
     @abstractmethod
     def stream(self, request: ChatCompletionRequest) -> AsyncIterator[ChatCompletionChunk]: ...
 
+    async def aclose(self) -> None:
+        """Release any held resources (network clients / pools) on shutdown.
+
+        No-op by default: the keyless ``MockProvider`` holds nothing, so it
+        inherits this unchanged. Real providers override it to close their client.
+        The gateway lifespan calls it once on shutdown.
+        """
+        return None
+
 
 class MockProvider(Provider):
     """Deterministic, keyless, offline provider. Identical request -> identical
