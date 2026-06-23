@@ -11,8 +11,12 @@ Subcommands:
   ``aegis eval gate`` — the real F7 CI gate: run the suite on the DETERMINISTIC,
   offline mock and compare to the committed baseline; exit non-zero on regression
   (1) or a stale/misconfigured baseline (2). ``--update-baseline`` regenerates the
-  committed contract. It gates EVAL regressions only (red-team gating lands with
-  F6) and does NOT validate the real judge (that is F5 kappa).
+  committed contract. It gates EVAL regressions only (red-team gating lands later)
+  and does NOT validate the real judge (that is F5 kappa).
+  ``aegis redteam run`` — run a committed catalog of synthetic attacks DIRECTLY
+  against the F2 guardrails (offline, keyless) and report a per-OWASP-category
+  detection rate (F6). Coverage-against-catalog, NOT total security; passing
+  attacks are surfaced as named gaps. It REPORTS, it does not gate.
 
 ``aegis eval run`` keeps a separate ``--fail-under`` seam: a manual ABSOLUTE floor
 on the overall score (exit 1 only when explicitly passed), complementary to the
@@ -48,11 +52,14 @@ from aegis.evals.persistence import (
     DEFAULT_REPORTS_DIR,
     write_baseline,
     write_calibration_report,
+    write_redteam_report,
     write_report,
 )
 from aegis.evals.runner import run_suite
 from aegis.gateway.config import get_settings
 from aegis.gateway.errors import ProviderNotConfiguredError
+from aegis.redteam.dataset import DEFAULT_ATTACKS_PATH, AttackDatasetError, load_attacks
+from aegis.redteam.runner import run_redteam
 
 _CLEAR_ORDER = ("cost", "latency", "efficiency", "accuracy", "reliability")
 
@@ -203,6 +210,54 @@ def _eval_gate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _redteam_run(args: argparse.Namespace) -> int:
+    try:
+        cases = load_attacks(args.dataset)
+    except AttackDatasetError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+
+    report = run_redteam(cases, suite=args.suite, created=int(time.time()))
+    out = args.output or (DEFAULT_REPORTS_DIR / f"redteam-{args.suite}.json")
+    write_redteam_report(report, out)
+
+    detected = sum(st.blocked + st.redacted for st in report.categories.values())
+    print(f"suite={report.suite} cases={report.case_count}")
+    for cat in sorted(report.categories):
+        st = report.categories[cat]
+        owasp = st.owasp or "no clean OWASP slot"
+        print(
+            f"  {cat} ({owasp}): detected={st.blocked + st.redacted}/{st.total} "
+            f"rate={st.detection_rate:.3f} passed={st.passed}"
+        )
+    rate = report.overall_detection_rate
+    print(f"  overall: detected={detected}/{report.case_count} rate={rate:.3f}")
+
+    # Passing attacks are SURFACED, never hidden — coverage-against-catalog, not total security.
+    if report.known_gaps:
+        print(f"  known gaps (passed by design): {len(report.known_gaps)}")
+        for gap in report.known_gaps:
+            print(f"    {gap['id']} [{gap['category']}]: {gap['gap_reason']}")
+    if report.findings:
+        print(f"  UNEXPECTED findings: {len(report.findings)}", file=sys.stderr)
+        for finding in report.findings:
+            print(f"    {finding}", file=sys.stderr)
+    print(f"report={out}")
+
+    # Opt-in absolute floor (mirrors eval run --fail-under); NOT the red-team gate.
+    if (
+        args.fail_under_detection is not None
+        and report.overall_detection_rate < args.fail_under_detection
+    ):
+        print(
+            f"FAIL: detection {report.overall_detection_rate:.3f} < "
+            f"fail-under-detection {args.fail_under_detection}",
+            file=sys.stderr,
+        )
+        return 1
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aegis", description="Aegis gateway tooling.")
     groups = parser.add_subparsers(dest="group", required=True)
@@ -275,6 +330,23 @@ def build_parser() -> argparse.ArgumentParser:
     )
     cal_cmd.add_argument("--output", default=None, help="report JSON path")
     cal_cmd.set_defaults(func=_calibrate)
+
+    # `aegis redteam run` — offline synthetic attacks vs the F2 guardrails (F6).
+    rt_group = groups.add_parser("redteam", help="red-team the guardrails (OWASP, offline)")
+    rt_cmds = rt_group.add_subparsers(dest="command", required=True)
+    rt_run = rt_cmds.add_parser("run", help="run the attack catalog; report per-category detection")
+    rt_run.add_argument(
+        "--dataset", default=None, help=f"attack JSONL path (default: {DEFAULT_ATTACKS_PATH})"
+    )
+    rt_run.add_argument("--suite", default="redteam", help="suite name recorded in the report")
+    rt_run.add_argument("--output", default=None, help="report JSON path")
+    rt_run.add_argument(
+        "--fail-under-detection",
+        type=float,
+        default=None,
+        help="exit 1 if overall detection rate < floor (opt-in; NOT the red-team gate)",
+    )
+    rt_run.set_defaults(func=_redteam_run)
 
     return parser
 
