@@ -11,12 +11,15 @@ from aegis.evals.judge.ensemble import EnsembleJudge
 
 
 class _FixedJudge(Judge):
-    def __init__(self, value: float):
+    def __init__(self, value: float, *, parse_failed: bool = False):
         self.name = f"fixed-{value}"
         self.value = value
+        self.parse_failed = parse_failed
 
     async def score(self, criteria, output, *, reference=None, context=None):
-        return JudgeVerdict(self.value, "fixed", criteria, self.name)
+        return JudgeVerdict(
+            self.value, "fixed", criteria, self.name, parse_failed=self.parse_failed
+        )
 
 
 def _run(judge):
@@ -47,6 +50,16 @@ def test_ensemble_median_even_count():
         aggregate="median",
     )
     assert _run(judge).score == 0.5
+
+
+def test_parse_failed_bubbles_when_any_member_failed():
+    judge = EnsembleJudge([_FixedJudge(0.4), _FixedJudge(0.8, parse_failed=True)])
+    assert _run(judge).parse_failed is True
+
+
+def test_parse_failed_false_when_all_members_clean():
+    judge = EnsembleJudge([_FixedJudge(0.4), _FixedJudge(0.8)])
+    assert _run(judge).parse_failed is False
 
 
 def test_empty_ensemble_rejected():

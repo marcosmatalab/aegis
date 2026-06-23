@@ -1,4 +1,5 @@
-"""Tests for the G-Eval judge helpers, stub, and the judge factory."""
+"""Tests for the G-Eval judge pure helpers (model_split, parse_verdict,
+build_prompt) and the judge factory."""
 
 from __future__ import annotations
 
@@ -93,6 +94,14 @@ def test_parse_rejects_bool_score():
     ],
 )
 def test_parse_rejects_non_finite_scores(raw):
+    with pytest.raises(ValueError):
+        parse_verdict(raw)
+
+
+def test_parse_rejects_overflowing_integer_score():
+    # a several-hundred-digit JSON integer overflows float(); normalized to ValueError
+    # (not OverflowError) so the never-raise wrapper's fallback covers it
+    raw = '{"score": ' + "9" * 400 + "}"
     with pytest.raises(ValueError):
         parse_verdict(raw)
 

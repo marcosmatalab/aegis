@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import asyncio
 
+import pytest
+
 from aegis.evals.judge.geval import GEvalJudge
 from aegis.gateway.config import Settings
 from aegis.gateway.schemas import (
@@ -120,6 +122,32 @@ def test_non_numeric_score_falls_back_to_neutral_flagged():
     judge, _ = _judge('{"score": "high", "reasoning": "x"}')
     v = _score(judge, reference="ref")
     assert v.score == 0.5 and v.parse_failed is True
+
+
+def test_overflowing_integer_score_falls_back_to_neutral_not_crash():
+    # a degenerate huge-int score must NOT escape the never-raise contract
+    judge, _ = _judge('{"score": ' + "9" * 400 + "}")
+    v = _score(judge, reference="ref")
+    assert v.score == 0.5 and v.parse_failed is True
+
+
+# --- upstream errors PROPAGATE (a failure to get a judgment, not a neutral) -- #
+class _RaisingProvider:
+    name = "raising"
+
+    async def complete(self, request):
+        raise RuntimeError("upstream 503")
+
+    async def aclose(self) -> None:
+        pass
+
+
+def test_upstream_error_propagates_and_is_not_swallowed_as_neutral():
+    judge = GEvalJudge(Settings(_env_file=None), _RaisingProvider())
+    # an upstream/transport failure must propagate (not become a neutral 0.5) — the
+    # narrow except wraps ONLY parsing, never provider.complete()
+    with pytest.raises(RuntimeError, match="upstream 503"):
+        _score(judge, reference="ref")
 
 
 # --- close ------------------------------------------------------------------ #

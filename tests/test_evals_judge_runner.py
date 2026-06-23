@@ -9,7 +9,7 @@ import json
 
 import pytest
 
-from aegis.evals.judge.base import Judge
+from aegis.evals.judge.base import Judge, JudgeVerdict
 from aegis.evals.judge.geval import GEvalJudge
 from aegis.evals.models import EvalCase
 from aegis.evals.persistence import write_report
@@ -40,6 +40,7 @@ class _LoopRecordingProvider:
     def __init__(self, reply='{"score": 0.9, "reasoning": "ok"}'):
         self.reply = reply
         self.loops: list[int] = []
+        self.close_loops: list[int] = []
         self.closed = 0
 
     async def complete(self, request):
@@ -47,6 +48,7 @@ class _LoopRecordingProvider:
         return _judge_response(request.model, self.reply)
 
     async def aclose(self):
+        self.close_loops.append(id(asyncio.get_running_loop()))
         self.closed += 1
 
 
@@ -73,7 +75,26 @@ def test_all_judge_calls_share_one_loop_and_close_once():
     assert len(provider.loops) == 2
     assert len(set(provider.loops)) == 1
     assert provider.closed == 1  # judge closed exactly once on shutdown
+    # create AND close happened on the SAME loop (a real httpx client requires this)
+    assert provider.close_loops == [provider.loops[0]]
     assert report.levels["L2"].scored == 2
+
+
+class _CleanScoreCloseRaisesJudge(Judge):
+    name = "clean-close-raises"
+
+    async def score(self, criteria, output, *, reference=None, context=None):
+        return JudgeVerdict(0.7, "ok", criteria, self.name)
+
+    async def aclose(self):
+        raise RuntimeError("close boom")
+
+
+def test_close_error_on_a_clean_run_does_not_raise():
+    # a close failure on an otherwise successful run must be swallowed (logged),
+    # never turned into a run failure
+    report = run_suite([_l2_case("a")], _CleanScoreCloseRaisesJudge())
+    assert report.levels["L2"].scored == 1
 
 
 class _BoomJudge(Judge):
