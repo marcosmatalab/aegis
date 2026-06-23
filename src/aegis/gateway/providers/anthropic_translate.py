@@ -15,6 +15,7 @@ dropped — see ``ensure_text_only``. Documented divergences from OpenAI:
 
 from __future__ import annotations
 
+import re
 import time
 from typing import Any
 
@@ -66,6 +67,46 @@ def strip_model_prefix(model: str) -> str:
 def clamp_temperature(temperature: float) -> float:
     """Clamp to Anthropic's [0, 1] range (OpenAI allows up to 2)."""
     return max(0.0, min(1.0, temperature))
+
+
+# Modern Claude-4/5 Opus ids are "claude-opus-<major>-<minor>[-<suffix>]", with
+# "opus" BEFORE the version number. The legacy Claude-3 Opus id is
+# "claude-3-opus-<date>" (family AFTER the number), so this prefix-anchored
+# pattern can never match it. Deliberately NOT end-anchored: a dated/aliased
+# suffix on a forbidding id (e.g. -20250514, -preview) still classifies on
+# major/minor instead of falling through to "allowed".
+_OPUS_VERSION_RE = re.compile(r"^claude-opus-(\d+)(?:-(\d+))?")
+
+
+def _forbids_sampling_params(model: str) -> bool:
+    """True when the model REJECTS sampling params and the adapter must OMIT them.
+
+    Opus 4.7+ (and any later 4.x/5.x Opus) return ``400 temperature is deprecated
+    for this model`` on a non-default temperature/top_p/top_k, so we drop the field
+    entirely (per Anthropic guidance; reasoning control on these models is
+    'effort' + adaptive thinking, not temperature). An UNKNOWN newer Opus defaults
+    to forbid (conservative): a false-forbid only loses a sampling knob and falls
+    back to the model's default sampling, whereas a false-allow CRASHES the request
+    with a 400 — so every ambiguous Opus case resolves to forbid.
+
+    The rule is Opus-SPECIFIC because Opus 4.7+ is the only documented restriction
+    TODAY. If Anthropic ever deprecates sampling params on another family
+    (a future Sonnet/Haiku), this helper must be extended — it will not catch them.
+
+    Allowed (keep the [0, 1] clamp): Opus 4.6 and earlier, the legacy
+    ``claude-3-opus-*``, every Sonnet/Haiku, and any non-Anthropic id.
+    """
+    # lowercase + strip whitespace BEFORE stripping the prefix, so neither casing
+    # nor a leading space can defeat strip_model_prefix (it matches a literal,
+    # lowercase "anthropic/") and slip an uppercase-prefixed Opus 4.8 through.
+    model = strip_model_prefix(model.strip().lower())
+    match = _OPUS_VERSION_RE.match(model)
+    if match is None:
+        return False
+    major = int(match.group(1))
+    # bare "claude-opus-4" (no minor) -> 0, so 4.0 < 4.7 -> allow (real ids carry one)
+    minor = int(match.group(2)) if match.group(2) is not None else 0
+    return major >= 5 or (major == 4 and minor >= 7)
 
 
 def _flatten_text(content: str | list[dict[str, Any]] | None) -> str:
@@ -125,17 +166,26 @@ def to_anthropic_params(request: ChatCompletionRequest, default_max_tokens: int)
         max_tokens = request.max_tokens
     if max_tokens is None:
         max_tokens = default_max_tokens
+    # Strip the prefix ONCE and reuse it for both the upstream model and the
+    # capability check, so the two can never drift.
+    model = strip_model_prefix(request.model)
     params: dict[str, Any] = {
-        "model": strip_model_prefix(request.model),
+        "model": model,
         "messages": messages,
         "max_tokens": max_tokens,
     }
     if system:
         params["system"] = system
-    if request.temperature is not None:
-        params["temperature"] = clamp_temperature(request.temperature)
-    if request.top_p is not None:
-        params["top_p"] = request.top_p
+    # Opus 4.7+ 400 on any non-default sampling param, so OMIT temperature/top_p
+    # for those models; everything else keeps the documented clamp-to-[0,1].
+    if not _forbids_sampling_params(model):
+        if request.temperature is not None:
+            params["temperature"] = clamp_temperature(request.temperature)
+        if request.top_p is not None:
+            params["top_p"] = request.top_p
+        # top_k is not in the OpenAI schema today (never forwarded); keeping the
+        # sampling knobs together under this gate means a future top_k is omitted
+        # too for forbidding models.
     if request.stop:  # schema already normalized str -> [str]
         params["stop_sequences"] = request.stop
     return params

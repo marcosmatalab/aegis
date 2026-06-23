@@ -8,6 +8,7 @@ import pytest
 
 from aegis.gateway.errors import UnsupportedFeatureError
 from aegis.gateway.providers.anthropic_translate import (
+    _forbids_sampling_params,
     clamp_temperature,
     from_anthropic_message,
     hoist_system,
@@ -95,10 +96,89 @@ def test_max_tokens_precedence():
 
 
 def test_temperature_clamped_and_top_p_passed_and_stop_mapped():
-    params = to_anthropic_params(_req(temperature=1.7, top_p=0.9, stop="END"), 4096)
+    # claude-opus-4-6 ACCEPTS sampling params (the _req() default 4-8 now omits them)
+    params = to_anthropic_params(
+        _req(model="claude-opus-4-6", temperature=1.7, top_p=0.9, stop="END"), 4096
+    )
     assert params["temperature"] == 1.0  # clamped from 1.7
     assert params["top_p"] == 0.9
     assert params["stop_sequences"] == ["END"]  # schema normalized str -> list
+
+
+# --- sampling-param omission for models that reject them (Opus 4.7+) --------- #
+@pytest.mark.parametrize(
+    "model",
+    [
+        "claude-opus-4-7",
+        "claude-opus-4-8",
+        "anthropic/claude-opus-4-8",
+        "claude-opus-4-10",  # numeric minor compare: 10 >= 7 (not lexical '10' < '7')
+        "claude-opus-4-7-20991231",  # dated suffix on a forbidding id
+        "claude-opus-4-8-preview",  # non-date alias suffix still forbids
+        "claude-opus-5",  # bare major 5, no minor -> forbid
+        "claude-opus-5-0",
+        "CLAUDE-OPUS-4-8",  # case-insensitive
+        "  claude-opus-4-8  ",  # whitespace-padded
+        " anthropic/claude-opus-4-8",  # leading space before the prefix
+        "ANTHROPIC/claude-opus-4-8",  # uppercase provider prefix (must still strip)
+        "Anthropic/claude-opus-4-8",  # mixed-case provider prefix
+    ],
+)
+def test_forbids_sampling_params_true(model):
+    assert _forbids_sampling_params(model) is True
+
+
+@pytest.mark.parametrize(
+    "model",
+    [
+        "claude-opus-4-6",  # boundary just below 4.7
+        "claude-opus-4-1-20250805",  # dated suffix not read as the minor
+        "claude-opus-4-0",
+        "claude-opus-4",  # missing minor -> 0 -> allow
+        "claude-3-opus-20240229",  # legacy scheme: family after the number
+        "anthropic/claude-3-opus-20240229",
+        "claude-sonnet-4-6",
+        "claude-sonnet-4-8",  # only Opus forbids, not version alone
+        "claude-haiku-4-5",
+        "gpt-4o",  # non-Anthropic
+        "",
+    ],
+)
+def test_forbids_sampling_params_false(model):
+    assert _forbids_sampling_params(model) is False
+
+
+def test_forbidding_model_omits_sampling_params():
+    # temperature=0.0 specifically: proves the FORBID gate drops it, not the None-skip
+    params = to_anthropic_params(
+        _req(model="anthropic/claude-opus-4-8", temperature=0.0, top_p=0.9, stop="END"), 4096
+    )
+    assert "temperature" not in params
+    assert "top_p" not in params
+    assert "top_k" not in params
+    # non-sampling fields survive: only the sampling knobs are dropped
+    assert params["model"] == "claude-opus-4-8"
+    assert params["max_tokens"] == 4096
+    assert params["stop_sequences"] == ["END"]
+
+
+def test_accepting_model_keeps_clamped_sampling_params():
+    params = to_anthropic_params(_req(model="claude-sonnet-4-6", temperature=1.7, top_p=0.9), 4096)
+    assert params["temperature"] == 1.0  # clamped
+    assert params["top_p"] == 0.9
+
+
+def test_boundary_opus_4_6_keeps_vs_4_7_omits_via_full_path():
+    keeps = to_anthropic_params(_req(model="claude-opus-4-6", temperature=0.0), 4096)
+    omits = to_anthropic_params(_req(model="claude-opus-4-7", temperature=0.0), 4096)
+    assert keeps["temperature"] == 0.0
+    assert "temperature" not in omits
+
+
+def test_legacy_claude_3_opus_keeps_temperature():
+    # Claude 3 Opus accepts sampling params; must NOT be over-forbidden
+    params = to_anthropic_params(_req(model="claude-3-opus-20240229", temperature=0.5), 4096)
+    assert params["temperature"] == 0.5
 
 
 def test_to_anthropic_params_rejects_tools():
