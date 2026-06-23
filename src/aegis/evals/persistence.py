@@ -34,3 +34,15 @@ def write_calibration_report(report: CalibrationReport, path: str | Path) -> Pat
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8")
     return out
+
+
+def write_baseline(baseline: dict, path: str | Path) -> Path:
+    """Persist a gate baseline (the committed eval-gate contract) as JSON.
+
+    Sorted keys + a trailing newline keep the committed artifact's diff stable and
+    reviewable (key order is independent of golden-file order)."""
+    out = Path(path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    text = json.dumps(baseline, indent=2, ensure_ascii=False, sort_keys=True)
+    out.write_text(text + "\n", encoding="utf-8")
+    return out
