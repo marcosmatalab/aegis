@@ -4,6 +4,10 @@ Subcommands:
   ``aegis eval run`` — run the eval suite over a golden set (L1/L2/L3 + F4
   trajectory metrics, the Agent-as-a-Judge, and the CLEAR dimensions) and write a
   JSON report.
+  ``aegis calibrate`` — score the configured judge over the hand-labeled
+  calibration set and write a Cohen's-kappa agreement report (per criterion +
+  global). The real run needs ANTHROPIC_API_KEY + the ``[anthropic]`` extra; with
+  no key it exits 2 cleanly. The kappa is DIRECTIONAL (see the README caveats).
 
 The ``--fail-under`` CI gate is an inert seam: it only affects the exit code when
 explicitly passed. The real, baseline-comparing CI gate is a later phase (F7).
@@ -15,11 +19,21 @@ import argparse
 import sys
 import time
 
+from aegis.evals.calibration.dataset import (
+    DEFAULT_CALIBRATION_PATH,
+    CalibrationDatasetError,
+    load_calibration,
+)
+from aegis.evals.calibration.runner import run_calibration
 from aegis.evals.dataset import DEFAULT_GOLDEN_PATH, GoldenDatasetError, load_golden
 from aegis.evals.judge.agent import build_trajectory_judge
 from aegis.evals.judge.factory import build_judge
 from aegis.evals.judge.geval import JudgeNotConfiguredError
-from aegis.evals.persistence import DEFAULT_REPORTS_DIR, write_report
+from aegis.evals.persistence import (
+    DEFAULT_REPORTS_DIR,
+    write_calibration_report,
+    write_report,
+)
 from aegis.evals.runner import run_suite
 from aegis.gateway.config import get_settings
 from aegis.gateway.errors import ProviderNotConfiguredError
@@ -84,6 +98,54 @@ def _eval_run(args: argparse.Namespace) -> int:
     return 0
 
 
+def _fmt_stat(x: float | None) -> str:
+    return "undefined" if x is None else f"{x:.3f}"
+
+
+def _calibrate_scope_line(name: str, section) -> str:
+    r = section.result
+    return (
+        f"  {name}: kappa={_fmt_stat(r.kappa)} p_o={_fmt_stat(r.p_o)} "
+        f"n_valid={r.n_valid} parse_failed={section.n_parse_failed} band={r.band}"
+    )
+
+
+def _calibrate(args: argparse.Namespace) -> int:
+    settings = get_settings()
+    if args.judge:
+        settings = settings.model_copy(update={"judge_backend": args.judge})
+
+    try:
+        cases = load_calibration(args.dataset)
+        judge = build_judge(settings)
+        report = run_calibration(cases, judge, created=int(time.time()))
+    except (CalibrationDatasetError, JudgeNotConfiguredError, ProviderNotConfiguredError) as exc:
+        # A real judge selected with no key/SDK -> clean exit 2, never an offline crash.
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+
+    out = args.output or (DEFAULT_REPORTS_DIR / "calibration.json")
+    write_calibration_report(report, out)
+
+    if report.judge == "mock":
+        # The mock is lexical, not the judge being calibrated — its kappa measures
+        # the mock against the labels, not a real calibration.
+        print(
+            "note: the mock judge is a wiring smoke test, not a real calibration; "
+            "use --judge geval with ANTHROPIC_API_KEY for the real measurement",
+            file=sys.stderr,
+        )
+
+    dataset = args.dataset or DEFAULT_CALIBRATION_PATH
+    print(f"dataset={dataset} judge={report.judge} cases={report.n_cases}")
+    print(_calibrate_scope_line("relevancy", report.per_criterion["relevancy"]))
+    print(_calibrate_scope_line("faithfulness", report.per_criterion["faithfulness"]))
+    print(_calibrate_scope_line("global", report.global_))
+    print("(Landis-Koch bands are arbitrary conventions; read kappa with p_o + the matrix)")
+    print(f"report={out}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aegis", description="Aegis gateway tooling.")
     groups = parser.add_subparsers(dest="group", required=True)
@@ -110,6 +172,24 @@ def build_parser() -> argparse.ArgumentParser:
         help="exit non-zero if overall < threshold (CI gate seam; off unless passed)",
     )
     run_cmd.set_defaults(func=_eval_run)
+
+    # `aegis calibrate` is a single-action group (no sub-command): measure
+    # judge-vs-human agreement (Cohen's kappa) over the calibration set.
+    cal_cmd = groups.add_parser("calibrate", help="measure judge-human agreement (Cohen's kappa)")
+    cal_cmd.add_argument(
+        "--dataset",
+        default=None,
+        help=f"calibration JSONL path (default: {DEFAULT_CALIBRATION_PATH})",
+    )
+    cal_cmd.add_argument(
+        "--judge",
+        choices=["mock", "geval", "ensemble"],
+        default=None,
+        help="override judge backend (default: settings; geval is the real calibration)",
+    )
+    cal_cmd.add_argument("--output", default=None, help="report JSON path")
+    cal_cmd.set_defaults(func=_calibrate)
+
     return parser
 
 
