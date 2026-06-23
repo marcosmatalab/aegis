@@ -96,8 +96,10 @@ def _forbids_sampling_params(model: str) -> bool:
     Allowed (keep the [0, 1] clamp): Opus 4.6 and earlier, the legacy
     ``claude-3-opus-*``, every Sonnet/Haiku, and any non-Anthropic id.
     """
-    # strip whitespace BEFORE the prefix strip so a leading space can't defeat it
-    model = strip_model_prefix(model.strip()).lower()
+    # lowercase + strip whitespace BEFORE stripping the prefix, so neither casing
+    # nor a leading space can defeat strip_model_prefix (it matches a literal,
+    # lowercase "anthropic/") and slip an uppercase-prefixed Opus 4.8 through.
+    model = strip_model_prefix(model.strip().lower())
     match = _OPUS_VERSION_RE.match(model)
     if match is None:
         return False

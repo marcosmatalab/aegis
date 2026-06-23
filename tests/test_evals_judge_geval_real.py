@@ -171,4 +171,5 @@ def test_geval_request_against_opus_4_8_translates_without_temperature():
 
     params = to_anthropic_params(req, 1024)
     assert "temperature" not in params  # the adapter omits it for this model
-    assert "top_p" not in params
+    # (top_p isn't asserted here: geval never sets it, so its absence is vacuous —
+    # the real forbid-gate drop of top_p is covered in test_anthropic_translate.py)
