@@ -16,11 +16,16 @@ import pytest
 from aegis.evals.baseline import (
     BaselineError,
     Regression,
+    baseline_path,
     compare_to_baseline,
     load_baseline,
     to_baseline,
 )
+from aegis.evals.dataset import load_golden
+from aegis.evals.judge.agent import MockTrajectoryJudge
+from aegis.evals.judge.mock import MockJudge
 from aegis.evals.persistence import write_baseline
+from aegis.evals.runner import run_suite
 
 
 def _baseline() -> dict:
@@ -215,3 +220,26 @@ def test_write_then_load_round_trips(tmp_path):
     write_baseline(_baseline(), p)
     assert load_baseline(p) == _baseline()
     assert p.read_text(encoding="utf-8").endswith("\n")  # trailing newline
+
+
+# --- the committed golden baseline (the gate contract) ---------------------- #
+def _fresh_golden_baseline() -> dict:
+    report = run_suite(load_golden(), MockJudge(), MockTrajectoryJudge(), suite="golden", created=0)
+    return to_baseline(report)
+
+
+def test_committed_golden_baseline_matches_fresh_mock_run():
+    # the anti-drift LOCK: the committed contract must equal a fresh deterministic
+    # mock run EXACTLY, so any scoring/golden change without --update-baseline fails
+    # here (locally, before CI) and forces a reviewed re-baseline in the same PR.
+    assert load_baseline(baseline_path("golden")) == _fresh_golden_baseline()
+
+
+def test_committed_golden_baseline_well_formed():
+    bl = load_baseline(baseline_path("golden"))
+    assert bl["schema_version"] == 1 and bl["judge"] == "mock" and bl["score_decimals"] == 6
+    golden_ids = {c.id for c in load_golden()}
+    assert bl["case_count"] == len(golden_ids)
+    assert set(bl["cases"]) == golden_ids
+    assert set(bl["levels"]) <= {"L1", "L2", "L3"}
+    assert 0.0 <= bl["overall_score"] <= 1.0
