@@ -94,11 +94,13 @@ def test_report_json_has_clear_and_per_case_f4_fields(tmp_path):
     assert "has_loop" in first["agent_judge"]
 
 
-def test_geval_backend_fails_cleanly(tmp_path, capsys):
+def test_geval_backend_fails_cleanly(tmp_path, capsys, monkeypatch):
+    # geval with no key/SDK -> the provider can't be built -> clean exit 2 offline
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     out = tmp_path / "r.json"
     rc = main(["eval", "run", "--judge", "geval", "--output", str(out)])
     assert rc == 2
-    assert "not wired in F3" in capsys.readouterr().err
+    assert "ANTHROPIC_API_KEY" in capsys.readouterr().err
 
 
 def test_bad_dataset_path_fails_cleanly(tmp_path, capsys):
