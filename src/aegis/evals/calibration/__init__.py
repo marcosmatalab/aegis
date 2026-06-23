@@ -8,6 +8,11 @@ gold), parse failures are excluded and counted, and the Landis-Koch bands are
 arbitrary conventions.
 """
 
+from aegis.evals.calibration.dataset import (
+    DEFAULT_CALIBRATION_PATH,
+    CalibrationDatasetError,
+    load_calibration,
+)
 from aegis.evals.calibration.kappa import (
     ConfusionMatrix,
     KappaResult,
@@ -17,8 +22,12 @@ from aegis.evals.calibration.kappa import (
     kappa_from_pairs,
     landis_koch_band,
 )
+from aegis.evals.calibration.models import CalibrationCase
 
 __all__ = [
+    "DEFAULT_CALIBRATION_PATH",
+    "CalibrationCase",
+    "CalibrationDatasetError",
     "ConfusionMatrix",
     "KappaResult",
     "binarize",
@@ -26,4 +35,5 @@ __all__ = [
     "cohen_kappa",
     "kappa_from_pairs",
     "landis_koch_band",
+    "load_calibration",
 ]
