@@ -107,7 +107,7 @@ pytest
 | **F2** | Input/output guardrails: prompt-injection scan (OWASP LLM01), PII redaction (regex default, Presidio optional), allow/deny policy, basic toxicity — off by default | ✅ done |
 | **F3** | Evals L1 (session/goal) · L2 (trace/quality, G-Eval CoT) · L3 (tool correctness); golden set + `aegis eval run` + JSON report | ✅ done |
 | **F4** | Trajectory metrics (TrajectoryAccuracy, ToolCorrectness, Progress Rate, T-Eval) + CLEAR; Agent-as-a-Judge | ✅ done |
-| **F5** | Judge calibration: human-labelled set + Cohen's κ reported | ⬜ planned |
+| **F5** | Judge calibration: hand-labelled set + Cohen's κ (per criterion + global) via `aegis calibrate` | ✅ done |
 | **F6** | Automated red-team mapped to OWASP LLM Top 10 + OWASP Agentic (ASI) | ⬜ planned |
 | **F7** | CI gate: run evals + red-team per PR and **block merge** on regression | ⬜ planned |
 | **F8** | Governance mapping (EU AI Act Art.15 / NIST AI RMF / ISO 42001) → evidence PDF | ⬜ planned |
@@ -190,9 +190,9 @@ aegis eval run --suite ci --output reports/ci.json
 # --fail-under is an inert CI-gate seam in F3; the real gate is F7.
 ```
 
-> **Honesty (this matters):** the LLM-as-judge is treated as **directional** — a signal to validate against human labels (Cohen's κ, a later phase), **not ground truth**. The MockJudge is **purely lexical**: relevancy is token overlap and L2 **faithfulness is lexical containment, not entailment** — a reordered copy of the context scores 1.0 (see the golden case `reordered-copy-limitation`), and every deterministic L2 "pass" is therefore a lexical match (verbatim / permuted / subset), never a rewarded paraphrase. L3's order check is over tool *names*, so duplicate same-tool calls are order-insensitive (documented in the scorer). What the project actually sells is that the **eval gate catches regressions**, not that any single judge is correct. The golden set interleaves passing and failing cases — including several where one level passes while another fails — to demonstrate L1/L2/L3 are independent.
+> **Honesty (this matters):** the LLM-as-judge is treated as **directional** — a signal validated against human labels (Cohen's κ — now implemented, see [Judge calibration (F5)](#judge-calibration-f5)), **not ground truth**. The MockJudge is **purely lexical**: relevancy is token overlap and L2 **faithfulness is lexical containment, not entailment** — a reordered copy of the context scores 1.0 (see the golden case `reordered-copy-limitation`), and every deterministic L2 "pass" is therefore a lexical match (verbatim / permuted / subset), never a rewarded paraphrase. L3's order check is over tool *names*, so duplicate same-tool calls are order-insensitive (documented in the scorer). What the project actually sells is that the **eval gate catches regressions**, not that any single judge is correct. The golden set interleaves passing and failing cases — including several where one level passes while another fails — to demonstrate L1/L2/L3 are independent.
 
-> **The real judge is G-Eval-*inspired*, not canonical.** It uses light Chain-of-Thought (justify, then score) but reads the score **directly** from a compact JSON reply — it does **not** do canonical G-Eval's logprob-weighted scoring, because the Anthropic API exposes no per-token logprobs. The honest consequence is **more variance** than logprob G-Eval, which is why it runs at **temperature 0** and why **judge calibration (Cohen's κ vs human labels) is the tracked next phase** — the score is still directional, not ground truth. A messy or truncated reply **never crashes the eval**: it falls back to a **neutral 0.5 flagged `parse_failed`**, surfaced in the L2 breakdown of the persisted report so a degradation is auditable (note: a neutral 0.5 *passes* the diagnostic L2 threshold, so the flag — not the score — is what tells you the judge didn't really measure). The real judge is exercised by injected fakes offline plus **one gated, skippable live test** (a single low-`max_tokens` call); the bulk suite stays on the keyless MockJudge.
+> **The real judge is G-Eval-*inspired*, not canonical.** It uses light Chain-of-Thought (justify, then score) but reads the score **directly** from a compact JSON reply — it does **not** do canonical G-Eval's logprob-weighted scoring, because the Anthropic API exposes no per-token logprobs. The honest consequence is **more variance** than logprob G-Eval, which is why it runs at **temperature 0** and why **judge calibration (Cohen's κ vs human labels) is now implemented** ([F5](#judge-calibration-f5)) — the score is still directional, not ground truth. A messy or truncated reply **never crashes the eval**: it falls back to a **neutral 0.5 flagged `parse_failed`**, surfaced in the L2 breakdown of the persisted report so a degradation is auditable (note: a neutral 0.5 *passes* the diagnostic L2 threshold, so the flag — not the score — is what tells you the judge didn't really measure). The real judge is exercised by injected fakes offline plus **one gated, skippable live test** (a single low-`max_tokens` call); the bulk suite stays on the keyless MockJudge.
 
 ---
 
@@ -227,6 +227,30 @@ Each CLEAR dimension carries its `status` (`measured` / `synthetic` / `placehold
 
 ---
 
+## Judge calibration (F5)
+
+How much does the real (G-Eval-inspired) judge agree with a human? `aegis calibrate` scores the configured judge over a **hand-labelled set of 30 cases** (15 relevancy + 15 faithfulness, `src/aegis/evals/datasets/calibration.jsonl`) and reports **Cohen's κ** — observed agreement corrected for chance — **per criterion and global**, alongside the raw agreement `p_o` and the full confusion matrix, into a gitignored `reports/` JSON.
+
+```bash
+aegis calibrate --judge geval       # real run: needs ANTHROPIC_API_KEY + the [anthropic] extra
+aegis calibrate --judge mock        # offline wiring smoke test only (see below)
+```
+
+κ binarizes the judge's continuous score at the **operative 0.5 threshold** (`>= 0.5` → pass) and compares it to the human pass/fail label, over the 2×2 table `κ = (p_o − p_e) / (1 − p_e)`.
+
+**Read the number honestly — this is calibrated to be modest, not impressive:**
+
+- **κ is DIRECTIONAL, not a quality verdict.** It measures *agreement with one annotator applying the rubric*, never ground truth — the value proposition stays "the gate catches regressions".
+- **N = 30 → a wide confidence interval.** The point estimate is indicative, not precise. The CI is *stated*, not computed (bootstrapping 30 points would over-promise).
+- **A single person labelled the set.** This is one-rater agreement, not consensus gold; there is no second annotator or adjudication.
+- **The κ paradox / base-rate sensitivity:** with skewed marginals (global 13 pass / 17 fail) a high `p_o` can still yield a low or even undefined κ. So the report **always shows `p_o` and the confusion matrix beside κ** — never κ alone. When both raters collapse to one class (`1 − p_e = 0`) κ is mathematically undefined and is reported as `null` / band `undefined`, keeping the real `p_o`, rather than a fabricated 0.0 or 1.0.
+- **`parse_failed` verdicts are EXCLUDED from κ and counted separately.** A parse failure is not a judgment, and its neutral 0.5 would otherwise count as a pass at the boundary; it is dropped before binarizing and surfaced as a count per scope.
+- **Landis-Koch bands** (slight / fair / moderate / substantial / …) are reported for orientation, but the **band boundaries are arbitrary conventions**, not objective thresholds.
+- **`human_label` (categorical) drives κ;** `human_score` (0/1) is a redundant numeric mirror kept only to cross-check the label at load time, never averaged in.
+- **`--judge mock` is a wiring smoke test, not a calibration** — it measures the lexical mock against the labels, not the judge being calibrated. The CLI says so on stderr and the report records `judge: "mock"` plainly.
+
+---
+
 ## Tech stack
 
 | Layer | Technology |
@@ -245,7 +269,7 @@ Each CLEAR dimension carries its `status` (`measured` / `synthetic` / `placehold
 
 ## Honesty guardrails
 
-This is a **portfolio project**, not a product with customers. Reported numbers are real measurements over the project's own golden set — no inflated claims. The LLM judge is treated as *directional* and validated against human labels (κ); the value proposition is that the **gate catches regressions**, not that any single judge is ground truth. Guardrails are defense-in-depth with coverage mapped to OWASP — not a claim of total detection.
+This is a **portfolio project**, not a product with customers. Reported numbers are real measurements over the project's own golden set — no inflated claims. The LLM judge is treated as *directional* and **validated against human labels with Cohen's κ** ([Judge calibration (F5)](#judge-calibration-f5)) — reported with `p_o` + the confusion matrix, on N=30 from a single annotator, so κ is read as a wide-CI directional signal, not a precise verdict; the value proposition is that the **gate catches regressions**, not that any single judge is ground truth. Guardrails are defense-in-depth with coverage mapped to OWASP — not a claim of total detection.
 
 ---
 
