@@ -9,11 +9,17 @@ honest number below 100%. See the README "Automated red-team (F6)" section.
 """
 
 from aegis.redteam.dataset import DEFAULT_ATTACKS_PATH, AttackDatasetError, load_attacks
+from aegis.redteam.findings import RedteamFinding, redteam_findings
 from aegis.redteam.models import AttackCase
+from aegis.redteam.outcome import AttackResult, classify_result
 
 __all__ = [
     "DEFAULT_ATTACKS_PATH",
     "AttackCase",
     "AttackDatasetError",
+    "AttackResult",
+    "RedteamFinding",
+    "classify_result",
     "load_attacks",
+    "redteam_findings",
 ]
