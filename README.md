@@ -64,7 +64,7 @@ The differentiator is **evaluation depth**: not just scoring the final output, b
 
 ## Quickstart
 
-> The `/health` probe and the `/v1/chat/completions` proxy run today — on the keyless deterministic mock by default, or against **real Claude** (see [Real provider](#real-provider--anthropic--claude)). Evals run today (`aegis eval run`, `aegis calibrate`) and the **eval CI gate** blocks regressions (`aegis eval gate`); automated red-team, red-team gating, and the dashboard are on the roadmap.
+> The `/health` probe and the `/v1/chat/completions` proxy run today — on the keyless deterministic mock by default, or against **real Claude** (see [Real provider](#real-provider--anthropic--claude)). Evals run today (`aegis eval run`, `aegis calibrate`), the **eval CI gate** blocks regressions (`aegis eval gate`), and an **automated red-team** scores the guardrails (`aegis redteam run`); red-team gating and the dashboard are on the roadmap.
 
 ```bash
 # 1. Clone and enter
@@ -108,7 +108,7 @@ pytest
 | **F3** | Evals L1 (session/goal) · L2 (trace/quality, G-Eval CoT) · L3 (tool correctness); golden set + `aegis eval run` + JSON report | ✅ done |
 | **F4** | Trajectory metrics (TrajectoryAccuracy, ToolCorrectness, Progress Rate, T-Eval) + CLEAR; Agent-as-a-Judge | ✅ done |
 | **F5** | Judge calibration: hand-labelled set + Cohen's κ (per criterion + global) via `aegis calibrate` | ✅ done |
-| **F6** | Automated red-team mapped to OWASP LLM Top 10 + OWASP Agentic (ASI) | ⬜ planned |
+| **F6** | Automated red-team: committed attack catalog vs the F2 guardrails, per-OWASP-category detection rate (`aegis redteam run`) — evals categories only; red-team *gating* later | ✅ done |
 | **F7** | CI gate: run **evals** per PR and **block merge** on regression vs a committed baseline (`aegis eval gate`); red-team gating lands with F6 | 🟡 partial |
 | **F8** | Governance mapping (EU AI Act Art.15 / NIST AI RMF / ISO 42001) → evidence PDF | ⬜ planned |
 | **F9** | Polished dashboard, trends, 2-min demo | ⬜ planned |
@@ -267,6 +267,30 @@ aegis calibrate --judge mock        # offline wiring smoke test only (see below)
 - **Landis-Koch bands** (slight / fair / moderate / substantial / …) are reported for orientation, but the **band boundaries are arbitrary conventions**, not objective thresholds.
 - **`human_label` (categorical) drives κ;** `human_score` (0/1) is a redundant numeric mirror kept only to cross-check the label at load time, never averaged in.
 - **`--judge mock` is a wiring smoke test, not a calibration** — it measures the lexical mock against the labels, not the judge being calibrated. The CLI says so on stderr and the report records `judge: "mock"` plainly.
+
+---
+
+## Automated red-team (F6)
+
+`aegis redteam run` runs a committed, versioned catalog of synthetic attacks (`src/aegis/redteam/datasets/attacks.jsonl`) **directly against the F2 guardrail pipeline** — fully offline, deterministic, keyless, no model and no network. It reuses `GuardrailPipeline.check_input` / `check_output` exactly as the proxy does, classifies each attack's `GuardrailResult` as **blocked** / **redacted** / **passed**, and reports a per-category **detection rate**.
+
+**Result** — one run over 25 attacks (every row's expectation is pinned to real pipeline behaviour by a self-consistency test):
+
+| Bucket | OWASP 2025 | detection | passed |
+|---|---|---|---|
+| `prompt_injection` | LLM01 | 7/11 (0.636) | 4 |
+| `system_prompt_leak` | LLM07 | 3/3 (1.000) | 0 |
+| `pii_input` | LLM02 | 3/4 (0.750) | 1 |
+| `pii_output` | LLM02 | 2/3 (0.667) | 1 |
+| `output_toxicity` | *content-safety — no clean OWASP slot* | 1/2 (0.500) | 1 |
+| `policy_denylist` | *config-driven policy — not OWASP* | 2/2 (1.000) | 0 |
+| **overall** | | **18/25 (0.720)** | **7** |
+
+How to read this honestly — it is **coverage-against-this-catalog, NOT total security**:
+- **Only the categories the F2 guardrails genuinely exercise are mapped.** `prompt_injection`→**LLM01**; `system_prompt_leak`→**LLM07** (the *same* injection detector and the *same* `prompt_injection` code as LLM01 — disclosed, not two detectors); PII in/out→**LLM02** (split by vector). Output toxicity is a tiny lexicon with **no clean OWASP-2025 slot**, and the policy bucket is a **config-driven content deny-list** (an illustrative bundled fixture, *not* a production policy and *not* OWASP LLM06 Excessive Agency). The OWASP edition is **2025**.
+- **A passing attack is a surfaced finding, not a hidden failure.** The catalog deliberately ships payloads the regex/lexicon scanners are KNOWN to miss — leetspeak override, injection in the non-scanned `system`/`assistant`/`developer` roles, an obfuscated email, a glued-digit credit card, sub-threshold toxicity — so the detection rate is a real number below 100% with **every gap named** in the report's `known_gaps`. A `passed` row that is not a flagged gap fails to load.
+- **Not covered (and why):** **ASI02 tool-misuse / ASI03 identity** — the gateway is text-only, tool-calls and multimodal are rejected upstream, so there is no tool execution or agent trajectory to attack; **LLM05** (Improper Output Handling = downstream XSS/SQLi/code-exec) — no downstream renderer/executor; **LLM03/04/08/09/10** — no training/supply-chain, agency, or quota surface here; non-English coverage beyond the shipped Spanish variants is a known gap. ASI01 goal-hijack is disclosed only as an *overlap* on injection rows.
+- **It REPORTS; it does not gate.** The runner returns typed findings in the *same shape* as the eval gate's regressions (`kind` / `scope` / `detail`), so a future `aegis gate` can union them additively — but F6 builds **no** red-team gate, no baseline, and exits 0 by default (an opt-in `--fail-under-detection` floor is off unless passed). Red-team *gating* is a later phase; this is why F7 stays partial.
 
 ---
 
