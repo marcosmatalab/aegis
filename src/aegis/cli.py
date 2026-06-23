@@ -8,9 +8,15 @@ Subcommands:
   calibration set and write a Cohen's-kappa agreement report (per criterion +
   global). The real run needs ANTHROPIC_API_KEY + the ``[anthropic]`` extra; with
   no key it exits 2 cleanly. The kappa is DIRECTIONAL (see the README caveats).
+  ``aegis eval gate`` — the real F7 CI gate: run the suite on the DETERMINISTIC,
+  offline mock and compare to the committed baseline; exit non-zero on regression
+  (1) or a stale/misconfigured baseline (2). ``--update-baseline`` regenerates the
+  committed contract. It gates EVAL regressions only (red-team gating lands with
+  F6) and does NOT validate the real judge (that is F5 kappa).
 
-The ``--fail-under`` CI gate is an inert seam: it only affects the exit code when
-explicitly passed. The real, baseline-comparing CI gate is a later phase (F7).
+``aegis eval run`` keeps a separate ``--fail-under`` seam: a manual ABSOLUTE floor
+on the overall score (exit 1 only when explicitly passed), complementary to the
+baseline-comparing gate above — kept, not replaced.
 """
 
 from __future__ import annotations
@@ -19,6 +25,14 @@ import argparse
 import sys
 import time
 
+from aegis.evals.baseline import (
+    DEFAULT_TOLERANCE,
+    BaselineError,
+    baseline_path,
+    compare_to_baseline,
+    load_baseline,
+    to_baseline,
+)
 from aegis.evals.calibration.dataset import (
     DEFAULT_CALIBRATION_PATH,
     CalibrationDatasetError,
@@ -26,11 +40,13 @@ from aegis.evals.calibration.dataset import (
 )
 from aegis.evals.calibration.runner import run_calibration
 from aegis.evals.dataset import DEFAULT_GOLDEN_PATH, GoldenDatasetError, load_golden
-from aegis.evals.judge.agent import build_trajectory_judge
+from aegis.evals.judge.agent import MockTrajectoryJudge, build_trajectory_judge
 from aegis.evals.judge.factory import build_judge
 from aegis.evals.judge.geval import JudgeNotConfiguredError
+from aegis.evals.judge.mock import MockJudge
 from aegis.evals.persistence import (
     DEFAULT_REPORTS_DIR,
+    write_baseline,
     write_calibration_report,
     write_report,
 )
@@ -146,6 +162,47 @@ def _calibrate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _eval_gate(args: argparse.Namespace) -> int:
+    # The gate is deterministic + offline BY CONSTRUCTION: build BOTH judges as the
+    # keyless mocks directly (never via settings/factory), so no AEGIS_JUDGE_BACKEND
+    # / AEGIS_AGENT_JUDGE_BACKEND env var can route it to a real, networked judge.
+    try:
+        cases = load_golden(args.dataset)
+    except GoldenDatasetError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    report = run_suite(cases, MockJudge(), MockTrajectoryJudge(), suite=args.suite, created=0)
+    current = to_baseline(report)
+    out = args.baseline or baseline_path(args.suite)
+
+    if args.update_baseline:
+        write_baseline(current, out)
+        print(
+            f"wrote baseline {out} "
+            f"(suite={current['suite']} judge={current['judge']} cases={current['case_count']})"
+        )
+        return 0
+
+    try:
+        baseline = load_baseline(out)
+        regressions = compare_to_baseline(baseline, current, tolerance=args.tolerance)
+    except BaselineError as exc:
+        # Cannot fairly compare (missing/stale/misconfigured) -> exit 2, not 1.
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+
+    if regressions:
+        print(f"FAIL: {len(regressions)} eval regression(s) vs baseline {out}:", file=sys.stderr)
+        for reg in regressions:
+            print(f"  {reg}", file=sys.stderr)
+        return 1
+
+    print(
+        f"PASS: no eval regressions vs baseline {out} ({current['case_count']} cases, judge=mock)"
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aegis", description="Aegis gateway tooling.")
     groups = parser.add_subparsers(dest="group", required=True)
@@ -172,6 +229,35 @@ def build_parser() -> argparse.ArgumentParser:
         help="exit non-zero if overall < threshold (CI gate seam; off unless passed)",
     )
     run_cmd.set_defaults(func=_eval_run)
+
+    # `aegis eval gate` — the F7 regression gate: deterministic offline mock vs the
+    # committed baseline; exit 1 on regression, 2 on a stale/misconfigured baseline.
+    gate_cmd = eval_cmds.add_parser(
+        "gate", help="block on eval regression vs the committed baseline (offline, mock)"
+    )
+    gate_cmd.add_argument(
+        "--dataset", default=None, help=f"golden JSONL path (default: {DEFAULT_GOLDEN_PATH})"
+    )
+    gate_cmd.add_argument(
+        "--suite", default="golden", help="suite name (selects the baseline file)"
+    )
+    gate_cmd.add_argument(
+        "--baseline",
+        default=None,
+        help="baseline JSON path (default: src/aegis/evals/baselines/<suite>.json)",
+    )
+    gate_cmd.add_argument(
+        "--tolerance",
+        type=float,
+        default=DEFAULT_TOLERANCE,
+        help=f"per-level mean-drop tolerance (default: {DEFAULT_TOLERANCE})",
+    )
+    gate_cmd.add_argument(
+        "--update-baseline",
+        action="store_true",
+        help="regenerate + write the baseline from a fresh mock run, then exit 0 (no compare)",
+    )
+    gate_cmd.set_defaults(func=_eval_gate)
 
     # `aegis calibrate` is a single-action group (no sub-command): measure
     # judge-vs-human agreement (Cohen's kappa) over the calibration set.

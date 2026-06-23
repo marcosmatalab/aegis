@@ -1,0 +1,347 @@
+{
+  "case_count": 32,
+  "cases": {
+    "calc-no-refs": {
+      "l1_passed": true,
+      "l1_score": 1.0,
+      "l2_applicable": false,
+      "l2_parse_failed": false,
+      "l2_passed": false,
+      "l2_score": 0.0,
+      "l3_passed": true,
+      "l3_score": 1.0
+    },
+    "duplicate-permuted-args-ok": {
+      "l1_passed": true,
+      "l1_score": 1.0,
+      "l2_applicable": false,
+      "l2_parse_failed": false,
+      "l2_passed": false,
+      "l2_score": 0.0,
+      "l3_passed": true,
+      "l3_score": 1.0
+    },
+    "empty-output": {
+      "l1_passed": false,
+      "l1_score": 0.0,
+      "l2_applicable": false,
+      "l2_parse_failed": false,
+      "l2_passed": false,
+      "l2_score": 0.0,
+      "l3_passed": true,
+      "l3_score": 1.0
+    },
+    "error-recovery": {
+      "l1_passed": true,
+      "l1_score": 1.0,
+      "l2_applicable": false,
+      "l2_parse_failed": false,
+      "l2_passed": false,
+      "l2_score": 0.0,
+      "l3_passed": false,
+      "l3_score": 0.833333
+    },
+    "extra-email-tool": {
+      "l1_passed": true,
+      "l1_score": 1.0,
+      "l2_applicable": true,
+      "l2_parse_failed": false,
+      "l2_passed": true,
+      "l2_score": 1.0,
+      "l3_passed": false,
+      "l3_score": 0.833333
+    },
+    "fail-closed-no-criteria": {
+      "l1_passed": false,
+      "l1_score": 0.0,
+      "l2_applicable": false,
+      "l2_parse_failed": false,
+      "l2_passed": false,
+      "l2_score": 0.0,
+      "l3_passed": true,
+      "l3_score": 1.0
+    },
+    "faithfulness-only": {
+      "l1_passed": true,
+      "l1_score": 1.0,
+      "l2_applicable": true,
+      "l2_parse_failed": false,
+      "l2_passed": true,
+      "l2_score": 1.0,
+      "l3_passed": true,
+      "l3_score": 1.0
+    },
+    "forbidden-error-word": {
+      "l1_passed": false,
+      "l1_score": 0.666667,
+      "l2_applicable": false,
+      "l2_parse_failed": false,
+      "l2_passed": false,
+      "l2_score": 0.0,
+      "l3_passed": true,
+      "l3_score": 1.0
+    },
+    "good-answer-extra-and-misordered": {
+      "l1_passed": true,
+      "l1_score": 1.0,
+      "l2_applicable": true,
+      "l2_parse_failed": false,
+      "l2_passed": true,
+      "l2_score": 1.0,
+      "l3_passed": false,
+      "l3_score": 0.75
+    },
+    "hallucinated-ungrounded-output": {
+      "l1_passed": true,
+      "l1_score": 1.0,
+      "l2_applicable": true,
+      "l2_parse_failed": false,
+      "l2_passed": false,
+      "l2_score": 0.25,
+      "l3_passed": true,
+      "l3_score": 1.0
+    },
+    "irrelevant-and-ungrounded": {
+      "l1_passed": true,
+      "l1_score": 1.0,
+      "l2_applicable": true,
+      "l2_parse_failed": false,
+      "l2_passed": false,
+      "l2_score": 0.0,
+      "l3_passed": true,
+      "l3_score": 1.0
+    },
+    "lookup-order-na": {
+      "l1_passed": true,
+      "l1_score": 1.0,
+      "l2_applicable": false,
+      "l2_parse_failed": false,
+      "l2_passed": false,
+      "l2_score": 0.0,
+      "l3_passed": true,
+      "l3_score": 1.0
+    },
+    "looping-agent": {
+      "l1_passed": true,
+      "l1_score": 1.0,
+      "l2_applicable": false,
+      "l2_parse_failed": false,
+      "l2_passed": false,
+      "l2_score": 0.0,
+      "l3_passed": false,
+      "l3_score": 0.75
+    },
+    "misordered-pipeline": {
+      "l1_passed": true,
+      "l1_score": 1.0,
+      "l2_applicable": true,
+      "l2_parse_failed": false,
+      "l2_passed": true,
+      "l2_score": 1.0,
+      "l3_passed": false,
+      "l3_score": 0.75
+    },
+    "missing-summarize-tool": {
+      "l1_passed": false,
+      "l1_score": 0.5,
+      "l2_applicable": false,
+      "l2_parse_failed": false,
+      "l2_passed": false,
+      "l2_score": 0.0,
+      "l3_passed": false,
+      "l3_score": 0.583333
+    },
+    "multi-tool-pipeline-ok": {
+      "l1_passed": true,
+      "l1_score": 1.0,
+      "l2_applicable": true,
+      "l2_parse_failed": false,
+      "l2_passed": true,
+      "l2_score": 1.0,
+      "l3_passed": true,
+      "l3_score": 1.0
+    },
+    "multimodal-input": {
+      "l1_passed": true,
+      "l1_score": 1.0,
+      "l2_applicable": true,
+      "l2_parse_failed": false,
+      "l2_passed": true,
+      "l2_score": 1.0,
+      "l3_passed": true,
+      "l3_score": 1.0
+    },
+    "no-tools-but-tool-called": {
+      "l1_passed": true,
+      "l1_score": 1.0,
+      "l2_applicable": false,
+      "l2_parse_failed": false,
+      "l2_passed": false,
+      "l2_score": 0.0,
+      "l3_passed": false,
+      "l3_score": 0.0
+    },
+    "notool-answer-happy": {
+      "l1_passed": true,
+      "l1_score": 1.0,
+      "l2_applicable": true,
+      "l2_parse_failed": false,
+      "l2_passed": true,
+      "l2_score": 1.0,
+      "l3_passed": true,
+      "l3_score": 1.0
+    },
+    "partial-milestones": {
+      "l1_passed": true,
+      "l1_score": 1.0,
+      "l2_applicable": false,
+      "l2_parse_failed": false,
+      "l2_passed": false,
+      "l2_score": 0.0,
+      "l3_passed": true,
+      "l3_score": 1.0
+    },
+    "redundant-step": {
+      "l1_passed": true,
+      "l1_score": 1.0,
+      "l2_applicable": false,
+      "l2_parse_failed": false,
+      "l2_passed": false,
+      "l2_score": 0.0,
+      "l3_passed": false,
+      "l3_score": 0.9
+    },
+    "relevancy-only": {
+      "l1_passed": true,
+      "l1_score": 1.0,
+      "l2_applicable": true,
+      "l2_parse_failed": false,
+      "l2_passed": true,
+      "l2_score": 1.0,
+      "l3_passed": true,
+      "l3_score": 1.0
+    },
+    "relevant-but-partly-unfaithful": {
+      "l1_passed": true,
+      "l1_score": 1.0,
+      "l2_applicable": true,
+      "l2_parse_failed": false,
+      "l2_passed": true,
+      "l2_score": 0.583333,
+      "l3_passed": true,
+      "l3_score": 1.0
+    },
+    "reordered-copy-limitation": {
+      "l1_passed": true,
+      "l1_score": 1.0,
+      "l2_applicable": true,
+      "l2_parse_failed": false,
+      "l2_passed": true,
+      "l2_score": 1.0,
+      "l3_passed": true,
+      "l3_score": 1.0
+    },
+    "search-happy": {
+      "l1_passed": true,
+      "l1_score": 1.0,
+      "l2_applicable": true,
+      "l2_parse_failed": false,
+      "l2_passed": true,
+      "l2_score": 1.0,
+      "l3_passed": true,
+      "l3_score": 1.0
+    },
+    "traced-calc": {
+      "l1_passed": true,
+      "l1_score": 1.0,
+      "l2_applicable": false,
+      "l2_parse_failed": false,
+      "l2_passed": false,
+      "l2_score": 0.0,
+      "l3_passed": true,
+      "l3_score": 1.0
+    },
+    "unexpected-tool-none-expected": {
+      "l1_passed": true,
+      "l1_score": 1.0,
+      "l2_applicable": false,
+      "l2_parse_failed": false,
+      "l2_passed": false,
+      "l2_score": 0.0,
+      "l3_passed": false,
+      "l3_score": 0.0
+    },
+    "unicode-keyword": {
+      "l1_passed": true,
+      "l1_score": 1.0,
+      "l2_applicable": true,
+      "l2_parse_failed": false,
+      "l2_passed": true,
+      "l2_score": 1.0,
+      "l3_passed": true,
+      "l3_score": 1.0
+    },
+    "weather-happy": {
+      "l1_passed": true,
+      "l1_score": 1.0,
+      "l2_applicable": true,
+      "l2_parse_failed": false,
+      "l2_passed": true,
+      "l2_score": 1.0,
+      "l3_passed": true,
+      "l3_score": 1.0
+    },
+    "weather-missing-keyword": {
+      "l1_passed": false,
+      "l1_score": 0.666667,
+      "l2_applicable": false,
+      "l2_parse_failed": false,
+      "l2_passed": false,
+      "l2_score": 0.0,
+      "l3_passed": true,
+      "l3_score": 1.0
+    },
+    "whitespace-output": {
+      "l1_passed": false,
+      "l1_score": 0.0,
+      "l2_applicable": false,
+      "l2_parse_failed": false,
+      "l2_passed": false,
+      "l2_score": 0.0,
+      "l3_passed": true,
+      "l3_score": 1.0
+    },
+    "wrong-city-args": {
+      "l1_passed": false,
+      "l1_score": 0.5,
+      "l2_applicable": false,
+      "l2_parse_failed": false,
+      "l2_passed": false,
+      "l2_score": 0.0,
+      "l3_passed": false,
+      "l3_score": 0.5
+    }
+  },
+  "judge": "mock",
+  "levels": {
+    "L1": {
+      "mean_score": 0.854167,
+      "passed": 25,
+      "scored": 32
+    },
+    "L2": {
+      "mean_score": 0.855556,
+      "passed": 13,
+      "scored": 15
+    },
+    "L3": {
+      "mean_score": 0.871875,
+      "passed": 22,
+      "scored": 32
+    }
+  },
+  "overall_score": 0.860532,
+  "schema_version": 1,
+  "score_decimals": 6,
+  "suite": "golden"
+}

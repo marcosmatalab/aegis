@@ -64,7 +64,7 @@ The differentiator is **evaluation depth**: not just scoring the final output, b
 
 ## Quickstart
 
-> The `/health` probe and the `/v1/chat/completions` proxy run today — on the keyless deterministic mock by default, or against **real Claude** (see [Real provider](#real-provider--anthropic--claude)). Evals run today (`aegis eval run`, `aegis calibrate`); automated red-team, the CI gate, and the dashboard are on the roadmap.
+> The `/health` probe and the `/v1/chat/completions` proxy run today — on the keyless deterministic mock by default, or against **real Claude** (see [Real provider](#real-provider--anthropic--claude)). Evals run today (`aegis eval run`, `aegis calibrate`) and the **eval CI gate** blocks regressions (`aegis eval gate`); automated red-team, red-team gating, and the dashboard are on the roadmap.
 
 ```bash
 # 1. Clone and enter
@@ -109,7 +109,7 @@ pytest
 | **F4** | Trajectory metrics (TrajectoryAccuracy, ToolCorrectness, Progress Rate, T-Eval) + CLEAR; Agent-as-a-Judge | ✅ done |
 | **F5** | Judge calibration: hand-labelled set + Cohen's κ (per criterion + global) via `aegis calibrate` | ✅ done |
 | **F6** | Automated red-team mapped to OWASP LLM Top 10 + OWASP Agentic (ASI) | ⬜ planned |
-| **F7** | CI gate: run evals + red-team per PR and **block merge** on regression | ⬜ planned |
+| **F7** | CI gate: run **evals** per PR and **block merge** on regression vs a committed baseline (`aegis eval gate`); red-team gating lands with F6 | 🟡 partial |
 | **F8** | Governance mapping (EU AI Act Art.15 / NIST AI RMF / ISO 42001) → evidence PDF | ⬜ planned |
 | **F9** | Polished dashboard, trends, 2-min demo | ⬜ planned |
 
@@ -187,7 +187,8 @@ Run it:
 ```bash
 aegis eval run                       # scores the golden set with the mock judge
 aegis eval run --suite ci --output reports/ci.json
-# --fail-under is an inert CI-gate seam in F3; the real gate is F7.
+# --fail-under is a manual absolute-floor seam; the real baseline-comparing
+# gate is `aegis eval gate` (F7) — see "CI regression gate (F7)" below.
 ```
 
 > **Honesty (this matters):** the LLM-as-judge is treated as **directional** — a signal validated against human labels (Cohen's κ — now implemented, see [Judge calibration (F5)](#judge-calibration-f5)), **not ground truth**. The MockJudge is **purely lexical**: relevancy is token overlap and L2 **faithfulness is lexical containment, not entailment** — a reordered copy of the context scores 1.0 (see the golden case `reordered-copy-limitation`), and every deterministic L2 "pass" is therefore a lexical match (verbatim / permuted / subset), never a rewarded paraphrase. L3's order check is over tool *names*, so duplicate same-tool calls are order-insensitive (documented in the scorer). What the project actually sells is that the **eval gate catches regressions**, not that any single judge is correct. The golden set interleaves passing and failing cases — including several where one level passes while another fails — to demonstrate L1/L2/L3 are independent.
@@ -266,6 +267,29 @@ aegis calibrate --judge mock        # offline wiring smoke test only (see below)
 - **Landis-Koch bands** (slight / fair / moderate / substantial / …) are reported for orientation, but the **band boundaries are arbitrary conventions**, not objective thresholds.
 - **`human_label` (categorical) drives κ;** `human_score` (0/1) is a redundant numeric mirror kept only to cross-check the label at load time, never averaged in.
 - **`--judge mock` is a wiring smoke test, not a calibration** — it measures the lexical mock against the labels, not the judge being calibrated. The CLI says so on stderr and the report records `judge: "mock"` plainly.
+
+---
+
+## CI regression gate (F7, evals only)
+
+`aegis eval gate` runs the eval suite on the **deterministic, offline MockJudge/MockProvider** and compares the result to a **committed baseline** (`src/aegis/evals/baselines/golden.json` — versioned, *not* gitignored; it is the gate contract). On a regression it exits non-zero, so a required CI check blocks the PR. The CI job is `eval-gate` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml): no key, no SDK, no network.
+
+```bash
+aegis eval gate                    # CI runs this: mock vs committed baseline; exit 1 on regression
+aegis eval gate --update-baseline  # regenerate the contract after an intended change, then commit it
+```
+
+A **regression** is any of: a per-level mean drop beyond `--tolerance` (default 0.005); a **per-case score drop** on any applicable level (exact after 6-dp rounding — this catches sub-threshold L2 erosion that does *not* flip pass/fail); a per-case **pass→fail** flip; an L2 case dropping out of the judged set; or a **new `parse_failed`**. Each is printed naming the exact case/level. A stale or mismatched baseline (case-set changed, judge ≠ `mock`) exits **2** ("regenerate"), distinct from a real regression (**1**). Improvements never fail the gate.
+
+**What it guarantees — and what it does not:**
+
+- **It catches regressions; it does NOT validate the real judge.** The gate runs the **mock**, so it guards the eval **pipeline** (scoring, aggregation, dataset, wiring) against the baseline. Whether the *real* judge is any good is a **separate** question answered by [Judge calibration (F5)](#judge-calibration-f5) (Cohen's κ), which is directional, not ground truth.
+- **The guarantee is "no SILENT regression", not "no regression ever".** `--update-baseline` *can* re-baseline worse scores and make the gate green — but the baseline is committed, so re-baselining a regression is a **visible diff in the PR**: a named, blocking, reviewable event. The gate turns a regression into noise that a human reviewer sees; **review is the final backstop**, not the gate alone.
+- **A self-consistency test locks the baseline to the code.** A pytest asserts the committed baseline exactly equals a fresh mock run, so a scoring or golden-set change that forgets `--update-baseline` fails locally *before* CI — the committed floor can never silently lag reality.
+- **`parse_failed` is a latent, forward-looking tripwire.** The mock never parse-fails, so it cannot fire under today's offline gate; it exists for a future real-judge baseline and is exercised only via the pure comparator's unit tests.
+- **Red-team is not gated yet (F6).** F7 ships in two slices: the eval gate today, red-team gating when F6 lands. The comparator returns a typed list of regressions, so a red-team gate unions its own findings **additively** — no redesign.
+
+**Enabling the block (one-time, maintainer action in GitHub):** Settings → Branches → branch-protection rule for `main` → *Require status checks to pass before merging* → require the **`eval-gate`** check (alongside `lint-and-test`). Until that toggle is on, the job runs and reports but does not hard-block; the repo cannot self-apply branch protection.
 
 ---
 
