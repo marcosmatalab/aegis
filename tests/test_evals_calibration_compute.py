@@ -86,6 +86,20 @@ def test_parse_failed_excluded_equals_dropping_the_row():
     assert rel.result.n_valid == 4
 
 
+def test_valid_half_score_counts_as_pass_while_parse_failed_half_is_excluded():
+    # the boundary that matters: a VALID 0.5 binarizes to pass and is counted; a
+    # parse_failed 0.5 (same score) is excluded, never silently counted as a pass
+    cases = [
+        _case("cal-rel-01", "relevancy", "pass"),  # valid 0.5 -> pass (matches human)
+        _case("cal-rel-02", "relevancy", "fail"),  # parse_failed 0.5 -> excluded
+    ]
+    verdicts = [_v(0.5), _v(0.5, parse_failed=True)]
+    rel = compute_calibration(cases, verdicts, judge="geval").per_criterion["relevancy"]
+    assert rel.result.n_valid == 1 and rel.n_parse_failed == 1
+    assert rel.result.matrix.tp == 1  # the valid 0.5 was counted as a pass
+    assert rel.result.matrix.fp == 0  # the parse_failed 0.5 was NOT counted
+
+
 def test_all_parse_failed_slice_is_undefined_not_a_crash():
     cases = [_case("cal-rel-01", "relevancy", "pass"), _case("cal-rel-02", "relevancy", "fail")]
     verdicts = [_v(0.5, parse_failed=True), _v(0.5, parse_failed=True)]
