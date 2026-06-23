@@ -22,6 +22,7 @@ from aegis.evals.judge.geval import JudgeNotConfiguredError
 from aegis.evals.persistence import DEFAULT_REPORTS_DIR, write_report
 from aegis.evals.runner import run_suite
 from aegis.gateway.config import get_settings
+from aegis.gateway.errors import ProviderNotConfiguredError
 
 _CLEAR_ORDER = ("cost", "latency", "efficiency", "accuracy", "reliability")
 
@@ -54,7 +55,8 @@ def _eval_run(args: argparse.Namespace) -> int:
             latency_budget_ms=settings.clear_latency_budget_ms,
             cost_budget_usd=settings.clear_cost_budget_usd,
         )
-    except (GoldenDatasetError, JudgeNotConfiguredError) as exc:
+    except (GoldenDatasetError, JudgeNotConfiguredError, ProviderNotConfiguredError) as exc:
+        # A real judge selected with no key/SDK -> clean exit 2, never an offline crash.
         print(f"error: {exc}", file=sys.stderr)
         return 2
 

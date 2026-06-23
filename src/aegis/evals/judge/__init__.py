@@ -1,8 +1,9 @@
 """L2 judge layer — abstract Judge, deterministic MockJudge (offline default),
-the G-Eval CoT judge (real, stubbed in F3), an ensemble, and a settings factory.
+the real G-Eval-inspired judge (reuses the Anthropic provider), an ensemble, and
+a settings factory.
 
-The judge is DIRECTIONAL — a signal validated against human labels (a later
-phase), never ground truth.
+The judge is DIRECTIONAL — a signal validated against human labels (Cohen's κ, a
+later phase), never ground truth.
 """
 
 from aegis.evals.judge.base import Judge, JudgeVerdict
