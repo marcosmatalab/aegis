@@ -13,11 +13,14 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from typing import Any
 
 from aegis.evals.judge.base import Judge, JudgeVerdict
 from aegis.evals.judge.prompts import G_EVAL_TEMPLATE
 from aegis.gateway.config import Settings
+
+_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL | re.IGNORECASE)
 
 
 class JudgeNotConfiguredError(RuntimeError):
@@ -36,17 +39,31 @@ def _clamp01(x: float) -> float:
     return 0.0 if x < 0 else 1.0 if x > 1 else x
 
 
+def _strip_code_fences(raw: str) -> str:
+    """Return the inside of the first ```...``` (or ```json) block, else ``raw``.
+
+    LLM replies often wrap the JSON in a markdown code fence; pulling the fenced
+    content out first makes the first-brace/last-brace scan robust even when the
+    surrounding prose contains braces."""
+    match = _FENCE_RE.search(raw)
+    return match.group(1).strip() if match else raw
+
+
 def _extract_json(raw: str) -> dict[str, Any]:
-    start, end = raw.find("{"), raw.rfind("}")
+    text = _strip_code_fences(raw)
+    start, end = text.find("{"), text.rfind("}")
     if start == -1 or end == -1 or end < start:
         raise ValueError(f"no JSON object in judge reply: {raw[:120]!r}")
-    return json.loads(raw[start : end + 1])
+    return json.loads(text[start : end + 1])
 
 
 def parse_verdict(raw: str) -> tuple[float, str]:
     """Parse a judge JSON reply into (clamped score, reasoning).
 
-    Robust to a numeric or string score and to prose surrounding the JSON.
+    Pure and RAISING: robust to a numeric or string score, to markdown code
+    fences, and to prose surrounding the JSON, but raises ``ValueError`` on
+    unparseable input / missing / non-numeric / non-finite score. The never-raise
+    neutral fallback lives in ``GEvalJudge.score`` (which wraps this).
     """
     data = _extract_json(raw)
     score = data.get("score")
