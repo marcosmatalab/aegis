@@ -10,6 +10,7 @@ import pytest
 
 from aegis.evals.judge.geval import GEvalJudge
 from aegis.gateway.config import Settings
+from aegis.gateway.providers.anthropic_translate import to_anthropic_params
 from aegis.gateway.schemas import (
     ChatCompletionResponse,
     Choice,
@@ -155,3 +156,20 @@ def test_aclose_closes_the_provider():
     judge, provider = _judge('{"score": 0.5}')
     asyncio.run(judge.aclose())
     assert provider.closed == 1
+
+
+# --- the adapter drops temperature for Opus 4.7+ (geval itself unchanged) ---- #
+def test_geval_request_against_opus_4_8_translates_without_temperature():
+    # geval builds the request with temperature=judge_temperature (0.0) against the
+    # default judge_model claude-opus-4-8; the TRANSLATION layer must drop it (Opus
+    # 4.7+ 400 on temperature), so the F5 calibration no longer crashes.
+    judge, provider = _judge('{"score": 0.5, "reasoning": "x"}')
+    _score(judge, reference="ref")
+    req = provider.requests[0]
+    assert req.model == "claude-opus-4-8"
+    assert req.temperature == 0.0  # geval UNCHANGED: it still sets temperature
+
+    params = to_anthropic_params(req, 1024)
+    assert "temperature" not in params  # the adapter omits it for this model
+    # (top_p isn't asserted here: geval never sets it, so its absence is vacuous —
+    # the real forbid-gate drop of top_p is covered in test_anthropic_translate.py)

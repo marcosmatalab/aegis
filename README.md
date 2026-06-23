@@ -151,7 +151,7 @@ uvicorn aegis.gateway.main:app --port 8080
 
 **Documented divergences from OpenAI:**
 
-- `temperature` is **clamped to [0, 1]** (Anthropic's max is 1; OpenAI allows 2) — a value like `1.5` is accepted and capped rather than erroring.
+- `temperature` is **clamped to [0, 1]** (Anthropic's max is 1; OpenAI allows 2) — a value like `1.5` is accepted and capped rather than erroring — **and omitted entirely (along with `top_p`/`top_k`) for models that reject sampling params: Opus 4.7+, all Opus 5.x, and unknown newer Opus (which default to omit, conservatively)**. Those models return `400 temperature is deprecated for this model` otherwise; per Anthropic guidance you drop the field and let the model's default sampling apply (reasoning control on 4.8 is `effort` + adaptive thinking, not temperature). Sonnet/Haiku, Opus 4.6-and-earlier, and the legacy `claude-3-opus-*` keep the clamp.
 - `created` is a synthesized wall-clock timestamp (Anthropic does not return one), so the real-provider path is **not** byte-deterministic like the mock.
 - An unrecognized `stop_reason` falls back to `finish_reason: "stop"`.
 
@@ -241,6 +241,7 @@ aegis calibrate --judge mock        # offline wiring smoke test only (see below)
 **Read the number honestly — this is calibrated to be modest, not impressive:**
 
 - **κ is DIRECTIONAL, not a quality verdict.** It measures *agreement with one annotator applying the rubric*, never ground truth — the value proposition stays "the gate catches regressions".
+- **On Opus 4.7+ the judge can no longer pin `temperature=0`.** Those models reject sampling params, so the adapter omits `temperature` and the judge relies on the model's *default* sampling — i.e. **more** run-to-run variance, not less. One more reason κ matters: we measure agreement under the sampling the model actually uses, not under an idealized pinned-zero temperature.
 - **N = 30 → a wide confidence interval.** The point estimate is indicative, not precise. The CI is *stated*, not computed (bootstrapping 30 points would over-promise).
 - **A single person labelled the set.** This is one-rater agreement, not consensus gold; there is no second annotator or adjudication.
 - **The κ paradox / base-rate sensitivity:** with skewed marginals (global 13 pass / 17 fail) a high `p_o` can still yield a low or even undefined κ. So the report **always shows `p_o` and the confusion matrix beside κ** — never κ alone. When both raters collapse to one class (`1 − p_e = 0`) κ is mathematically undefined and is reported as `null` / band `undefined`, keeping the real `p_o`, rather than a fabricated 0.0 or 1.0.
