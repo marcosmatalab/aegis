@@ -103,15 +103,21 @@ class Settings(BaseSettings):
     # --- F3 evals / LLM-as-judge --------------------------------------------
     # Backend for the L2 judge. "mock" is deterministic and keyless (the default,
     # so the eval suite runs fully offline). "geval"/"ensemble" use a real LLM via
-    # a provider — a clear stub in F3, never importing a paid SDK.
+    # the cached Anthropic provider (no second client); offline tests inject a fake.
     judge_backend: Literal["mock", "geval", "ensemble"] = Field(
         default="mock", description="L2 judge backend."
     )
     judge_model: str = Field(
-        default="anthropic/claude-opus-4-6", description="provider/model for the real judge."
+        default="anthropic/claude-opus-4-8", description="provider/model for the real judge."
     )
     judge_temperature: float = Field(
         default=0.0, ge=0.0, le=2.0, description="Judge sampling temperature (0 = deterministic)."
+    )
+    # Spend cap for each judge call. Sized for bounded CoT reasoning + a compact
+    # JSON verdict — large enough that the JSON is never truncated (a truncation
+    # would parse-fail to a neutral score), small enough to bound cost.
+    judge_max_tokens: int = Field(
+        default=1024, ge=1, description="Max tokens per real-judge LLM call (spend cap)."
     )
     judge_ensemble_size: int = Field(
         default=3, ge=1, le=15, description="Number of judges in the ensemble backend."
