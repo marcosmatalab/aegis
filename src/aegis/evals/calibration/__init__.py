@@ -28,6 +28,7 @@ from aegis.evals.calibration.report import (
     KappaSection,
     compute_calibration,
 )
+from aegis.evals.calibration.runner import run_calibration
 
 __all__ = [
     "DEFAULT_CALIBRATION_PATH",
@@ -44,4 +45,5 @@ __all__ = [
     "kappa_from_pairs",
     "landis_koch_band",
     "load_calibration",
+    "run_calibration",
 ]
