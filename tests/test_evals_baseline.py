@@ -215,6 +215,31 @@ def test_load_bad_schema_version_raises(tmp_path):
         load_baseline(p)
 
 
+def test_load_missing_top_level_key_raises_malformed(tmp_path):
+    p = tmp_path / "b.json"
+    bad = _baseline()
+    del bad["levels"]
+    write_baseline(bad, p)
+    with pytest.raises(BaselineError, match="malformed"):
+        load_baseline(p)
+
+
+def test_compare_malformed_baseline_case_raises_not_keyerror():
+    # a hand-corrupted committed baseline (a dropped per-case key) must be a clean
+    # BaselineError (-> exit 2), never a raw KeyError + traceback
+    bad = _baseline()
+    del bad["cases"]["case-a"]["l2_applicable"]
+    with pytest.raises(BaselineError, match="malformed"):
+        compare_to_baseline(bad, _baseline())
+
+
+def test_compare_malformed_baseline_level_raises():
+    bad = _baseline()
+    del bad["levels"]["L1"]["mean_score"]
+    with pytest.raises(BaselineError, match="malformed"):
+        compare_to_baseline(bad, _baseline())
+
+
 def test_write_then_load_round_trips(tmp_path):
     p = tmp_path / "b.json"
     write_baseline(_baseline(), p)

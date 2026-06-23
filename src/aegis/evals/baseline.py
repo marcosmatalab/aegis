@@ -27,6 +27,21 @@ SCORE_DECIMALS = 6
 DEFAULT_TOLERANCE = 0.005  # per-level mean-drop band (aggregate backstop)
 _LEVELS = ("L1", "L2", "L3")
 
+_TOP_KEYS = frozenset({"suite", "judge", "case_count", "levels", "cases"})
+_LEVEL_KEYS = frozenset({"mean_score", "passed", "scored"})
+_CASE_KEYS = frozenset(
+    {
+        "l1_passed",
+        "l1_score",
+        "l2_applicable",
+        "l2_passed",
+        "l2_score",
+        "l2_parse_failed",
+        "l3_passed",
+        "l3_score",
+    }
+)
+
 DEFAULT_BASELINE_DIR = Path(__file__).parent / "baselines"
 
 
@@ -127,6 +142,12 @@ def load_baseline(path: str | Path) -> dict[str, Any]:
     if data.get("schema_version") != SCHEMA_VERSION:
         raise BaselineError(
             f"baseline schema_version {data.get('schema_version')!r} != {SCHEMA_VERSION} "
+            f"— regenerate with: aegis eval gate --update-baseline"
+        )
+    missing = _TOP_KEYS - data.keys()
+    if missing:
+        raise BaselineError(
+            f"baseline malformed: missing top-level keys {sorted(missing)} "
             f"— regenerate with: aegis eval gate --update-baseline"
         )
     return data
@@ -233,4 +254,25 @@ def compare_to_baseline(
             "baseline stale: golden case-set changed "
             f"(added={added}, removed={removed}); run: aegis eval gate --update-baseline"
         )
+    _require_well_formed(baseline)
     return _level_regressions(baseline, current, tolerance) + _case_regressions(baseline, current)
+
+
+def _require_well_formed(baseline: dict[str, Any]) -> None:
+    """Raise BaselineError (-> exit 2) if a hand-edited baseline dropped a per-level
+    or per-case key, so a malformed contract is a clean 'regenerate' message rather
+    than a raw KeyError + traceback deep in the comparator."""
+    for lv, level in baseline["levels"].items():
+        missing = _LEVEL_KEYS - level.keys()
+        if missing:
+            raise BaselineError(
+                f"baseline malformed: level {lv!r} missing keys {sorted(missing)} "
+                f"— regenerate with: aegis eval gate --update-baseline"
+            )
+    for cid, case in baseline["cases"].items():
+        missing = _CASE_KEYS - case.keys()
+        if missing:
+            raise BaselineError(
+                f"baseline malformed: case {cid!r} missing keys {sorted(missing)} "
+                f"— regenerate with: aegis eval gate --update-baseline"
+            )
