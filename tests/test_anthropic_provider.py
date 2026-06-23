@@ -209,6 +209,66 @@ def test_stream_maps_upstream_error_raised_mid_iteration():
     assert exc.value.status_code == 502
 
 
+# --- aclose (close the underlying client) ----------------------------------- #
+class _CoroCloseClient:
+    """Mirrors anthropic 0.85.0 AsyncAnthropic: a coroutine close(), no aclose."""
+
+    def __init__(self):
+        self.closes = 0
+
+    async def close(self):
+        self.closes += 1
+
+
+class _AcloseClient:
+    """Mirrors httpx.AsyncClient: an aclose() coroutine (preferred over close)."""
+
+    def __init__(self):
+        self.acloses = 0
+
+    async def aclose(self):
+        self.acloses += 1
+
+
+class _SyncCloseClient:
+    def __init__(self):
+        self.closes = 0
+
+    def close(self):  # non-awaitable close
+        self.closes += 1
+
+
+def test_aclose_closes_built_client_and_is_idempotent():
+    fake = _CoroCloseClient()
+    prov = AnthropicProvider(api_key="sk-test", default_max_tokens=10, client=fake)
+    asyncio.run(prov.aclose())
+    assert fake.closes == 1
+    assert prov._client is None
+    # second call is a clean no-op (client already cleared)
+    asyncio.run(prov.aclose())
+    assert fake.closes == 1
+
+
+def test_aclose_prefers_aclose_over_close():
+    fake = _AcloseClient()
+    prov = AnthropicProvider(api_key="sk-test", default_max_tokens=10, client=fake)
+    asyncio.run(prov.aclose())
+    assert fake.acloses == 1
+
+
+def test_aclose_handles_sync_close():
+    fake = _SyncCloseClient()
+    prov = AnthropicProvider(api_key="sk-test", default_max_tokens=10, client=fake)
+    asyncio.run(prov.aclose())
+    assert fake.closes == 1
+
+
+def test_aclose_is_noop_when_client_never_built():
+    prov = AnthropicProvider(api_key="sk-test", default_max_tokens=10)  # client lazy, unbuilt
+    asyncio.run(prov.aclose())  # must not raise and must not force a build
+    assert prov._client is None
+
+
 # --- lazy SDK guard --------------------------------------------------------- #
 @pytest.mark.skipif(is_available(), reason="anthropic SDK is installed in this environment")
 def test_build_client_raises_clean_error_without_sdk():
