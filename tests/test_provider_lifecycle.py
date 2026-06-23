@@ -114,3 +114,31 @@ def test_concurrent_first_requests_build_exactly_once(monkeypatch):
     responses = asyncio.run(_run())
     assert all(r.status_code == 200 for r in responses)
     assert calls == ["mock"]  # one build despite 8 concurrent first-requests
+
+
+# --- lifespan shutdown ------------------------------------------------------ #
+def test_shutdown_closes_cached_provider(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    _counting_build(monkeypatch)
+    monkeypatch.setenv("AEGIS_DEFAULT_PROVIDER", "mock")
+    get_settings.cache_clear()
+    with TestClient(app) as client:  # `with` runs lifespan startup + shutdown
+        client.post("/v1/chat/completions", json=_PAYLOAD)
+        provider = app.state.provider
+        assert provider is not None
+    # exiting the context ran lifespan shutdown -> the cached provider was closed
+    assert provider.closed == 1
+    assert app.state.provider is None
+
+
+def test_shutdown_without_a_built_provider_does_not_error(monkeypatch):
+    # boot + shutdown with no /v1 traffic (only /health) must not raise on the
+    # None-guard (app.state.provider stays None, nothing to close)
+    from fastapi.testclient import TestClient
+
+    monkeypatch.setenv("AEGIS_DEFAULT_PROVIDER", "mock")
+    get_settings.cache_clear()
+    with TestClient(app) as client:
+        assert client.get("/health").status_code == 200
+    assert app.state.provider is None
