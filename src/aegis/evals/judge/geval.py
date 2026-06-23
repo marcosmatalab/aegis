@@ -1,12 +1,17 @@
-"""G-Eval (Chain-of-Thought) LLM-as-judge — reasons before scoring.
+"""G-Eval-INSPIRED LLM-as-judge — light Chain-of-Thought, direct parsed score.
 
-The judge reasons step by step then emits JSON ``{reasoning, score}`` at
-temperature 0. The actual LLM call goes through a provider and is a CLEAR STUB
-in F3 — no paid SDK is imported and ``score`` raises a clear error directing
-callers to the mock backend. The deterministic, pure helpers (``model_split``,
-``parse_verdict``, prompt building) ARE implemented and tested so the wire
-contract is locked for when a real provider lands (a later phase, alongside
-Cohen's-kappa calibration vs human labels).
+The judge justifies briefly then emits a compact JSON ``{reasoning, score}`` at
+low temperature; the score is read DIRECTLY from the reply. This is NOT canonical
+G-Eval: it does not do logprob-weighted scoring (the Anthropic API exposes no
+per-token logprobs), so it carries more variance than logprob G-Eval — mitigated
+by temperature 0 and, ultimately, validated by Cohen's-kappa calibration vs human
+labels (a later phase). The judge is DIRECTIONAL, not ground truth.
+
+It REUSES the Anthropic provider (build a ChatCompletionRequest + provider.complete),
+never a second client. A messy/unparseable reply NEVER raises: ``score`` falls
+back to a NEUTRAL score flagged ``parse_failed=True`` (auditable in the report).
+The pure helpers (``model_split``, ``parse_verdict``, prompt building) stay pure
+and raising; the never-raise wrapper lives in ``GEvalJudge.score``.
 """
 
 from __future__ import annotations
@@ -17,10 +22,14 @@ import re
 from typing import Any
 
 from aegis.evals.judge.base import Judge, JudgeVerdict
-from aegis.evals.judge.prompts import G_EVAL_TEMPLATE
+from aegis.evals.judge.prompts import G_EVAL_SYSTEM, G_EVAL_TEMPLATE
+from aegis.evals.text import flatten
 from aegis.gateway.config import Settings
+from aegis.gateway.schemas import ChatCompletionRequest, ChatCompletionResponse
+from aegis.gateway.upstream import Provider
 
 _FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL | re.IGNORECASE)
+_NEUTRAL_SCORE = 0.5  # == L2_THRESHOLD: a parse failure neither passes nor fails on its merits
 
 
 class JudgeNotConfiguredError(RuntimeError):
@@ -90,13 +99,23 @@ def build_prompt(
     )
 
 
+def _reply_text(response: ChatCompletionResponse) -> str:
+    """Coerce the assistant reply to plain text (str | parts | None -> str), so a
+    None/structured reply parse-fails to a neutral score instead of raising."""
+    if not response.choices:
+        return ""
+    return flatten(response.choices[0].message.content)
+
+
 class GEvalJudge(Judge):
     name = "geval"
 
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Settings, provider: Provider):
         self.settings = settings
         self.provider_name, self.model = model_split(settings.judge_model)
         self.temperature = settings.judge_temperature
+        self.max_tokens = settings.judge_max_tokens
+        self.provider = provider  # reused across calls; the SAME cached client
 
     async def score(
         self,
@@ -106,9 +125,29 @@ class GEvalJudge(Judge):
         reference: str | None = None,
         context: list[str] | None = None,
     ) -> JudgeVerdict:
-        # F3 stub: building the prompt works, but no real provider is wired.
-        _ = build_prompt(criteria, output, reference, context)
-        raise JudgeNotConfiguredError(
-            "The G-Eval judge needs a real LLM provider, which is not wired in F3. "
-            "Set AEGIS_JUDGE_BACKEND=mock to run evals offline."
+        request = ChatCompletionRequest(
+            model=self.model,  # bare model id; the provider sends it as-is
+            messages=[
+                {"role": "system", "content": G_EVAL_SYSTEM},
+                {"role": "user", "content": build_prompt(criteria, output, reference, context)},
+            ],
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
         )
+        # Upstream/transport errors PROPAGATE (a failure to GET a judgment, surfaced
+        # by the runner/CLI) — only an UNPARSEABLE reply falls back to neutral.
+        response = await self.provider.complete(request)
+        try:
+            score, reasoning = parse_verdict(_reply_text(response))
+        except (ValueError, TypeError) as exc:
+            return JudgeVerdict(
+                _NEUTRAL_SCORE,
+                f"parse failure ({type(exc).__name__}): neutral fallback",
+                criteria,
+                self.name,
+                parse_failed=True,
+            )
+        return JudgeVerdict(score, reasoning, criteria, self.name)
+
+    async def aclose(self) -> None:
+        await self.provider.aclose()

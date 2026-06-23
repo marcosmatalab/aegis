@@ -2,24 +2,23 @@
 
 from __future__ import annotations
 
-import asyncio
-
 import pytest
 
 from aegis.evals.judge import (
     EnsembleJudge,
     GEvalJudge,
-    JudgeNotConfiguredError,
     MockJudge,
     build_judge,
 )
 from aegis.evals.judge.geval import build_prompt, model_split, parse_verdict
 from aegis.gateway.config import Settings
+from aegis.gateway.errors import ProviderNotConfiguredError
+from aegis.gateway.upstream import MockProvider
 
 
 # --- model_split ------------------------------------------------------------ #
 def test_model_split_valid():
-    assert model_split("anthropic/claude-opus-4-6") == ("anthropic", "claude-opus-4-6")
+    assert model_split("anthropic/claude-opus-4-8") == ("anthropic", "claude-opus-4-8")
 
 
 @pytest.mark.parametrize("bad", ["noslash", "/model", "provider/", ""])
@@ -117,23 +116,32 @@ def test_build_prompt_is_chain_of_thought():
     assert prompt.index("reasoning") < prompt.index("score")
 
 
-# --- real-judge stub -------------------------------------------------------- #
-def test_geval_score_is_a_clear_stub():
-    judge = GEvalJudge(Settings(_env_file=None))
-    with pytest.raises(JudgeNotConfiguredError, match="not wired in F3"):
-        asyncio.run(judge.score("relevancy", "x", reference="y"))
-
-
 # --- factory ---------------------------------------------------------------- #
 def test_factory_mock():
     assert isinstance(build_judge(Settings(_env_file=None, judge_backend="mock")), MockJudge)
 
 
-def test_factory_geval():
-    assert isinstance(build_judge(Settings(_env_file=None, judge_backend="geval")), GEvalJudge)
+def test_factory_geval_without_credentials_raises(monkeypatch):
+    # offline (no key) the real judge's provider can't be built -> clean error the
+    # eval CLI turns into exit 2 (never an offline crash)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    with pytest.raises(ProviderNotConfiguredError):
+        build_judge(Settings(_env_file=None, judge_backend="geval"))
 
 
-def test_factory_ensemble_size():
+def test_factory_geval_injects_provider(monkeypatch):
+    monkeypatch.setattr("aegis.evals.judge.factory.build_provider", lambda name, s: MockProvider())
+    judge = build_judge(Settings(_env_file=None, judge_backend="geval"))
+    assert isinstance(judge, GEvalJudge)
+    assert isinstance(judge.provider, MockProvider)
+
+
+def test_factory_ensemble_shares_one_provider(monkeypatch):
+    monkeypatch.setattr("aegis.evals.judge.factory.build_provider", lambda name, s: MockProvider())
     judge = build_judge(Settings(_env_file=None, judge_backend="ensemble", judge_ensemble_size=4))
     assert isinstance(judge, EnsembleJudge)
     assert len(judge.members) == 4
+    # all members share the SAME provider instance (one client, not four)
+    providers = {id(m.provider) for m in judge.members}
+    assert len(providers) == 1
+    assert judge.members[0].provider is judge.provider
