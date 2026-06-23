@@ -136,3 +136,24 @@ def test_empty_dataset_rejected(tmp_path):
     p = _write(tmp_path, ["# only comments", ""])
     with pytest.raises(CalibrationDatasetError, match="contains no cases"):
         load_calibration(p)
+
+
+# --- the committed 30-case set (a contract-breaking hand-edit fails here) --- #
+def test_shipped_calibration_set_is_self_consistent():
+    cases = load_calibration()  # no path -> the bundled dataset
+    assert len(cases) == 30
+    assert len({c.id for c in cases}) == 30  # all ids unique
+
+    rel = [c for c in cases if c.criterion_type == "relevancy"]
+    fai = [c for c in cases if c.criterion_type == "faithfulness"]
+    assert len(rel) == 15 and len(fai) == 15
+
+    # label distribution: global 13/17, relevancy 6/9, faithfulness 7/8
+    assert sum(c.human_label == "pass" for c in cases) == 13
+    assert sum(c.human_label == "fail" for c in cases) == 17
+    assert sum(c.human_label == "pass" for c in rel) == 6
+    assert sum(c.human_label == "pass" for c in fai) == 7
+
+    # per-row grounding invariants (enforced by the model, asserted here too)
+    assert all(c.reference and not c.context for c in rel)
+    assert all(c.context and not c.reference for c in fai)
