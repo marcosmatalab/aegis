@@ -170,6 +170,8 @@ uvicorn aegis.gateway.main:app --port 8080
 
 Selecting `anthropic` with **no key** or **without the SDK installed** is a clean `provider_not_configured` (HTTP 500) — never an `ImportError`. The whole adapter is unit-tested offline with a fake client (no key, no SDK, no network); one **skippable live test** runs only when `ANTHROPIC_API_KEY` is set and the SDK is installed.
 
+**Client lifecycle.** The real provider owns a network client (an httpx connection pool), so it is built **once per process** — cached on `app.state` and reused across requests behind an `asyncio` lock (so concurrent first-requests can't race two clients into existence) — and **closed cleanly on shutdown** via the FastAPI lifespan. Construction stays lazy (on the first request, never at startup), so an `anthropic`-with-no-key boot is still a 500 *response* rather than a startup crash. The keyless mock holds no resources and is unaffected.
+
 ---
 
 ## Evals (F3)
