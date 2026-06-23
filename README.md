@@ -179,7 +179,7 @@ Selecting `anthropic` with **no key** or **without the SDK installed** is a clea
 A 3-level eval engine that runs fully **offline** over a hand-made golden anchor set:
 
 - **L1 — session / goal** (deterministic, no LLM): the goal is met iff every required tool was called, every `must_include` keyword is present (as a whole word), and no `must_not_include` keyword appears.
-- **L2 — trace / quality** (LLM-as-judge): relevancy (vs a reference) and faithfulness (vs context), scored by a **G-Eval / Chain-of-Thought** judge that reasons before scoring. The judge is abstracted behind an interface with a deterministic **MockJudge** (default), so the suite runs with no API keys; the real provider-backed judge and an ensemble are wired behind it.
+- **L2 — trace / quality** (LLM-as-judge): relevancy (vs a reference) and faithfulness (vs context), scored by a **G-Eval-inspired** judge that reasons briefly before scoring. The judge is abstracted behind an interface with a deterministic **MockJudge** (default), so the suite runs with no API keys; a **real** judge that reuses the Anthropic provider (the single cached client) and an ensemble are wired behind it (`AEGIS_JUDGE_BACKEND=geval|ensemble`).
 - **L3 — tool** (deterministic, no LLM): tool-call correctness (right tool, right args, right order) via an F1 over exact matches plus an LCS order score.
 
 Run it:
@@ -191,6 +191,8 @@ aegis eval run --suite ci --output reports/ci.json
 ```
 
 > **Honesty (this matters):** the LLM-as-judge is treated as **directional** — a signal to validate against human labels (Cohen's κ, a later phase), **not ground truth**. The MockJudge is **purely lexical**: relevancy is token overlap and L2 **faithfulness is lexical containment, not entailment** — a reordered copy of the context scores 1.0 (see the golden case `reordered-copy-limitation`), and every deterministic L2 "pass" is therefore a lexical match (verbatim / permuted / subset), never a rewarded paraphrase. L3's order check is over tool *names*, so duplicate same-tool calls are order-insensitive (documented in the scorer). What the project actually sells is that the **eval gate catches regressions**, not that any single judge is correct. The golden set interleaves passing and failing cases — including several where one level passes while another fails — to demonstrate L1/L2/L3 are independent.
+
+> **The real judge is G-Eval-*inspired*, not canonical.** It uses light Chain-of-Thought (justify, then score) but reads the score **directly** from a compact JSON reply — it does **not** do canonical G-Eval's logprob-weighted scoring, because the Anthropic API exposes no per-token logprobs. The honest consequence is **more variance** than logprob G-Eval, which is why it runs at **temperature 0** and why **judge calibration (Cohen's κ vs human labels) is the tracked next phase** — the score is still directional, not ground truth. A messy or truncated reply **never crashes the eval**: it falls back to a **neutral 0.5 flagged `parse_failed`**, surfaced in the L2 breakdown of the persisted report so a degradation is auditable (note: a neutral 0.5 *passes* the diagnostic L2 threshold, so the flag — not the score — is what tells you the judge didn't really measure). The real judge is exercised by injected fakes offline plus **one gated, skippable live test** (a single low-`max_tokens` call); the bulk suite stays on the keyless MockJudge.
 
 ---
 
@@ -232,7 +234,7 @@ Each CLEAR dimension carries its `status` (`measured` / `synthetic` / `placehold
 | API gateway | FastAPI + uvicorn (OpenAI-compatible endpoint) |
 | Providers | `anthropic`, `openai`, `google-genai` (multi-provider) |
 | Guardrails | Presidio (PII), injection/output scanners, optional safety classifier |
-| Evals | G-Eval (CoT), trajectory metrics, Agent-as-a-Judge |
+| Evals | G-Eval-inspired CoT judge (Anthropic), trajectory metrics, Agent-as-a-Judge |
 | Red-team | Synthetic attacks mapped to OWASP LLM + OWASP Agentic (ASI) |
 | Observability | OpenTelemetry (GenAI semconv) → Langfuse |
 | Persistence | PostgreSQL (runs, verdicts, cases) |
