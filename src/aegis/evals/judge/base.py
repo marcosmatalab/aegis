@@ -31,3 +31,12 @@ class Judge(ABC):
         reference: str | None = None,
         context: list[str] | None = None,
     ) -> JudgeVerdict: ...
+
+    async def aclose(self) -> None:
+        """Release any held resources (a provider's network client) on shutdown.
+
+        No-op by default: the keyless ``MockJudge`` holds nothing, so it inherits
+        this unchanged. Real judges override it; the runner calls it once when the
+        suite finishes.
+        """
+        return None

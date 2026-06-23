@@ -71,3 +71,8 @@ def test_f1_both_empty_is_one():
     # both empty -> 1.0 (vacuously identical); pins the intentional semantics
     assert _f1(set(), set()) == 1.0
     assert _f1(set(), {"x"}) == 0.0
+
+
+def test_mock_judge_inherits_noop_aclose():
+    # MockJudge holds no resources; it inherits the ABC no-op aclose unchanged
+    assert asyncio.run(MockJudge().aclose()) is None
