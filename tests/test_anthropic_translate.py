@@ -120,6 +120,8 @@ def test_temperature_clamped_and_top_p_passed_and_stop_mapped():
         "CLAUDE-OPUS-4-8",  # case-insensitive
         "  claude-opus-4-8  ",  # whitespace-padded
         " anthropic/claude-opus-4-8",  # leading space before the prefix
+        "ANTHROPIC/claude-opus-4-8",  # uppercase provider prefix (must still strip)
+        "Anthropic/claude-opus-4-8",  # mixed-case provider prefix
     ],
 )
 def test_forbids_sampling_params_true(model):
