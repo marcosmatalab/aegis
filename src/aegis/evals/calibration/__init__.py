@@ -1,0 +1,29 @@
+"""F5 judge calibration: measure AGREEMENT between hand labels and the real
+judge with Cohen's kappa (per criterion + global), never ground truth.
+
+The judge stays DIRECTIONAL — see the README for the honesty caveats: N=30 gives
+a wide CI, kappa is base-rate sensitive (the kappa paradox) so p_o + the matrix
+are reported beside it, a single annotator applied the rubric (not consensus
+gold), parse failures are excluded and counted, and the Landis-Koch bands are
+arbitrary conventions.
+"""
+
+from aegis.evals.calibration.kappa import (
+    ConfusionMatrix,
+    KappaResult,
+    binarize,
+    build_matrix,
+    cohen_kappa,
+    kappa_from_pairs,
+    landis_koch_band,
+)
+
+__all__ = [
+    "ConfusionMatrix",
+    "KappaResult",
+    "binarize",
+    "build_matrix",
+    "cohen_kappa",
+    "kappa_from_pairs",
+    "landis_koch_band",
+]
