@@ -231,6 +231,23 @@ Each CLEAR dimension carries its `status` (`measured` / `synthetic` / `placehold
 
 How much does the real (G-Eval-inspired) judge agree with a human? `aegis calibrate` scores the configured judge over a **hand-labelled set of 30 cases** (15 relevancy + 15 faithfulness, `src/aegis/evals/datasets/calibration.jsonl`) and reports **Cohen's κ** — observed agreement corrected for chance — **per criterion and global**, alongside the raw agreement `p_o` and the full confusion matrix, into a gitignored `reports/` JSON.
 
+**Result** — one run, judge frozen (`claude-opus-4-8`, temperature dropped per the Opus 4.7+ rule, `max_tokens=1024`), 0 parse failures over all 30 cases:
+
+| Scope | Cohen's κ | p_o | n | confusion (HpJp / HpJf / HfJp / HfJf) |
+|---|---|---|---|---|
+| Global | ≈0.93 | 0.97 | 30 | 13 / 0 / 1 / 16 |
+| Relevancy | ≈0.86 | 0.93 | 15 | 6 / 0 / 1 / 8 |
+| Faithfulness | 1.00 | 1.00 | 15 | 7 / 0 / 0 / 8 |
+
+Rows = human, cols = judge, positive class = `pass` (HpJp = human-pass/judge-pass, etc.).
+
+How to read this honestly — it is **not** "the judge is 93% correct":
+- **Directional, wide CI.** N=30, single annotator: one flipped label moves κ by ~0.06–0.13, so this is a directional signal, not a precise constant.
+- **Optimistic upper bound.** The calibration set was authored and labelled within the same model family as the judge, on mostly unambiguous cases. Agreement on clear cases is cheap; on independent, messy production traffic it would likely be lower. This is a ceiling, not a field estimate.
+- **The single disagreement is the finding.** Exactly one case diverges (global `HfJp = 1`, in relevancy): the judge *passed* a case the human failed. There are **zero** false-fails (`HpJf = 0` in every scope), so the judge's only observed error mode here is **over-approval** — it skews permissive, not strict. (Per-case verdicts are not yet persisted, so the specific case is not recoverable from this run; persisting them is tracked for the CI gate.)
+
+As everywhere else: the judge is a **directional** signal validated against human labels, not ground truth — what the gate ultimately enforces is regression-catching, not judge correctness.
+
 ```bash
 aegis calibrate --judge geval       # real run: needs ANTHROPIC_API_KEY + the [anthropic] extra
 aegis calibrate --judge mock        # offline wiring smoke test only (see below)
