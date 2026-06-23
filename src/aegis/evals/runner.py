@@ -12,6 +12,7 @@ reports as Accuracy.
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import Sequence
 
 from aegis.evals.clear import CaseSignal, ClearDimension, compute_clear
@@ -24,6 +25,8 @@ from aegis.evals.models import EvalCase
 from aegis.evals.report import CaseReport, LevelAggregate, Report
 from aegis.evals.result import ScoreResult
 from aegis.evals.trajectory import MetricScore, score_trajectory
+
+log = logging.getLogger("aegis.evals")
 
 _TRAJECTORY_KEYS = ("tool_correctness", "trajectory_accuracy", "progress_rate", "t_eval")
 
@@ -75,10 +78,37 @@ def _clear_dict(clear: dict[str, ClearDimension]) -> dict:
 async def _judge_case(
     case: EvalCase, judge: Judge, traj_judge: TrajectoryJudge
 ) -> tuple[ScoreResult, TrajectoryVerdict]:
-    """Run the two async judges for one case in a single event loop."""
+    """Run the two async judges for one case."""
     l2 = await score_l2(case, judge)
     verdict = await traj_judge.assess(case)
     return l2, verdict
+
+
+async def _aclose_quietly(judge: Judge | TrajectoryJudge) -> None:
+    """Close a judge, swallowing (logging) any close error so it can never mask or
+    replace a real scoring exception propagating out of the run."""
+    try:
+        await judge.aclose()
+    except Exception as exc:  # noqa: BLE001 - close errors must not break the run
+        log.warning("judge aclose failed: %s", type(exc).__name__)
+
+
+async def _score_all(
+    cases: Sequence[EvalCase], judge: Judge, traj_judge: TrajectoryJudge
+) -> list[tuple[ScoreResult, TrajectoryVerdict]]:
+    """Score every case's async parts (L2 + agent-judge) in ONE event loop, in
+    order, then close both judges on the same loop the client was created on.
+
+    A single loop is required for a real provider: its httpx client binds to one
+    event loop and cannot be reused across the per-case ``asyncio.run`` calls the
+    runner used before. MockJudge holds no client, so order/determinism are
+    unchanged. A scoring exception propagates (close runs first, in finally, but
+    never replaces it)."""
+    try:
+        return [await _judge_case(case, judge, traj_judge) for case in cases]
+    finally:
+        await _aclose_quietly(judge)
+        await _aclose_quietly(traj_judge)
 
 
 def run_suite(
@@ -97,10 +127,13 @@ def run_suite(
     metrics_per_case: list[dict[str, MetricScore]] = []
     signals: list[CaseSignal] = []
 
-    for case in cases:
+    # All async judging happens in ONE event loop (so a real provider's client is
+    # created/reused/closed on a single loop); the rest is deterministic + sync.
+    judged = asyncio.run(_score_all(cases, judge, traj_judge))
+
+    for case, (l2, verdict) in zip(cases, judged, strict=True):
         l1 = score_l1(case)
         l3 = score_l3(case)
-        l2, verdict = asyncio.run(_judge_case(case, judge, traj_judge))
         metrics = score_trajectory(case)
         metrics_per_case.append(metrics)
 

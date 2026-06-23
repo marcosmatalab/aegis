@@ -34,10 +34,14 @@ async def score_l2(case: EvalCase, judge: Judge) -> ScoreResult:
         verdict = await judge.score(_RELEVANCY, output, reference=case.reference_answer)
         subs.append(("relevancy", verdict.score))
         breakdown["relevancy"] = verdict.score
+        if verdict.parse_failed:  # surface a judge parse failure (auditable in reports/)
+            breakdown["relevancy_parse_failed"] = True
     if case.context:
         verdict = await judge.score(_FAITHFULNESS, output, context=case.context)
         subs.append(("faithfulness", verdict.score))
         breakdown["faithfulness"] = verdict.score
+        if verdict.parse_failed:
+            breakdown["faithfulness_parse_failed"] = True
 
     if not subs:
         return ScoreResult(
