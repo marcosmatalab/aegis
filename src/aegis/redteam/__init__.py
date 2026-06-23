@@ -12,14 +12,20 @@ from aegis.redteam.dataset import DEFAULT_ATTACKS_PATH, AttackDatasetError, load
 from aegis.redteam.findings import RedteamFinding, redteam_findings
 from aegis.redteam.models import AttackCase
 from aegis.redteam.outcome import AttackResult, classify_result
+from aegis.redteam.report import RedTeamReport, build_report
+from aegis.redteam.runner import build_redteam_settings, run_redteam
 
 __all__ = [
     "DEFAULT_ATTACKS_PATH",
     "AttackCase",
     "AttackDatasetError",
     "AttackResult",
+    "RedTeamReport",
     "RedteamFinding",
+    "build_redteam_settings",
+    "build_report",
     "classify_result",
     "load_attacks",
     "redteam_findings",
+    "run_redteam",
 ]
