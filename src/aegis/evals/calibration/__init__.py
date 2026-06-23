@@ -23,16 +23,24 @@ from aegis.evals.calibration.kappa import (
     landis_koch_band,
 )
 from aegis.evals.calibration.models import CalibrationCase
+from aegis.evals.calibration.report import (
+    CalibrationReport,
+    KappaSection,
+    compute_calibration,
+)
 
 __all__ = [
     "DEFAULT_CALIBRATION_PATH",
     "CalibrationCase",
     "CalibrationDatasetError",
+    "CalibrationReport",
     "ConfusionMatrix",
     "KappaResult",
+    "KappaSection",
     "binarize",
     "build_matrix",
     "cohen_kappa",
+    "compute_calibration",
     "kappa_from_pairs",
     "landis_koch_band",
     "load_calibration",
