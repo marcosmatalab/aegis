@@ -37,15 +37,20 @@ _MOCK_CAVEAT = (
 _GOLDEN_CAVEAT = "scored over the committed golden set, not the deployment data distribution"
 
 
+def _is_num(x: object) -> bool:
+    return isinstance(x, (int, float)) and not isinstance(x, bool)
+
+
 def _fmt(x: object) -> str:
-    return f"{x:.3f}" if isinstance(x, (int, float)) and not isinstance(x, bool) else "n/a"
+    return f"{x:.3f}" if _is_num(x) else "n/a"
 
 
-def _levels_str(levels: dict) -> str:
+def _levels_str(levels: object) -> str:
+    levels = levels if isinstance(levels, dict) else {}
     parts = []
     for lvl in ("L1", "L2", "L3"):
         d = levels.get(lvl)
-        if d:
+        if isinstance(d, dict):
             parts.append(f"{lvl} {d.get('passed', '?')}/{d.get('scored', '?')}")
     return ", ".join(parts)
 
@@ -56,16 +61,16 @@ def _derive_eval(aspect: str, report: dict | None, judge_is_mock_caveat: str) ->
         return ("not_covered", "—", [], "no eval report found (run: aegis eval run)", "")
     judge = report.get("judge", "")
     is_mock = judge == "mock"
-    clear = report.get("clear", {})
+    clear = report.get("clear") or {}
     if aspect == "accuracy":
-        acc = clear.get("accuracy", {})
+        acc = clear.get("accuracy") or {}
         value = acc.get("value")
-        if value is None:
+        if not _is_num(value):
             return (
                 "not_covered",
                 src,
                 ["clear.accuracy"],
-                "eval report has no accuracy dimension",
+                "eval report has no usable (numeric) accuracy value",
                 "",
             )
         fields = ["clear.accuracy", "overall_score", "levels", "judge"]
@@ -78,14 +83,14 @@ def _derive_eval(aspect: str, report: dict | None, judge_is_mock_caveat: str) ->
         caveat = judge_is_mock_caveat if is_mock else _GOLDEN_CAVEAT
         return (status, src, fields, val, caveat)
     if aspect == "reliability":
-        rel = clear.get("reliability", {})
-        eff = clear.get("efficiency", {})
-        if rel.get("value") is None:
+        rel = clear.get("reliability") or {}
+        eff = clear.get("efficiency") or {}
+        if not _is_num(rel.get("value")):
             return (
                 "not_covered",
                 src,
                 ["clear.reliability"],
-                "eval report has no reliability dimension",
+                "eval report has no usable (numeric) reliability value",
                 "",
             )
         fields = ["clear.reliability", "clear.efficiency", "judge"]
@@ -102,6 +107,8 @@ def _derive_eval(aspect: str, report: dict | None, judge_is_mock_caveat: str) ->
         return (status, src, fields, val, caveat)
     # aspect == "vandv"
     fields = ["levels", "overall_score", "case_count", "suite", "judge"]
+    if not report.get("levels") and report.get("overall_score") is None:
+        return ("not_covered", src, fields, "eval report has no level results / overall score", "")
     val = (
         f"V&V via L1/L2/L3 eval over {report.get('case_count', '?')} cases; "
         f"overall={_fmt(report.get('overall_score'))}; {_levels_str(report.get('levels', {}))}; "
@@ -116,13 +123,13 @@ def _derive_redteam(aspect: str, report: dict | None) -> _Derived:
     src = "red-team report"
     if report is None:
         return ("not_covered", "—", [], "no red-team report found (run: aegis redteam run)", "")
-    overall = report.get("overall", {})
-    categories = report.get("categories", {})
-    gaps = report.get("known_gaps", [])
-    gap_ids = ", ".join(g.get("id", "?") for g in gaps[:5])
+    overall = report.get("overall") or {}
+    categories = report.get("categories") or {}
+    gaps = report.get("known_gaps") or []
+    gap_ids = ", ".join(g.get("id", "?") for g in gaps[:5] if isinstance(g, dict))
     if aspect == "robustness":
         cats = "; ".join(
-            f"{c}({d.get('owasp') or '—'})={d.get('detection_rate')}"
+            f"{c}({(d or {}).get('owasp') or '—'})={(d or {}).get('detection_rate')}"
             for c, d in sorted(categories.items())
         )
         val = (
@@ -138,7 +145,8 @@ def _derive_redteam(aspect: str, report: dict | None) -> _Derived:
     # aspect == "safety" (MEASURE 2.6) — only output toxicity + PII categories
     safety_cats = {k: v for k, v in categories.items() if k in {"output_toxicity", "pii_output"}}
     cats = (
-        "; ".join(f"{c}={d.get('detection_rate')}" for c, d in sorted(safety_cats.items())) or "n/a"
+        "; ".join(f"{c}={(d or {}).get('detection_rate')}" for c, d in sorted(safety_cats.items()))
+        or "n/a"
     )
     val = f"safety-relevant categories: {cats}; {len(gaps)} named gaps"
     caveat = (
@@ -158,7 +166,7 @@ def _derive_calibration(report: dict | None) -> _Derived:
             "no calibration report found (run: aegis calibrate --judge geval)",
             "",
         )
-    g = report.get("global", {})
+    g = report.get("global") or {}
     kappa = g.get("kappa")
     band = g.get("band")
     n_valid = g.get("n_valid")
@@ -227,7 +235,21 @@ def _derive_settings(aspect: str, settings: Settings) -> _Derived:
             "OTel tracing disabled (set AEGIS_OTEL_ENABLED=true); no request event logs",
             "",
         )
-    val = f"OTel tracing enabled (exporter={settings.otel_exporter}); per-request GenAI spans"
+    if settings.otel_exporter == "none":
+        # spans are created in-process but exported NOWHERE -> instrumentation, not a
+        # recorded/retained event log (which is what A.6.2.8 is about). Honest partial.
+        return (
+            "partial",
+            src,
+            fields,
+            "OTel enabled but exporter=none: per-request GenAI spans created in-process, "
+            "NOT exported or retained",
+            "set AEGIS_OTEL_EXPORTER=console/otlp to actually export+retain event logs",
+        )
+    val = (
+        f"OTel tracing enabled (exporter={settings.otel_exporter}); per-request GenAI spans "
+        f"exported"
+    )
     return (
         "covered",
         src,
