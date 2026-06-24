@@ -5,10 +5,12 @@ its provenance (``verified_via``), and â€” for the controls Aegis CAN evidence â
 real artifact + aspect backs it. The STATUS is never set here; the builder derives it
 from the actual artifact at generation time.
 
-Honesty: the majority of each framework is marked ``out_of_scope`` (Aegis is a gateway
-+ eval layer, not a management system). Control ids/titles are cited with their source;
-ISO/IEC 42001 is paywalled, so its Annex A titles are paraphrased from secondary
-listings (noted in ``verified_via``), never quoted as if from the standard.
+Honesty: Aegis maps only a few technical controls; the majority of each framework's
+underlying clauses are ``out_of_scope`` (bundled into one aggregate row per framework,
+so the control counts are not a coverage percentage). Control ids/titles are cited with
+their source; NIST ids are verbatim but titles are abbreviated; ISO/IEC 42001 is
+paywalled, so its Annex A ids/titles are paraphrased from secondary listings (noted in
+``verified_via``), never quoted as if from the standard.
 """
 
 from __future__ import annotations
@@ -27,7 +29,10 @@ ASPECTS = frozenset(
     {"accuracy", "reliability", "vandv", "robustness", "safety", "validity", "posture", "logs"}
 )
 
-_NIST_VIA = "NIST AI RMF 1.0 (AI 100-1, Jan 2023), MEASURE function (verbatim from the Core)"
+_NIST_VIA = (
+    "NIST AI RMF 1.0 (AI 100-1, Jan 2023), MEASURE function "
+    "(id verbatim; title abbreviated/paraphrased from the Core)"
+)
 _EU_VIA = "Reg. (EU) 2024/1689 Article 15; paragraph numbering via artificialintelligenceact.eu"
 _ISO_VIA = (
     "ISO/IEC 42001:2023 Annex A (id+title paraphrased from a public listing; standard is paywalled)"
