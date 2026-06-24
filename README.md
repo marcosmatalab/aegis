@@ -13,7 +13,7 @@ OpenTelemetry tracing, governance evidence, and a CI gate that blocks regression
 
 </div>
 
-<!-- ![Aegis 2-minute demo](docs/demo.gif) -->
+![Aegis 2-minute demo](docs/demo.gif)
 
 ## At a glance
 
@@ -24,7 +24,7 @@ OpenTelemetry tracing, governance evidence, and a CI gate that blocks regression
 - **Two CI regression gates** — `aegis eval gate` + `aegis redteam gate`, both deterministic and fully offline.
 - **Governance (F8)** — evidence mapped to **EU AI Act Art.15 / NIST AI RMF / ISO 42001**, derived from real artifacts — partial technical evidence, not a compliance certificate.
 
-> **Status — pre-alpha, a portfolio project.** F0–F8 are complete and tested offline, and F9's dashboard ships; the one remaining slice is F9's 2-minute **demo GIF**. The keyless mock provider/judge stay the default so everything runs with no key. Full per-phase detail in the [Roadmap](#roadmap-phased).
+> **Status — pre-alpha, a portfolio project.** F0–F9 are complete and tested offline. The keyless mock provider/judge stay the default so everything runs with no key. Full per-phase detail in the [Roadmap](#roadmap-phased).
 
 ## Contents
 
@@ -94,10 +94,6 @@ The differentiator is **evaluation depth**: not just scoring the final output, b
 
 One script — [`scripts/demo.sh`](scripts/demo.sh) — drives the whole system end to end over the keyless deterministic mock and finishes on the live dashboard:
 
-<!-- GIF pending recording — see DEMO.md. Un-comment when docs/demo.gif exists (no broken image until then):
-![Aegis end-to-end demo](docs/demo.gif)
--->
-
 1. **Gateway + `/health`** — the OpenAI-compatible gateway comes up.
 2. **Drop-in call** — point any OpenAI client's `base_url` here; `mock/echo-1` answers.
 3. **PII redacted** — email/phone become `<EMAIL_ADDRESS>`/`<PHONE_NUMBER>` *before* the provider sees them.
@@ -120,7 +116,7 @@ The first run installs the dashboard's deps with `npm ci` (a minute the first ti
 
 ## Quickstart
 
-> The `/health` probe and the `/v1/chat/completions` proxy run today — on the keyless deterministic mock by default, or against **real Claude** (see [Real provider](#real-provider--anthropic--claude)). Evals run today (`aegis eval run`, `aegis calibrate`), the **CI gate** blocks both eval and red-team regressions (`aegis eval gate`, `aegis redteam gate`), an **automated red-team** scores the guardrails (`aegis redteam run`), and the read-only **dashboard** renders the real reports (`dashboard/`); only the 2-min demo GIF is still on the roadmap.
+> The `/health` probe and the `/v1/chat/completions` proxy run today — on the keyless deterministic mock by default, or against **real Claude** (see [Real provider](#real-provider--anthropic--claude)). Evals run today (`aegis eval run`, `aegis calibrate`), the **CI gate** blocks both eval and red-team regressions (`aegis eval gate`, `aegis redteam gate`), an **automated red-team** scores the guardrails (`aegis redteam run`), and the read-only **dashboard** renders the real reports (`dashboard/`) — see the 2-minute [demo](#demo).
 
 ```bash
 # 1. Clone and enter
@@ -167,7 +163,7 @@ pytest
 | **F6** | Automated red-team: committed attack catalog vs the F2 guardrails, per-OWASP-category detection rate (`aegis redteam run`) | ✅ done |
 | **F7** | CI gate: run **evals and the red-team catalog** per PR and **block merge** on regression vs committed baselines (`aegis eval gate`, `aegis redteam gate`) | ✅ done |
 | **F8** | Governance evidence: map real eval/red-team/calibration artifacts + config to EU AI Act Art.15 / NIST MEASURE / ISO 42001 controls → `aegis evidence` PDF (partial technical evidence) | ✅ done |
-| **F9** | Read-only dashboard (Next.js + Recharts) over the real reports — scorecards, trends, caveats verbatim (`dashboard/`); end-to-end demo script (`scripts/demo.sh`, [DEMO.md](DEMO.md)) — **demo script complete; GIF recording pending** | 🟡 partial |
+| **F9** | Read-only dashboard (Next.js + Recharts) over the real reports — scorecards, trends, caveats verbatim (`dashboard/`); 2-minute end-to-end demo (`scripts/demo.sh` → `docs/demo.gif`, [DEMO.md](DEMO.md)) | ✅ done |
 
 ---
 
@@ -443,7 +439,7 @@ aegis evidence --format json --output reports/evidence.json   # JSON sidecar; ne
 
 ## Dashboard (F9)
 
-A **read-only** Next.js + Recharts dashboard (in [`dashboard/`](dashboard/)) that visualizes the **real reports** Aegis already writes — `eval-*.json`, `redteam-*.json`, `calibration.json`, and the F8 `evidence-*.json`. It is part 1 of F9; the 2-minute demo GIF is part 2.
+A **read-only** Next.js + Recharts dashboard (in [`dashboard/`](dashboard/)) that visualizes the **real reports** Aegis already writes — `eval-*.json`, `redteam-*.json`, `calibration.json`, and the F8 `evidence-*.json`. It is part 1 of F9; the 2-minute end-to-end [demo](#demo) is part 2 — both shipped.
 
 > **Same crux as F8 — never rosier than the reports.** Every panel is derived from a report file read at request time (server-side, read-only); a missing report renders as an explicit **"Not available"** with the command to produce it, never a zero/blank/faked chart. Statuses are shown **verbatim** — CLEAR (`measured`/`estimated`/`synthetic`/`placeholder`) and evidence (`covered`/`partial`/`not_covered`/`out_of_scope`) — and only `measured`/`covered` get a success colour (enforced by a tested `statusTone`). Red-team **named gaps**, the κ caveats (small N, directional, undefined-when-degenerate), and the evidence partial-coverage note are surfaced, not buried. A trend line is drawn only for **≥2** real eval runs (else an honest absent note; no interpolation).
 
