@@ -1,21 +1,22 @@
+"use client";
+
 import { fmtNum } from "@/lib/format";
+import { useLocale } from "@/lib/i18n/LocaleProvider";
 import type { ClearDimView } from "@/lib/types";
 import { Card } from "./Card";
 import { StatusBadge } from "./StatusBadge";
 
-const CAVEAT =
-  "Cost/Latency are only real with OpenTelemetry telemetry (F1.x); on the offline mock suite they stay placeholder/synthetic — shown verbatim, never as a measured number.";
-
 export function ClearPanel({ dims }: { dims: ClearDimView[] }) {
+  const { t } = useLocale();
   return (
-    <Card title="CLEAR" caveat={CAVEAT}>
+    <Card title={t("clear.title")} caveat={t("clear.caveat")}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
         <thead>
           <tr style={{ textAlign: "left", color: "#9aa0aa" }}>
-            <th style={{ padding: "2px 8px 2px 0" }}>Dimension</th>
-            <th style={{ padding: "2px 8px" }}>Status</th>
-            <th style={{ padding: "2px 8px" }}>Value</th>
-            <th style={{ padding: "2px 0" }}>Basis</th>
+            <th style={{ padding: "2px 8px 2px 0" }}>{t("clear.colDimension")}</th>
+            <th style={{ padding: "2px 8px" }}>{t("clear.colStatus")}</th>
+            <th style={{ padding: "2px 8px" }}>{t("clear.colValue")}</th>
+            <th style={{ padding: "2px 0" }}>{t("clear.colBasis")}</th>
           </tr>
         </thead>
         <tbody>
@@ -26,9 +27,9 @@ export function ClearPanel({ dims }: { dims: ClearDimView[] }) {
                 <StatusBadge status={d.status} />
               </td>
               {/* A non-measured value carries its provenance on the number itself
-                  (mirrors the CLI's `0.012usd(estimated)`), and is muted — so an
-                  estimated/synthetic/placeholder number never reads as a confident
-                  measurement, not even before the eye reaches the badge. */}
+                  (the VERBATIM status, e.g. `(estimated)`, mirroring the CLI), and is
+                  muted — so it never reads as a confident measurement. The status enum
+                  is never translated. */}
               <td
                 style={{
                   padding: "4px 8px",
@@ -42,7 +43,7 @@ export function ClearPanel({ dims }: { dims: ClearDimView[] }) {
                     {d.status === "measured" ? "" : ` (${d.status})`}
                   </>
                 ) : (
-                  "n/a"
+                  t("clear.na")
                 )}
               </td>
               <td style={{ padding: "4px 0", color: "#9aa0aa", fontSize: 12.5 }}>

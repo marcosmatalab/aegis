@@ -1,23 +1,29 @@
+"use client";
+
 import { fmtInt, fmtNum, fmtUnixUtc } from "@/lib/format";
+import { useLocale } from "@/lib/i18n/LocaleProvider";
 import type { EvalView } from "@/lib/types";
 import { Card } from "./Card";
 
-const MOCK_CAVEAT =
-  "judge=mock — a deterministic wiring smoke test (L2 by the heuristic judge), not a real-judge evaluation";
-
 export function EvalScorecard({ view }: { view: EvalView }) {
+  const { t } = useLocale();
   return (
     <Card
-      title="Evaluation (L1/L2/L3)"
-      subtitle={`suite=${view.suite ?? "—"} · judge=${view.judge ?? "—"} · ${fmtInt(view.caseCount)} cases · ${fmtUnixUtc(view.created)}`}
-      caveat={view.judgeIsMock ? MOCK_CAVEAT : undefined}
+      title={t("eval.title")}
+      subtitle={t("eval.subtitle", {
+        suite: view.suite ?? "—",
+        judge: view.judge ?? "—",
+        n: fmtInt(view.caseCount),
+        date: fmtUnixUtc(view.created),
+      })}
+      caveat={view.judgeIsMock ? t("eval.mockCaveat") : undefined}
     >
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
         <thead>
           <tr style={{ textAlign: "left", color: "#9aa0aa" }}>
-            <th style={{ padding: "2px 0" }}>Level</th>
-            <th>Mean</th>
-            <th>Passed</th>
+            <th style={{ padding: "2px 0" }}>{t("eval.colLevel")}</th>
+            <th>{t("eval.colMean")}</th>
+            <th>{t("eval.colPassed")}</th>
           </tr>
         </thead>
         <tbody>
@@ -33,12 +39,12 @@ export function EvalScorecard({ view }: { view: EvalView }) {
         </tbody>
       </table>
       <p style={{ margin: "0.75rem 0 0", fontSize: 15 }}>
-        overall = <strong>{fmtNum(view.overallScore)}</strong>
+        {t("eval.overallLabel")} = <strong>{fmtNum(view.overallScore)}</strong>
       </p>
       {view.trajectory.length > 0 ? (
         <p style={{ margin: "0.5rem 0 0", color: "#9aa0aa", fontSize: 12.5 }}>
-          trajectory:{" "}
-          {view.trajectory.map((t) => `${t.metric}=${fmtNum(t.meanScore)}`).join("  ·  ")}
+          {t("eval.trajectoryLabel")}:{" "}
+          {view.trajectory.map((tr) => `${tr.metric}=${fmtNum(tr.meanScore)}`).join("  ·  ")}
         </p>
       ) : null}
     </Card>

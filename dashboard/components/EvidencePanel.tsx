@@ -1,14 +1,20 @@
+"use client";
+
+import { useLocale } from "@/lib/i18n/LocaleProvider";
 import type { EvidenceView } from "@/lib/types";
 import { Card } from "./Card";
 import { StatusBadge } from "./StatusBadge";
 
 export function EvidencePanel({ view }: { view: EvidenceView }) {
+  const { t } = useLocale();
   const c = view.summaryCounts;
   return (
     <Card
-      title="Governance evidence (F8)"
+      title={t("evidence.title")}
+      // The summary uses the VERBATIM status enum names (covered/partial/not_covered/
+      // out_of_scope) as count labels — never translated, to match the StatusBadge enums.
       subtitle={`covered=${c.covered} · partial=${c.partial} · not_covered=${c.not_covered} · out_of_scope=${c.out_of_scope}`}
-      caveat="Counts are over the small set of mapped technical controls — NOT a coverage percentage; most framework clauses are out of scope."
+      caveat={t("evidence.partialCoverageNote")}
     >
       {view.disclaimer ? (
         <p style={{ margin: "0 0 0.75rem", color: "#9aa0aa", fontSize: 12.5 }}>{view.disclaimer}</p>
@@ -16,9 +22,9 @@ export function EvidencePanel({ view }: { view: EvidenceView }) {
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13.5 }}>
         <thead>
           <tr style={{ textAlign: "left", color: "#9aa0aa" }}>
-            <th style={{ padding: "2px 8px 2px 0" }}>Control</th>
-            <th style={{ padding: "2px 8px" }}>Status</th>
-            <th style={{ padding: "2px 0" }}>Evidence</th>
+            <th style={{ padding: "2px 8px 2px 0" }}>{t("evidence.colControl")}</th>
+            <th style={{ padding: "2px 8px" }}>{t("evidence.colStatus")}</th>
+            <th style={{ padding: "2px 0" }}>{t("evidence.colEvidence")}</th>
           </tr>
         </thead>
         <tbody>
