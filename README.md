@@ -1,8 +1,36 @@
+<div align="center">
+
 # 🛡️ Aegis
 
-> An OpenAI-compatible proxy that sits in front of any model and adds input/output guardrails, three-level trajectory evals with a human-calibrated LLM judge, OWASP-mapped red-team coverage of those guardrails, OpenTelemetry tracing of every request, a CI gate that blocks merges on eval and red-team regression, governance evidence mapping those real artifacts to EU AI Act / NIST / ISO 42001 controls, and a read-only dashboard over those real reports. A 2-minute demo GIF is on the roadmap.
+**The control layer for any LLM or agent** — a drop-in OpenAI-compatible gateway that adds
+guardrails, 3-level trajectory evals with a human-calibrated judge, OWASP red-team coverage,
+OpenTelemetry tracing, governance evidence, and a CI gate that blocks regressions.
 
-> **⚠️ Status: under active construction (pre-alpha).** Working today: the OpenAI-compatible `/v1/chat/completions` proxy (F1) with SSE streaming; input/output **guardrails** (F2); a 3-level **eval engine** (F3) with a golden anchor set and `aegis eval run`; **trajectory metrics + CLEAR** (F4); **judge calibration** via Cohen's κ (F5, `aegis calibrate`); an **automated red-team** mapped to OWASP that scores the guardrails (F6, `aegis redteam run`); and a **CI gate** that blocks merges on eval **and red-team** regression (F7, `aegis eval gate` + `aegis redteam gate`); and opt-in **OpenTelemetry tracing** of each request (F1.x, GenAI semconv) — metadata only, no message content — that turns CLEAR Latency into a real measurement and Cost into a token×price estimate; and **governance evidence** (F8, `aegis evidence`) that maps the real eval/red-team/calibration artifacts + effective config to EU AI Act Art.15 / NIST MEASURE / ISO 42001 controls — partial technical evidence, not a compliance certificate; and a read-only **dashboard** (F9, `dashboard/`) that renders those real reports with statuses/caveats verbatim (absent reports marked, never faked). The **real Anthropic (Claude) provider** and a **real G-Eval-inspired judge** are wired behind the same ABCs; a deterministic, keyless **mock provider / mock judge** stays the default so the full suite and CI run offline with no key. On the roadmap: the **2-min demo** (F9 part 2 — the GIF recording).
+[![CI](https://github.com/marcosmatalab/aegis/actions/workflows/ci.yml/badge.svg)](https://github.com/marcosmatalab/aegis/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)
+![Offline & keyless](https://img.shields.io/badge/tests-offline%20%26%20keyless-success.svg)
+
+</div>
+
+<!-- ![Aegis 2-minute demo](docs/demo.gif) -->
+
+## At a glance
+
+- **Offline by default** — 900+ tests, deterministic keyless **mock provider + mock judge**; no API key, no network in CI. Real **Claude** and a real **G-Eval-inspired judge** drop in behind the same ABCs.
+- **Guardrails (F2)** — prompt-injection (OWASP LLM01), PII redaction, allow/deny policy, toxicity — **off by default**, a byte-identical passthrough when off.
+- **Evals (F3–F5)** — L1/L2/L3 + trajectory metrics + CLEAR; judge agreement with human labels **Cohen's κ ≈ 0.93** (directional).
+- **Red-team (F6–F7)** — committed **OWASP-LLM-2025** attack catalog; per-category detection with **named gaps surfaced, not hidden** (coverage-against-catalog, not a security score).
+- **Two CI regression gates** — `aegis eval gate` + `aegis redteam gate`, both deterministic and fully offline.
+- **Governance (F8)** — evidence mapped to **EU AI Act Art.15 / NIST AI RMF / ISO 42001**, derived from real artifacts — partial technical evidence, not a compliance certificate.
+
+> **Status — pre-alpha, a portfolio project.** F0–F8 are complete and tested offline, and F9's dashboard ships; the one remaining slice is F9's 2-minute **demo GIF**. The keyless mock provider/judge stay the default so everything runs with no key. Full per-phase detail in the [Roadmap](#roadmap-phased).
+
+## Contents
+
+[Why](#why) · [Architecture](#architecture) · [Demo](#demo) · [Quickstart](#quickstart) · [Roadmap](#roadmap-phased)
+**Capabilities:** [Guardrails](#guardrails-f2) · [Real provider](#real-provider--anthropic--claude) · [Evals](#evals-f3) · [Trajectory / CLEAR](#trajectory-metrics-clear--agent-as-a-judge-f4) · [Judge calibration](#judge-calibration-f5) · [Red-team](#automated-red-team-f6) · [CI gate](#ci-regression-gate-f7--evals--red-team) · [Observability](#observability--opentelemetry-tracing-f1x) · [Governance](#governance-evidence-f8) · [Dashboard](#dashboard-f9)
+[Tech stack](#tech-stack) · [Honesty guardrails](#honesty-guardrails) · [License](#license)
 
 ---
 
@@ -435,14 +463,15 @@ cd dashboard && npm ci && npm run dev   # http://localhost:3000 — reads ../rep
 | Layer | Technology |
 |-------|------------|
 | API gateway | FastAPI + uvicorn (OpenAI-compatible endpoint) |
-| Providers | `anthropic`, `openai`, `google-genai` (multi-provider) |
-| Guardrails | Presidio (PII), injection/output scanners, optional safety classifier |
-| Evals | G-Eval-inspired CoT judge (Anthropic), trajectory metrics, Agent-as-a-Judge |
-| Red-team | Synthetic attacks mapped to OWASP LLM + OWASP Agentic (ASI) |
-| Observability | OpenTelemetry (GenAI semconv) → Langfuse |
-| Persistence | PostgreSQL (runs, verdicts, cases) |
-| Dashboard | Next.js + Tailwind + Recharts |
-| CI | GitHub Actions (eval gate, report artifact, status check) |
+| Real provider | Anthropic SDK (lazy, optional `[anthropic]` extra); the `Provider` ABC is multi-provider-ready — OpenAI/Gemini are interface seams, not yet implemented |
+| Guardrails | deterministic regex/lexicon scanners (default, keyless); Microsoft **Presidio** optional for richer PII (`[guardrails]`) |
+| Evals & judge | G-Eval-inspired CoT judge (Anthropic), 3-level + trajectory metrics, Agent-as-a-Judge (stub backend) |
+| Red-team | committed synthetic-attack catalog mapped to OWASP LLM 2025 (`redteam run` + `redteam gate`) |
+| Observability | OpenTelemetry GenAI semconv (~v1.38); OTLP → Langfuse optional (`[otel]`) |
+| Persistence | JSON reports on disk (`reports/`, gitignored) — no database |
+| Dashboard | Next.js + React + Recharts (read-only, server-read) |
+| Governance | `fpdf2` evidence PDF + JSON sidecar (optional `[reporting]`) |
+| CI | GitHub Actions — `eval-gate` + `redteam-gate` regression gates, fully offline |
 
 ---
 
