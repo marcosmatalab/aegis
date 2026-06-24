@@ -12,6 +12,7 @@ checks here too (the fresh hermetic run == the committed contract).
 from __future__ import annotations
 
 import copy
+import json
 
 import pytest
 
@@ -152,6 +153,7 @@ def test_block_downgraded_to_redact_is_a_regression():
     findings = compare_redteam_to_baseline(_baseline(), cur)
     assert _kinds(findings) == {"detection_downgraded"}
     assert "inj-block prompt_injection" in findings[0].scope
+    assert findings[0].kind in REGRESSION_KINDS  # blocks the merge (exit 1)
 
 
 def test_redact_upgraded_to_block_is_an_improvement():
@@ -206,6 +208,7 @@ def test_diffuse_category_drop_with_no_per_attack_cause_still_fires():
     findings = compare_redteam_to_baseline(_baseline(), cur)
     assert _kinds(findings) == {"category_detection_drop"}
     assert "pii_input" in findings[0].scope
+    assert findings[0].kind in REGRESSION_KINDS  # blocks the merge (exit 1)
 
 
 def test_tolerance_band_absorbs_a_tiny_drop():
@@ -262,6 +265,54 @@ def test_load_missing_baseline_raises(tmp_path):
         load_redteam_baseline(tmp_path / "nope.json")
 
 
+def test_baseline_detection_rate_lie_raises():
+    # the baseline rate is the trusted FLOOR _category_regressions compares against, so a
+    # fabricated (deflated/inflated) rate must be rejected, not trusted.
+    bad = _baseline()
+    bad["categories"]["pii_input"]["detection_rate"] = 0.1  # caught/total actually = 1.0
+    with pytest.raises(RedteamBaselineError, match="detection_rate != caught/total"):
+        compare_redteam_to_baseline(bad, _baseline())
+
+
+def test_phantom_category_in_baseline_raises():
+    bad = _baseline()
+    bad["categories"]["ghost"] = {
+        "total": 0, "blocked": 0, "redacted": 0, "passed": 0, "caught": 0, "detection_rate": 0.0,
+    }  # fmt: skip
+    with pytest.raises(RedteamBaselineError, match="category set"):
+        compare_redteam_to_baseline(bad, _baseline())
+
+
+def test_current_missing_suite_is_clean_exit_2_not_keyerror():
+    # current["suite"] is read with .get, so a malformed current is the typed exit-2 path
+    # rather than a raw KeyError the CLI would not catch.
+    cur = copy.deepcopy(_baseline())
+    del cur["suite"]
+    with pytest.raises(RedteamBaselineError, match="suite"):
+        compare_redteam_to_baseline(_baseline(), cur)
+
+
+def test_malformed_current_structure_raises():
+    # the PURE comparator validates current's STRUCTURE too (not its rate): a hand-built
+    # current with a redacted row carrying a code is the clean exit-2 path.
+    cur = copy.deepcopy(_baseline())
+    cur["attacks"]["pii-red"]["code"] = "pii_leak"  # redacted must carry code=None
+    with pytest.raises(RedteamBaselineError, match="iff outcome=='blocked'"):
+        compare_redteam_to_baseline(_baseline(), cur)
+
+
+def test_regression_kinds_lock():
+    # a one-token edit to REGRESSION_KINDS would silently demote a HARD rule to an
+    # informational note (exit 0); pin the exact set so any membership change trips a test.
+    expected = {
+        "attack_now_passing",
+        "detection_downgraded",
+        "category_detection_drop",
+        "category_dropped",
+    }
+    assert set(REGRESSION_KINDS) == expected
+
+
 # --- the committed red-team baseline (the gate contract) -------------------- #
 def _fresh_redteam_baseline() -> dict:
     results = scan(load_attacks())
@@ -302,6 +353,35 @@ def test_committed_baseline_is_byte_idempotent(tmp_path):
     write_baseline(_fresh_redteam_baseline(), a)
     write_baseline(_fresh_redteam_baseline(), b)
     assert a.read_text(encoding="utf-8") == b.read_text(encoding="utf-8")
+
+
+def test_committed_baseline_file_is_canonical():
+    # the committed file on disk must be the exact canonical write (sorted keys, indent 2,
+    # trailing newline) a fresh --update-baseline produces, so a semantics-preserving
+    # hand-edit (reordered keys / reflow) can't cause a spurious future diff. Newlines are
+    # normalized so the byte-lock survives git's eol handling across platforms.
+    committed = redteam_baseline_path("redteam").read_text(encoding="utf-8").replace("\r\n", "\n")
+    canonical = (
+        json.dumps(_fresh_redteam_baseline(), indent=2, ensure_ascii=False, sort_keys=True) + "\n"
+    )
+    assert committed == canonical
+
+
+def test_reclassify_as_gap_through_the_reducer_still_flags():
+    # end-to-end via the REAL reducer: an attack the catalog now marks is_known_gap=True
+    # (observed passing) but that the baseline recorded as caught -> attack_now_passing
+    # still fires, and the reduced row never carries is_known_gap (the label can't leak).
+    case = AttackCase(
+        id="a-gap", vector="input", category="prompt_injection", payload="x",
+        expected_outcome="passed", is_known_gap=True, gap_reason="now a documented gap",
+    )  # fmt: skip
+    now = [AttackResult(case, "passed", None)]
+    was = [AttackResult(case, "blocked", "prompt_injection")]
+    current = to_redteam_baseline(build_report(now), now)
+    baseline = to_redteam_baseline(build_report(was), was)
+    findings = compare_redteam_to_baseline(baseline, current)
+    assert [f.kind for f in findings] == ["attack_now_passing"]
+    assert "is_known_gap" not in current["attacks"]["a-gap"]  # catalog label never leaks in
 
 
 def test_baseline_is_hermetic_under_hostile_env(monkeypatch):

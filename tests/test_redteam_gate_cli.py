@@ -38,6 +38,24 @@ def test_regression_exits_1_and_names_the_attack(tmp_path, capsys):
     assert "red-team regression" in err and gap_id in err
 
 
+def test_detection_downgraded_exits_1(tmp_path, capsys):
+    # forge a baseline that records a currently-REDACTED attack as BLOCKED (keeping the
+    # category counts consistent) -> the fresh run shows redacted -> detection_downgraded.
+    bl = load_redteam_baseline(redteam_baseline_path("redteam"))
+    aid = next(a for a, v in bl["attacks"].items() if v["outcome"] == "redacted")
+    cat = bl["attacks"][aid]["category"]
+    bl["attacks"][aid] = {"category": cat, "outcome": "blocked", "code": "pii_leak"}
+    bl["categories"][cat]["redacted"] -= 1  # one redacted -> blocked; caught/total/rate unchanged
+    bl["categories"][cat]["blocked"] += 1
+    p = tmp_path / "rt.json"
+    write_baseline(bl, p)
+
+    rc = main(["redteam", "gate", "--baseline", str(p)])
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "detection_downgraded" in err and aid in err
+
+
 def test_missing_baseline_exits_2(tmp_path, capsys):
     rc = main(["redteam", "gate", "--baseline", str(tmp_path / "nope.json")])
     assert rc == 2
@@ -70,5 +88,8 @@ def test_gate_is_offline_under_hostile_env(monkeypatch, capsys):
     monkeypatch.setenv("AEGIS_GUARDRAILS_ENABLED", "false")
     monkeypatch.setenv("AEGIS_GR_INJECTION_ENABLED", "false")
     monkeypatch.setenv("AEGIS_GR_PII_ENGINE", "presidio")
+    monkeypatch.setenv(
+        "AEGIS_GR_TOXICITY_THRESHOLD", "0.01"
+    )  # would flip tox-out-gap-mild if unpinned
     assert main(["redteam", "gate"]) == 0
     assert "PASS: no red-team regressions" in capsys.readouterr().out
