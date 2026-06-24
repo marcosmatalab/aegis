@@ -2,7 +2,7 @@
 
 A **read-only** Next.js + Recharts dashboard that visualizes the **real reports** Aegis
 already writes — `reports/eval-*.json`, `redteam-*.json`, `calibration.json`, and the
-F8 `evidence-*.json`. It is part 1 of F9; the 2-minute demo GIF is part 2.
+F8 `evidence-*.json`. It is part 1 of F9; the 2-minute end-to-end demo is part 2 — both shipped.
 
 - **Real data only.** Every panel is derived from a report file read at request time. A
   missing report renders as an explicit "Not available" (with the command to produce
