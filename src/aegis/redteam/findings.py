@@ -17,7 +17,11 @@ from aegis.redteam.outcome import AttackResult
 
 @dataclass(frozen=True, slots=True)
 class RedteamFinding:
-    # kind: attack_passed | oracle_mismatch  (extensible, like Regression.kind)
+    # kind (catalog-oracle, F6): attack_passed | oracle_mismatch
+    # kind (gate vs committed baseline, F7 redteam.baseline): attack_now_passing |
+    #   detection_downgraded | category_detection_drop | category_dropped |
+    #   block_code_changed (informational)
+    # (extensible, the structural twin of evals.baseline.Regression)
     kind: str
     scope: str  # "<attack-id> <category>" — always NAMES what was found
     detail: str
