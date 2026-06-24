@@ -4,7 +4,10 @@ import { EvalScorecard } from "@/components/EvalScorecard";
 import { EvidencePanel } from "@/components/EvidencePanel";
 import { KappaPanel } from "@/components/KappaPanel";
 import { RedteamPanel } from "@/components/RedteamPanel";
+import { RunsList } from "@/components/RunsList";
+import { TrendsChart } from "@/components/TrendsChart";
 import { loadDashboard } from "@/lib/reports";
+import { evalTrend } from "@/lib/trend";
 
 // Read the reports directory at REQUEST time (never bake a build-time snapshot), so a
 // fresh `aegis eval/redteam/evidence` run shows up on refresh.
@@ -43,6 +46,8 @@ export default async function Page() {
         />
       )}
 
+      <TrendsChart points={evalTrend(data.evalRuns)} />
+
       {data.redteam ? (
         <RedteamPanel view={data.redteam} />
       ) : (
@@ -72,6 +77,8 @@ export default async function Page() {
           hint="run: aegis evidence"
         />
       )}
+
+      <RunsList data={data} />
     </main>
   );
 }
