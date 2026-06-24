@@ -6,10 +6,17 @@ HONESTY (kept explicit in the report via each dimension's ``status``):
 * **Accuracy / Efficiency / Reliability** are ``measured`` — computed
   deterministically from data Aegis already has (eval scores and the recorded
   trajectory).
-* **Cost / Latency** are ``synthetic`` when a case supplies ``trace`` telemetry
-  (hand-authored numbers, not real measurements) and ``placeholder`` when it does
-  not. Real cost/latency need live providers + OpenTelemetry, which land in F1.x;
-  until then these dimensions are NOT trustworthy signals.
+* **Latency** is ``measured`` when it comes from a real request span (F1.x OTel
+  bridge): the span's wall-clock duration is a genuine measurement.
+* **Cost** is ``estimated`` when it comes from real measured tokens multiplied by a
+  STATIC list price — the tokens are measured, the price is an assumed constant, so
+  the dollar figure is an estimate, NOT a measurement (a deliberately distinct
+  status from ``measured``).
+* **Cost / Latency** are ``synthetic`` when the value is a hand-authored ``trace``
+  number, and ``placeholder`` when there is no telemetry at all. The committed mock
+  suite has no real telemetry, so it stays placeholder/synthetic — never measured/
+  estimated. Provenance is HOMOGENEOUS per dimension: a single hand-authored value
+  among real ones downgrades the whole dimension to ``synthetic``.
 
 Each dimension is a normalized ``score`` in 0..1 where that is meaningful, plus a
 raw ``value`` + ``unit``. Cost/Latency only get a normalized score when an
@@ -21,7 +28,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-Status = Literal["measured", "synthetic", "placeholder"]
+Status = Literal["measured", "estimated", "synthetic", "placeholder"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,6 +43,11 @@ class CaseSignal:
     actual_calls: int  # total tool calls produced
     latency_ms: float | None
     cost_usd: float | None
+    # Per-metric provenance (appended with defaults so positional construction is
+    # unchanged). latency: "measured" (real span) | "synthetic"; cost: "estimated"
+    # (real tokens x static price) | "synthetic". Threaded from CaseTrace.
+    latency_source: str = "synthetic"
+    cost_source: str = "synthetic"
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,12 +128,22 @@ def _reliability(signals: list[CaseSignal]) -> ClearDimension:
 def _telemetry_dim(
     name: str,
     unit: str,
-    values: list[float],
+    pairs: list[tuple[float, str]],
     total: int,
     budget: float | None,
     real_source: str,
+    real_status: str,
 ) -> ClearDimension:
-    if not values:
+    """Build a Cost/Latency dimension from ``(value, source)`` pairs of traced cases.
+
+    ``real_status`` is the dimension's real-telemetry status ("measured" for latency,
+    "estimated" for cost). The dimension reaches that status ONLY when EVERY
+    contributing value is from real telemetry; any hand-authored value among them
+    honestly downgrades the whole dimension to "synthetic" — one real case cannot
+    launder a synthetic suite. The real/traced split is disclosed in the basis either
+    way; with no telemetry the dimension is "placeholder".
+    """
+    if not pairs:
         return ClearDimension(
             name,
             "placeholder",
@@ -131,14 +153,27 @@ def _telemetry_dim(
             unit,
             f"PLACEHOLDER: no telemetry — needs {real_source} (F1.x)",
         )
-    value = _mean(values)
-    # Disclose the denominator: only the traced subset contributes, so a single
-    # hand-authored datapoint is never mistaken for a suite-wide average.
-    basis = (
-        f"SYNTHETIC mean of {len(values)}/{total} traced cases (hand-authored); "
-        f"real values need {real_source} (F1.x)"
-    )
-    return ClearDimension(name, "synthetic", True, _budget_score(value, budget), value, unit, basis)
+    value = _mean([v for v, _ in pairs])
+    n = len(pairs)
+    real = sum(1 for _, source in pairs if source == real_status)
+    if real == n:
+        kind = (
+            "real request span duration"
+            if real_status == "measured"
+            else "real measured tokens × static list price"
+        )
+        status = real_status
+        basis = f"{real_status.upper()} mean of {n}/{total} traced cases: {kind} (F1.x telemetry)"
+    else:
+        # Homogeneous rule: any hand-authored value -> synthetic, with the split shown
+        # (so a single real datapoint is never mistaken for a real suite average).
+        status = "synthetic"
+        basis = (
+            f"SYNTHETIC mean of {n}/{total} traced cases "
+            f"({real} from real telemetry, {n - real} hand-authored); a homogeneous "
+            f"real set is needed for '{real_status}' — see {real_source} (F1.x)"
+        )
+    return ClearDimension(name, status, True, _budget_score(value, budget), value, unit, basis)
 
 
 def compute_clear(
@@ -153,18 +188,20 @@ def compute_clear(
         "cost": _telemetry_dim(
             "cost",
             "usd",
-            [s.cost_usd for s in signals if s.cost_usd is not None],
+            [(s.cost_usd, s.cost_source) for s in signals if s.cost_usd is not None],
             len(signals),
             cost_budget_usd,
             "provider token usage + price telemetry",
+            "estimated",
         ),
         "latency": _telemetry_dim(
             "latency",
             "ms",
-            [s.latency_ms for s in signals if s.latency_ms is not None],
+            [(s.latency_ms, s.latency_source) for s in signals if s.latency_ms is not None],
             len(signals),
             latency_budget_ms,
             "live request timing via OpenTelemetry",
+            "measured",
         ),
         "efficiency": _efficiency(signals),
         "accuracy": _accuracy(overall_score),
