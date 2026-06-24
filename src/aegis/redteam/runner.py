@@ -66,10 +66,20 @@ async def _score_all(
     return [await _score_one(case, pipeline) for case in cases]
 
 
+def scan(cases: Sequence[AttackCase]) -> list[AttackResult]:
+    """Score every attack against the F2 guardrails offline + hermetic, in ONE event
+    loop, returning the per-attack results.
+
+    This is the SINGLE scoring path shared by ``run_redteam`` (the F6 report) and the
+    F7 red-team gate (which reduces the same results to a baseline contract), so the
+    gate and the report can never diverge from a second, drifting scoring path.
+    """
+    pipeline = build_pipeline(build_redteam_settings())
+    return asyncio.run(_score_all(cases, pipeline))
+
+
 def run_redteam(
     cases: Sequence[AttackCase], *, suite: str = "redteam", created: int = 0
 ) -> RedTeamReport:
     """Score every attack against the guardrails offline and build the report."""
-    pipeline = build_pipeline(build_redteam_settings())
-    results = asyncio.run(_score_all(cases, pipeline))
-    return build_report(results, suite=suite, created=created)
+    return build_report(scan(cases), suite=suite, created=created)
