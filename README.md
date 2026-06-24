@@ -1,8 +1,8 @@
 # 🛡️ Aegis
 
-> An OpenAI-compatible proxy that sits in front of any model and adds input/output guardrails, three-level trajectory evals with a human-calibrated LLM judge, OWASP-mapped red-team coverage of those guardrails, OpenTelemetry tracing of every request, a CI gate that blocks merges on eval regression, and governance evidence mapping those real artifacts to EU AI Act / NIST / ISO 42001 controls. A dashboard and red-team gating are on the roadmap.
+> An OpenAI-compatible proxy that sits in front of any model and adds input/output guardrails, three-level trajectory evals with a human-calibrated LLM judge, OWASP-mapped red-team coverage of those guardrails, OpenTelemetry tracing of every request, a CI gate that blocks merges on eval regression, governance evidence mapping those real artifacts to EU AI Act / NIST / ISO 42001 controls, and a read-only dashboard over those real reports. A 2-minute demo and red-team gating are on the roadmap.
 
-> **⚠️ Status: under active construction (pre-alpha).** Working today: the OpenAI-compatible `/v1/chat/completions` proxy (F1) with SSE streaming; input/output **guardrails** (F2); a 3-level **eval engine** (F3) with a golden anchor set and `aegis eval run`; **trajectory metrics + CLEAR** (F4); **judge calibration** via Cohen's κ (F5, `aegis calibrate`); an **automated red-team** mapped to OWASP that scores the guardrails (F6, `aegis redteam run`); and a **CI eval gate** that blocks merges on eval regression (F7, `aegis eval gate`); and opt-in **OpenTelemetry tracing** of each request (F1.x, GenAI semconv) — metadata only, no message content — that turns CLEAR Latency into a real measurement and Cost into a token×price estimate; and **governance evidence** (F8, `aegis evidence`) that maps the real eval/red-team/calibration artifacts + effective config to EU AI Act Art.15 / NIST MEASURE / ISO 42001 controls — partial technical evidence, not a compliance certificate. The **real Anthropic (Claude) provider** and a **real G-Eval-inspired judge** are wired behind the same ABCs; a deterministic, keyless **mock provider / mock judge** stays the default so the full suite and CI run offline with no key. On the roadmap: the dashboard (F9) and **red-team gating** (F7 currently gates evals only).
+> **⚠️ Status: under active construction (pre-alpha).** Working today: the OpenAI-compatible `/v1/chat/completions` proxy (F1) with SSE streaming; input/output **guardrails** (F2); a 3-level **eval engine** (F3) with a golden anchor set and `aegis eval run`; **trajectory metrics + CLEAR** (F4); **judge calibration** via Cohen's κ (F5, `aegis calibrate`); an **automated red-team** mapped to OWASP that scores the guardrails (F6, `aegis redteam run`); and a **CI eval gate** that blocks merges on eval regression (F7, `aegis eval gate`); and opt-in **OpenTelemetry tracing** of each request (F1.x, GenAI semconv) — metadata only, no message content — that turns CLEAR Latency into a real measurement and Cost into a token×price estimate; and **governance evidence** (F8, `aegis evidence`) that maps the real eval/red-team/calibration artifacts + effective config to EU AI Act Art.15 / NIST MEASURE / ISO 42001 controls — partial technical evidence, not a compliance certificate; and a read-only **dashboard** (F9, `dashboard/`) that renders those real reports with statuses/caveats verbatim (absent reports marked, never faked). The **real Anthropic (Claude) provider** and a **real G-Eval-inspired judge** are wired behind the same ABCs; a deterministic, keyless **mock provider / mock judge** stays the default so the full suite and CI run offline with no key. On the roadmap: the **2-min demo** (F9 part 2) and **red-team gating** (F7 currently gates evals only).
 
 ---
 
@@ -111,7 +111,7 @@ pytest
 | **F6** | Automated red-team: committed attack catalog vs the F2 guardrails, per-OWASP-category detection rate (`aegis redteam run`) — evals categories only; red-team *gating* later | ✅ done |
 | **F7** | CI gate: run **evals** per PR and **block merge** on regression vs a committed baseline (`aegis eval gate`); red-team gating is a later slice | 🟡 partial |
 | **F8** | Governance evidence: map real eval/red-team/calibration artifacts + config to EU AI Act Art.15 / NIST MEASURE / ISO 42001 controls → `aegis evidence` PDF (partial technical evidence) | ✅ done |
-| **F9** | Polished dashboard, trends, 2-min demo | ⬜ planned |
+| **F9** | Read-only dashboard (Next.js + Recharts) over the real reports — scorecards, trends, caveats verbatim (`dashboard/`); 2-min demo is part 2 | 🟡 partial |
 
 ---
 
@@ -371,6 +371,23 @@ aegis evidence --format json --output reports/evidence.json   # JSON sidecar; ne
 ```
 
 > Framework provenance: NIST MEASURE **ids** are verbatim from NIST AI 100-1 (titles abbreviated/paraphrased); EU AI Act Art.15 paragraph numbering via the official-text aggregators; ISO/IEC 42001 Annex A ids/titles are paraphrased from public listings (the standard is paywalled) — each control row records its `verified_via` source. Anthropic's v1.38 cache-token span attributes are a noted future enhancement, not yet implemented.
+
+---
+
+## Dashboard (F9)
+
+A **read-only** Next.js + Recharts dashboard (in [`dashboard/`](dashboard/)) that visualizes the **real reports** Aegis already writes — `eval-*.json`, `redteam-*.json`, `calibration.json`, and the F8 `evidence-*.json`. It is part 1 of F9; the 2-minute demo GIF is part 2.
+
+> **Same crux as F8 — never rosier than the reports.** Every panel is derived from a report file read at request time (server-side, read-only); a missing report renders as an explicit **"Not available"** with the command to produce it, never a zero/blank/faked chart. Statuses are shown **verbatim** — CLEAR (`measured`/`estimated`/`synthetic`/`placeholder`) and evidence (`covered`/`partial`/`not_covered`/`out_of_scope`) — and only `measured`/`covered` get a success colour (enforced by a tested `statusTone`). Red-team **named gaps**, the κ caveats (small N, directional, undefined-when-degenerate), and the evidence partial-coverage note are surfaced, not buried. A trend line is drawn only for **≥2** real eval runs (else an honest absent note; no interpolation).
+
+- **Offline.** No provider/model call, no network, no telemetry, system fonts only — it only **reads** the reports directory (`AEGIS_REPORTS_DIR`, default `../reports`).
+- **Tested.** A pure, null-safe parsing layer (`dashboard/lib/parse/`) turns each report into a typed view-model (status preserved, absent first-class) — unit-tested with Vitest; a CI `dashboard` job runs Biome + `tsc` + Vitest + `next build` fully offline.
+
+```bash
+cd dashboard && npm ci && npm run dev   # http://localhost:3000 — reads ../reports
+```
+
+> `dashboard/fixtures/` is **SAMPLE data for unit tests only — NOT real Aegis results**; the dashboard at runtime always reads the real `reports/` directory.
 
 ---
 

@@ -1,0 +1,20 @@
+{
+  "suite": "golden",
+  "judge": "geval",
+  "case_count": 32,
+  "created": 1700000000,
+  "levels": {
+    "L1": { "mean_score": 0.854, "passed": 27, "scored": 32 },
+    "L2": { "mean_score": 0.855, "passed": 13, "scored": 15 },
+    "L3": { "mean_score": 0.872, "passed": 22, "scored": 32 }
+  },
+  "overall_score": 0.86,
+  "clear": {
+    "cost": { "name": "cost", "status": "placeholder", "applicable": false, "score": null, "value": null, "unit": "usd", "basis": "PLACEHOLDER: no telemetry" },
+    "latency": { "name": "latency", "status": "placeholder", "applicable": false, "score": null, "value": null, "unit": "ms", "basis": "PLACEHOLDER: no telemetry" },
+    "efficiency": { "name": "efficiency", "status": "measured", "applicable": true, "score": 0.9, "value": 0.9, "unit": "ratio", "basis": "useful (exact) calls / total" },
+    "accuracy": { "name": "accuracy", "status": "measured", "applicable": true, "score": 0.86, "value": 0.86, "unit": "ratio", "basis": "mean of L1/L2/L3" },
+    "reliability": { "name": "reliability", "status": "measured", "applicable": true, "score": 0.78, "value": 0.78, "unit": "ratio", "basis": "end-to-end success rate" }
+  },
+  "trajectory": { "tool_correctness": { "mean_score": 0.8, "scored": 10 } }
+}

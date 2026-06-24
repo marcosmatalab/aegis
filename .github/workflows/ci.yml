@@ -46,3 +46,39 @@ jobs:
 
       - name: Eval regression gate (offline, mock vs committed baseline)
         run: aegis eval gate
+
+  dashboard:
+    # F9: lint + typecheck + unit-test + build the read-only dashboard. Pure Node,
+    # fully offline — npm ci from the committed lockfile; no collector/provider/model
+    # or network at test/build time (the page reads reports/ only at request time).
+    # Independent of the Python jobs (no `needs:`) so all three signal in parallel.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+
+      - name: Install (clean, from lockfile)
+        run: npm ci
+
+      - name: Lint (Biome)
+        run: npm run lint
+
+      - name: Typecheck (tsc)
+        run: npm run typecheck
+
+      - name: Unit tests (Vitest)
+        run: npm test
+
+      - name: Build (offline)
+        run: npm run build
