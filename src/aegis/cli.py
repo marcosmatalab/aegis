@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import sys
 import time
+from pathlib import Path
 
 from aegis.evals.baseline import (
     DEFAULT_TOLERANCE,
@@ -56,6 +57,9 @@ from aegis.evals.persistence import (
     write_report,
 )
 from aegis.evals.runner import run_suite
+from aegis.evidence.builder import build_evidence
+from aegis.evidence.loader import EvidenceInputError, read_report
+from aegis.evidence.persistence import write_evidence_json
 from aegis.gateway.config import get_settings
 from aegis.gateway.errors import ProviderNotConfiguredError
 from aegis.redteam.dataset import DEFAULT_ATTACKS_PATH, AttackDatasetError, load_attacks
@@ -262,6 +266,68 @@ def _redteam_run(args: argparse.Namespace) -> int:
     return 0
 
 
+def _evidence(args: argparse.Namespace) -> int:
+    # Per-source resolution (the three reports use DIFFERENT default suites): the eval
+    # report follows --suite (default golden), the red-team report its own default
+    # filename (redteam-redteam.json), calibration is path-only. A path the user passes
+    # explicitly is `required` (a typo must not silently vanish into not_covered).
+    suite = args.suite
+    eval_path = Path(args.eval) if args.eval else DEFAULT_REPORTS_DIR / f"eval-{suite}.json"
+    redteam_path = (
+        Path(args.redteam) if args.redteam else DEFAULT_REPORTS_DIR / "redteam-redteam.json"
+    )
+    calib_path = (
+        Path(args.calibration) if args.calibration else DEFAULT_REPORTS_DIR / "calibration.json"
+    )
+    try:
+        eval_report = read_report(eval_path, required=args.eval is not None)
+        redteam_report = read_report(redteam_path, required=args.redteam is not None)
+        calibration_report = read_report(calib_path, required=args.calibration is not None)
+    except EvidenceInputError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+
+    report = build_evidence(
+        eval_report=eval_report,
+        redteam_report=redteam_report,
+        calibration_report=calibration_report,
+        settings=get_settings(),
+        suite=suite,
+        generated=int(time.time()),
+    )
+
+    if args.format == "json":
+        out = Path(args.output) if args.output else DEFAULT_REPORTS_DIR / f"evidence-{suite}.json"
+        write_evidence_json(report, out)
+    else:
+        # Lazy-import the renderer ONLY on the pdf path, so --format json never needs
+        # fpdf2 (even transitively). A missing [reporting] extra is a clean exit 2.
+        from aegis.evidence.pdf import EvidenceRenderError, render_pdf
+
+        out = Path(args.output) if args.output else DEFAULT_REPORTS_DIR / f"evidence-{suite}.pdf"
+        try:
+            render_pdf(report, out)
+        except EvidenceRenderError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+    if args.json:
+        write_evidence_json(report, args.json)
+
+    sc = report.summary_counts
+    print(
+        f"evidence: controls={len(report.controls)} covered={sc['covered']} "
+        f"partial={sc['partial']} not_covered={sc['not_covered']} "
+        f"out_of_scope={sc['out_of_scope']}  report={out}"
+    )
+    # Surface every not-covered control (with its produce-it hint) — never hidden.
+    for c in report.controls:
+        if c.status == "not_covered":
+            print(
+                f"  not covered: {c.framework} {c.control_id} - {c.derived_value}", file=sys.stderr
+            )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aegis", description="Aegis gateway tooling.")
     groups = parser.add_subparsers(dest="group", required=True)
@@ -351,6 +417,41 @@ def build_parser() -> argparse.ArgumentParser:
         help="exit 1 if overall detection rate < floor (opt-in; NOT the red-team gate)",
     )
     rt_run.set_defaults(func=_redteam_run)
+
+    # `aegis evidence` — single-action group (F8): build a PARTIAL-TECHNICAL-EVIDENCE
+    # PDF (or JSON) from the real eval/red-team/calibration reports + effective config.
+    ev_cmd = groups.add_parser(
+        "evidence", help="generate a partial governance-evidence doc from real reports"
+    )
+    ev_cmd.add_argument(
+        "--suite", default="golden", help="eval suite name (eval report filename + output naming)"
+    )
+    ev_cmd.add_argument(
+        "--eval", default=None, help="eval report path (default: reports/eval-<suite>.json)"
+    )
+    ev_cmd.add_argument(
+        "--redteam",
+        default=None,
+        help="red-team report path (default: reports/redteam-redteam.json)",
+    )
+    ev_cmd.add_argument(
+        "--calibration",
+        default=None,
+        help="calibration report path (default: reports/calibration.json)",
+    )
+    ev_cmd.add_argument(
+        "--output", default=None, help="output path (default: reports/evidence-<suite>.<ext>)"
+    )
+    ev_cmd.add_argument(
+        "--json", default=None, help="also write the EvidenceReport JSON sidecar to this path"
+    )
+    ev_cmd.add_argument(
+        "--format",
+        choices=["pdf", "json"],
+        default="pdf",
+        help="output format (json needs no fpdf2)",
+    )
+    ev_cmd.set_defaults(func=_evidence)
 
     return parser
 
