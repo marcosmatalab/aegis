@@ -8,7 +8,7 @@ import pytest
 
 from aegis.evals.persistence import write_redteam_report
 from aegis.redteam.dataset import load_attacks
-from aegis.redteam.runner import run_redteam
+from aegis.redteam.runner import build_redteam_settings, run_redteam
 
 
 def test_self_consistency_oracle_and_honest_rate():
@@ -35,13 +35,28 @@ def test_per_category_detection_and_policy_really_denies():
 
 
 def test_run_is_hermetic_and_ignores_hostile_env(monkeypatch):
-    # even with AEGIS_* pointed at a different engine / threshold / disabled, the
-    # run pins its own offline settings (_env_file=None) -> identical result
-    monkeypatch.setenv("AEGIS_GR_PII_ENGINE", "presidio")
-    monkeypatch.setenv("AEGIS_GR_TOXICITY_THRESHOLD", "0.99")
+    # every AEGIS_GR_* toggle pointed at a behaviour-FLIPPING value (a 0.01 toxicity
+    # threshold would block "shut up"; disabling injection/PII would drop many
+    # blocks). build_redteam_settings pins them all, so nothing changes.
     monkeypatch.setenv("AEGIS_GUARDRAILS_ENABLED", "false")
+    monkeypatch.setenv("AEGIS_GR_PII_ENGINE", "presidio")
+    monkeypatch.setenv("AEGIS_GR_TOXICITY_THRESHOLD", "0.01")
+    monkeypatch.setenv("AEGIS_GR_INJECTION_ENABLED", "false")
+    monkeypatch.setenv("AEGIS_GR_PII_REDACT_INPUT", "false")
+    monkeypatch.setenv("AEGIS_GR_OUTPUT_PII_ENABLED", "false")
+    monkeypatch.setenv("AEGIS_GR_TOXICITY_ENABLED", "false")
+
+    # the constructed settings ignore the env entirely (init kwargs win)
+    s = build_redteam_settings()
+    assert s.guardrails_enabled is True and s.gr_pii_engine == "regex"
+    assert s.gr_toxicity_threshold == 0.5 and s.gr_injection_enabled is True
+    assert s.gr_pii_redact_input is True and s.gr_output_pii_enabled is True
+    assert s.gr_toxicity_enabled is True
+
+    # and the full run still reproduces the oracle exactly
     report = run_redteam(load_attacks())
-    assert report.overall_oracle_match_rate == 1.0  # regex engine, guardrails on, unchanged
+    assert report.overall_oracle_match_rate == 1.0
+    assert report.findings == []
 
 
 def test_report_to_dict_persists(tmp_path):
