@@ -15,8 +15,21 @@ def _sig(
     actual=0,
     latency_ms=None,
     cost_usd=None,
+    latency_source="synthetic",
+    cost_source="synthetic",
 ):
-    return CaseSignal(l1, l3, l2_applicable, l2_passed, exact, actual, latency_ms, cost_usd)
+    return CaseSignal(
+        l1,
+        l3,
+        l2_applicable,
+        l2_passed,
+        exact,
+        actual,
+        latency_ms,
+        cost_usd,
+        latency_source,
+        cost_source,
+    )
 
 
 # --- order + accuracy ------------------------------------------------------- #
@@ -96,6 +109,42 @@ def test_synthetic_basis_discloses_traced_denominator():
         overall_score=1.0,
     )
     assert "1/3 traced cases" in clear["cost"].basis
+
+
+# --- cost / latency MEASURED + ESTIMATED (real telemetry via the bridge) ----- #
+def test_latency_is_measured_when_all_real():
+    clear = compute_clear(
+        [_sig(latency_ms=120.0, latency_source="measured")],
+        overall_score=1.0,
+    )
+    assert clear["latency"].status == "measured"
+    assert clear["latency"].value == 120.0
+    assert "MEASURED" in clear["latency"].basis
+
+
+def test_cost_is_estimated_not_measured_when_all_real():
+    # real measured tokens x static list price is an ESTIMATE, never 'measured'
+    clear = compute_clear(
+        [_sig(cost_usd=0.012, cost_source="estimated")],
+        overall_score=1.0,
+    )
+    assert clear["cost"].status == "estimated"
+    assert "static list price" in clear["cost"].basis
+
+
+def test_mixed_provenance_downgrades_to_synthetic_with_disclosure():
+    # one real-telemetry latency + one hand-authored -> the whole dim is synthetic,
+    # and the basis must show the split (a single real case can't launder the suite)
+    clear = compute_clear(
+        [
+            _sig(latency_ms=100.0, latency_source="measured"),
+            _sig(latency_ms=300.0, latency_source="synthetic"),
+        ],
+        overall_score=1.0,
+    )
+    assert clear["latency"].status == "synthetic"
+    assert clear["latency"].value == 200.0
+    assert "1 from real telemetry, 1 hand-authored" in clear["latency"].basis
 
 
 def test_budget_normalizes_to_score_lower_is_better():
