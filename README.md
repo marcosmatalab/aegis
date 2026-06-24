@@ -2,6 +2,8 @@
 
 # 🛡️ Aegis
 
+**English** · [Español](README.es.md)
+
 **The control layer for any LLM or agent** — a drop-in OpenAI-compatible gateway that adds
 guardrails, 3-level trajectory evals with a human-calibrated judge, OWASP red-team coverage,
 OpenTelemetry tracing, governance evidence, and a CI gate that blocks regressions.
