@@ -171,3 +171,55 @@ def shutdown_tracing(provider: Any | None) -> None:
     if provider is None:
         return
     provider.shutdown()
+
+
+# --------------------------------------------------------------------------- #
+# Span attribute helpers — called by the proxy so it never imports opentelemetry.
+# `span` duck-types set_attribute/record_exception/set_status (a real span or the
+# no-op span). METADATA ONLY: no message content is ever read or set here.
+# --------------------------------------------------------------------------- #
+def span_name(model: str) -> str:
+    """GenAI span name convention: ``{operation} {model}``."""
+    return f"{OPERATION_CHAT} {model}"
+
+
+def set_request_attributes(span: Any, *, model: str, provider_name: str) -> None:
+    span.set_attribute(GEN_AI_OPERATION_NAME, OPERATION_CHAT)
+    span.set_attribute(GEN_AI_REQUEST_MODEL, model)
+    span.set_attribute(GEN_AI_PROVIDER_NAME, provider_name)
+
+
+def set_response_attributes(
+    span: Any,
+    *,
+    model: str | None = None,
+    prompt_tokens: int | None = None,
+    completion_tokens: int | None = None,
+    finish_reason: str | None = None,
+) -> None:
+    """Set whichever response attrs are available; omit the rest (never fabricate).
+
+    Streaming providers that emit no terminal usage chunk (the mock; Anthropic
+    without ``include_usage``) simply leave the token attrs unset — honest, not zero.
+    """
+    if model:
+        span.set_attribute(GEN_AI_RESPONSE_MODEL, model)
+    if prompt_tokens is not None:
+        span.set_attribute(GEN_AI_USAGE_INPUT_TOKENS, prompt_tokens)
+    if completion_tokens is not None:
+        span.set_attribute(GEN_AI_USAGE_OUTPUT_TOKENS, completion_tokens)
+    if finish_reason:
+        span.set_attribute(GEN_AI_RESPONSE_FINISH_REASONS, [finish_reason])
+
+
+def mark_span_error(span: Any, exc: BaseException) -> None:
+    """Record an exception + set ERROR status. Used on the streaming path, whose
+    generators swallow-and-return (so the context manager's auto-recording, which
+    the non-stream path relies on, never fires). Records the exception TYPE only via
+    the span's own record_exception; no message text is added as an attribute."""
+    span.record_exception(exc)
+    if not otel_available():
+        return
+    from opentelemetry.trace import Status, StatusCode
+
+    span.set_status(Status(StatusCode.ERROR, type(exc).__name__))
