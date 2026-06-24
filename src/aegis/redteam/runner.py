@@ -1,11 +1,13 @@
 """Run the attack catalog against the F2 guardrail pipeline — offline + hermetic.
 
-``build_redteam_settings`` constructs Settings with ``_env_file=None`` so a
-deployer's ``.env`` / ``AEGIS_*`` vars (e.g. a Presidio engine or a different
-toxicity threshold) can never leak in and break determinism; guardrails are on,
-the PII engine is regex, and the policy stage gets the bundled deny-list (an empty
-list would make it inert). No provider, no judge, no model call, no network — all
-async checks run in ONE event loop.
+``build_redteam_settings`` pins EVERY guardrail field explicitly. ``_env_file=None``
+disables the dotenv file, but live ``AEGIS_*`` PROCESS env vars are still read by
+pydantic-settings — so each field is passed as an init kwarg (which outranks
+``os.environ``) to guarantee that no deployer/CI env var (a Presidio engine, a
+lowered toxicity threshold, a disabled sub-check) can alter detection and break the
+self-consistency oracle. The policy stage gets the bundled deny-list (an empty list
+would make it inert). No provider, no judge, no model call, no network — all async
+checks run in ONE event loop.
 """
 
 from __future__ import annotations
@@ -25,14 +27,24 @@ _MODEL = "mock/echo-1"  # never forwarded; the pipeline only inspects content
 
 
 def build_redteam_settings() -> Settings:
-    """Hermetic, offline, keyless settings the red-team run always uses."""
+    """Hermetic, offline, keyless settings the red-team run always uses.
+
+    Every guardrail field is pinned so no ``AEGIS_*`` process env var can change the
+    run (init kwargs outrank ``os.environ``).
+    """
     return Settings(
         _env_file=None,
         guardrails_enabled=True,
+        gr_injection_enabled=True,
+        gr_pii_redact_input=True,
         gr_pii_engine="regex",
         gr_policy_enabled=True,
         gr_policy_deny=REDTEAM_DENY,
+        gr_policy_allow=[],
+        gr_output_pii_enabled=True,
         gr_output_pii_action="block",
+        gr_toxicity_enabled=True,
+        gr_toxicity_threshold=0.5,
     )
 
 
