@@ -35,6 +35,12 @@ export function EvalScorecard({ view }: { view: EvalView }) {
       <p style={{ margin: "0.75rem 0 0", fontSize: 15 }}>
         overall = <strong>{fmtNum(view.overallScore)}</strong>
       </p>
+      {view.trajectory.length > 0 ? (
+        <p style={{ margin: "0.5rem 0 0", color: "#9aa0aa", fontSize: 12.5 }}>
+          trajectory:{" "}
+          {view.trajectory.map((t) => `${t.metric}=${fmtNum(t.meanScore)}`).join("  ·  ")}
+        </p>
+      ) : null}
     </Card>
   );
 }

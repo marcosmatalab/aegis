@@ -29,6 +29,8 @@ export function parseEvidence(raw: unknown): EvidenceView | null {
     generated: asNumber(o.generated),
     suite: asString(o.suite),
     disclaimer: asString(o.disclaimer),
+    // Counts default to 0 (not null/em-dash): a missing tally key means zero items in
+    // that bucket, which is a legitimate count — and the writer always emits all four.
     summaryCounts: {
       covered: asNumber(sc.covered) ?? 0,
       partial: asNumber(sc.partial) ?? 0,
