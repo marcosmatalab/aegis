@@ -1,0 +1,12 @@
+{
+  "generated": 1700000300,
+  "suite": "golden",
+  "disclaimer": "This document is PARTIAL TECHNICAL EVIDENCE auto-generated from Aegis's own test artifacts. It is NOT a compliance certificate.",
+  "summary_counts": { "covered": 3, "partial": 5, "not_covered": 3, "out_of_scope": 3 },
+  "inputs_present": { "eval": true, "redteam": true, "calibration": true, "settings": true },
+  "controls": [
+    { "framework": "EU AI Act (Reg. (EU) 2024/1689)", "control_id": "Article 15(1)/(3)", "control_title": "Accuracy and declared accuracy metrics", "status": "covered", "artifact_source": "eval report", "fields_read": ["clear.accuracy"], "derived_value": "accuracy=0.860 (measured); judge=geval", "caveat": "scored over the committed golden set", "verified_via": "Reg. (EU) 2024/1689 Article 15" },
+    { "framework": "NIST AI RMF 1.0 (AI 100-1)", "control_id": "MEASURE 2.6", "control_title": "AI system evaluated for safety; fails safely", "status": "partial", "artifact_source": "red-team report", "fields_read": ["categories"], "derived_value": "safety-relevant categories: output_toxicity=0.5; 2 named gaps", "caveat": "only output-toxicity + PII categories evaluated", "verified_via": "NIST AI 100-1 MEASURE" },
+    { "framework": "ISO/IEC 42001:2023", "control_id": "A.2–A.5, A.7–A.10", "control_title": "Policies, org roles, resources, impact assessment, data, use, third parties", "status": "out_of_scope", "artifact_source": "—", "fields_read": [], "derived_value": "Out of scope: AI management-system controls; Aegis is not an AIMS.", "caveat": "", "verified_via": "ISO/IEC 42001:2023 Annex A" }
+  ]
+}
