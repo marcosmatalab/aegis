@@ -11,6 +11,7 @@ import {
   YAxis,
 } from "recharts";
 
+import { useLocale } from "@/lib/i18n/LocaleProvider";
 import type { TrendPoint } from "@/lib/trend";
 import { Card } from "./Card";
 
@@ -18,19 +19,18 @@ import { Card } from "./Card";
 // single floating point or a faked line. connectNulls=false leaves gaps for missing
 // metrics rather than interpolating across them.
 export function TrendsChart({ points }: { points: TrendPoint[] }) {
+  const { t } = useLocale();
   if (points.length < 2) {
     return (
-      <Card title="Trends (across eval runs)">
+      <Card title={t("trends.title")}>
         <p style={{ margin: 0, color: "#9aa0aa" }}>
-          {points.length === 0
-            ? "No eval runs yet."
-            : "Single eval run — no trend yet (a trend line is never drawn for fewer than two real runs)."}
+          {points.length === 0 ? t("trends.noRuns") : t("trends.needTwoRuns")}
         </p>
       </Card>
     );
   }
   return (
-    <Card title="Trends (across eval runs)" subtitle={`${points.length} runs`}>
+    <Card title={t("trends.title")} subtitle={t("trends.runsSubtitle", { n: points.length })}>
       <div style={{ width: "100%", height: 280 }}>
         <ResponsiveContainer>
           <LineChart data={points} margin={{ top: 8, right: 16, bottom: 8, left: -8 }}>
