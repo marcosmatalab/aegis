@@ -116,6 +116,31 @@ def test_trace_rejects_unknown_field():
         EvalCase.model_validate(_case(trace={"latency_ms": 1.0, "gpu": 2}))
 
 
+def test_trace_provenance_defaults_to_synthetic():
+    # default keeps every existing golden line synthetic with no edits
+    t = CaseTrace(latency_ms=10.0, cost_usd=0.001)
+    assert t.latency_source == "synthetic" and t.cost_source == "synthetic"
+    assert t.claims_real_telemetry() is False
+
+
+def test_trace_accepts_measured_latency_and_estimated_cost():
+    t = CaseTrace(
+        latency_ms=42.0,
+        cost_usd=0.002,
+        latency_source="measured",
+        cost_source="estimated",
+    )
+    assert t.claims_real_telemetry() is True
+
+
+def test_trace_rejects_cross_wired_provenance_values():
+    # latency is measured|synthetic; cost is estimated|synthetic — not interchangeable
+    with pytest.raises(ValidationError):
+        CaseTrace(latency_source="estimated")
+    with pytest.raises(ValidationError):
+        CaseTrace(cost_source="measured")
+
+
 def test_milestone_requires_exactly_one_target():
     assert Milestone(tool="search").tool == "search"
     assert Milestone(output_contains="done").output_contains == "done"
