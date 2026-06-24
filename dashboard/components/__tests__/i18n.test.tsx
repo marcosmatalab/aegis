@@ -1,10 +1,11 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import type { Locale } from "@/lib/i18n/dictionaries";
 import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
 import type { EvidenceView, RedteamView } from "@/lib/types";
 import { EvidencePanel } from "../EvidencePanel";
+import { LanguageToggle } from "../LanguageToggle";
 import { RedteamPanel } from "../RedteamPanel";
 
 function renderAt(locale: Locale, ui: ReactNode) {
@@ -73,5 +74,32 @@ describe("panel i18n", () => {
     expect(badge.getAttribute("data-tone")).not.toBe("success");
     // the surrounding caveat IS translated to Spanish (prose, not data)
     expect(screen.getByText(/porcentaje de cobertura/)).toBeInTheDocument();
+  });
+});
+
+describe("LanguageToggle", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it("defaults to en, flips the locale on click, re-renders panels, and persists", () => {
+    render(
+      <LocaleProvider>
+        <LanguageToggle />
+        <RedteamPanel view={redteam} />
+      </LocaleProvider>,
+    );
+    const en = screen.getByRole("button", { name: "EN" });
+    const es = screen.getByRole("button", { name: "ES" });
+    expect(en.getAttribute("aria-pressed")).toBe("true"); // English is the canonical default
+    expect(screen.getByText("Got through")).toBeInTheDocument();
+
+    fireEvent.click(es);
+
+    expect(es.getAttribute("aria-pressed")).toBe("true");
+    expect(en.getAttribute("aria-pressed")).toBe("false");
+    expect(screen.getByText("Se colaron")).toBeInTheDocument(); // panel re-rendered in es
+    expect(screen.queryByText("Got through")).toBeNull();
+    expect(localStorage.getItem("aegis.locale")).toBe("es"); // persisted
   });
 });
