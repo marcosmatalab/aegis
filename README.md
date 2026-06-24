@@ -44,46 +44,36 @@ The differentiator is **evaluation depth**: not just scoring the final output, b
 
 ## Architecture
 
-```
-   Client / App                ┌──────────────────────────────────────────────┐
-   (OpenAI-compatible)  ──────▶ │                AEGIS GATEWAY                   │
-   change base_url only         │     POST /v1/chat/completions (drop-in)        │
-                                │                                                │
-                                │   ┌──────────────┐         ┌──────────────┐    │
-                                │   │   INPUT       │         │   OUTPUT      │   │
-                                │   │  GUARDRAILS   │         │  GUARDRAILS   │   │
-                                │   │ · injection   │         │ · PII         │   │
-                                │   │ · PII         │         │ · toxicity    │   │
-                                │   │ · policy      │         │ · schema      │   │
-                                │   └──────┬───────┘         └──────▲───────┘    │
-                                │          │                        │            │
-                                │          ▼                        │            │
-                                │     ┌────────────────────────────┴───┐        │
-                                │     │   LLM / AGENT PROVIDER           │        │
-                                │     │   (Claude / GPT / Gemini · …)    │        │
-                                │     └────────────────┬─────────────────┘        │
-                                │                      │ trace (OTel spans)       │
-                                │                      ▼                          │
-                                │          ┌──────────────────────────┐           │
-                                │          │  OTel GenAI → Langfuse    │           │
-                                │          └──────────────────────────┘           │
-                                └──────────────────────────────────────────────┘
-                                                  │
-              ┌───────────────────────────────────┼───────────────────────────────────┐
-              ▼                                    ▼                                    ▼
-   ┌─────────────────────┐           ┌─────────────────────┐            ┌──────────────────────┐
-   │     EVAL ENGINE      │           │   RED-TEAM ENGINE    │            │     GOVERNANCE        │
-   │  L1 session  (goal)  │           │  OWASP LLM Top 10    │            │  AI Act Art.15 /      │
-   │  L2 trace (quality)  │           │  + OWASP Agentic ASI │            │  NIST AI RMF /        │
-   │  L3 tool (calls)     │           │  injection, hijack,  │            │  ISO/IEC 42001        │
-   │  CoT / agent-judge   │           │  tool-misuse, leaks  │            │  → evidence PDF       │
-   └──────────┬───────────┘           └──────────┬───────────┘            └──────────────────────┘
-              └───────────────────────┬──────────┘
-                                      ▼
-                          ┌───────────────────────┐         ┌──────────────────────────┐
-                          │   CI GATE (Actions)    │────────▶│   Dashboard (Next.js)     │
-                          │  pass / fail + report  │         │  scorecards, trends, runs │
-                          └───────────────────────┘         └──────────────────────────┘
+```mermaid
+flowchart TD
+    client["Client / App (OpenAI-compatible)<br/>change base_url only"]
+
+    subgraph gateway["AEGIS GATEWAY · drop-in POST /v1/chat/completions"]
+        direction TB
+        guard_in["INPUT guardrails<br/>injection · PII · policy"]
+        provider["LLM / agent provider<br/>Claude / GPT / Gemini / etc."]
+        guard_out["OUTPUT guardrails<br/>PII · toxicity · schema"]
+        otel["OTel GenAI spans → Langfuse"]
+        guard_in --> provider --> guard_out
+        provider -- "trace (OTel spans)" --> otel
+    end
+
+    client --> gateway
+
+    eval["EVAL ENGINE<br/>L1 session (goal) · L2 trace (quality)<br/>L3 tool (calls) · CoT / agent-judge"]
+    redteam["RED-TEAM ENGINE<br/>OWASP LLM Top 10 + Agentic ASI<br/>injection, hijack, tool-misuse, leaks"]
+    governance["GOVERNANCE<br/>AI Act Art.15 / NIST AI RMF / ISO 42001<br/>→ evidence PDF"]
+
+    gateway --> eval
+    gateway --> redteam
+    gateway --> governance
+
+    gate["CI GATE (Actions)<br/>pass / fail + report"]
+    dashboard["Dashboard (Next.js)<br/>scorecards · trends · runs"]
+
+    eval --> gate
+    redteam --> gate
+    gate --> dashboard
 ```
 
 **Flow:** `gateway → guardrails → provider → evals / red-team → CI gate`.
