@@ -53,9 +53,11 @@ _OUTCOMES = ("blocked", "redacted", "passed")
 REGRESSION_KINDS = frozenset(
     {"attack_now_passing", "detection_downgraded", "category_detection_drop", "category_dropped"}
 )
-# The per-attack HARD kinds, used to de-duplicate the per-category aggregate so one
-# root cause is not printed twice.
-_HARD_ATTACK_KINDS = frozenset({"attack_now_passing", "detection_downgraded"})
+# The per-attack finding that actually CONSUMES a category's detection-rate loss
+# (caught -> passed). Used to de-duplicate the per-category aggregate so one root cause
+# is not printed twice. detection_downgraded (block -> redact) keeps the attack caught,
+# so it does NOT lower the rate and must NOT suppress an independent category drop.
+_RATE_CONSUMING_KINDS = frozenset({"attack_now_passing"})
 
 _TOP_KEYS = frozenset({"suite", "mode", "case_count", "categories", "attacks"})
 _CAT_KEYS = frozenset({"total", "blocked", "redacted", "passed", "caught", "detection_rate"})
@@ -141,13 +143,26 @@ def load_redteam_baseline(path: str | Path) -> dict[str, Any]:
     return data
 
 
-def _require_well_formed(baseline: dict[str, Any]) -> None:
-    """Raise RedteamBaselineError (-> exit 2) for a hand-corrupted contract, so a
-    dropped/inconsistent key is a clean 'regenerate' message rather than a raw KeyError
-    deep in the comparator. Also closes the committed-file honesty seams: per-category
-    counts must be internally consistent, and a per-attack code is non-null IFF the
-    outcome is 'blocked' (classify_result guarantees redacted/passed carry code=None)."""
-    for cat, stat in baseline["categories"].items():
+def _rate(num: int, den: int) -> float:
+    """Detection rate rounded like report._rate (den==0 -> 0.0), so the well-formed
+    check re-derives the stored rate with the exact same idiom that produced it."""
+    return round(num / den, RATE_DECIMALS) if den else 0.0
+
+
+def _require_well_formed(data: dict[str, Any], *, check_rate: bool = True) -> None:
+    """Raise RedteamBaselineError (-> exit 2) for a hand-corrupted/inconsistent contract,
+    so a dropped/lying key is a clean 'regenerate' message rather than a raw KeyError (or
+    a trusted lie) deep in the comparator. Validates both the committed `baseline` and the
+    machine-built `current` (a no-op on the latter, by construction). Closes the honesty
+    seams: per-category counts must be internally consistent; the category set must match
+    the categories present in the attacks; and a per-attack code is non-null IFF the
+    outcome is 'blocked' (classify_result guarantees redacted/passed carry code=None).
+
+    ``check_rate`` re-derives the stored ``detection_rate`` from caught/total. It is ON for
+    the BASELINE — the hand-editable floor ``_category_regressions`` trusts, so a fabricated
+    rate cannot lie there — and OFF for the CURRENT, whose ``detection_rate`` is the live
+    measurement the aggregate rule evaluates against that (validated) baseline floor."""
+    for cat, stat in data["categories"].items():
         missing = _CAT_KEYS - stat.keys()
         if missing:
             raise RedteamBaselineError(
@@ -162,7 +177,21 @@ def _require_well_formed(baseline: dict[str, Any]) -> None:
             raise RedteamBaselineError(
                 f"red-team baseline malformed: category {cat!r} total != blocked+redacted+passed"
             )
-    for aid, atk in baseline["attacks"].items():
+        # The baseline rate is stored AND trusted as the floor by _category_regressions, so
+        # re-derive it (like `caught` is derived per attack) — a fabricated floor can't lie.
+        if check_rate and stat["detection_rate"] != _rate(stat["caught"], stat["total"]):
+            raise RedteamBaselineError(
+                f"red-team baseline malformed: category {cat!r} detection_rate != caught/total"
+            )
+    # The category set must equal the categories actually present in the attacks, else a
+    # phantom category could reach the (otherwise unreachable) category_dropped branch.
+    attack_cats = {atk.get("category") for atk in data["attacks"].values()}
+    if set(data["categories"]) != attack_cats:
+        raise RedteamBaselineError(
+            "red-team baseline malformed: category set != categories present in attacks "
+            "— regenerate with: aegis redteam gate --update-baseline"
+        )
+    for aid, atk in data["attacks"].items():
         missing = _ATTACK_KEYS - atk.keys()
         if missing:
             raise RedteamBaselineError(
@@ -230,10 +259,10 @@ def _attack_regressions(baseline: dict, current: dict) -> list[RedteamFinding]:
 def _category_regressions(
     baseline: dict, current: dict, tolerance: float, attack_findings: list[RedteamFinding]
 ) -> list[RedteamFinding]:
-    # Categories already explained by a per-attack HARD finding: the aggregate drop is
-    # the same root cause, so don't print it twice (the cli-ci/regression-honesty
-    # de-dup). scope of a per-attack finding is "<id> <category>".
-    explained = {f.scope.split()[-1] for f in attack_findings if f.kind in _HARD_ATTACK_KINDS}
+    # Categories whose rate drop is already explained by a per-attack attack_now_passing
+    # (the only per-attack finding that lowers detection_rate): don't print the same root
+    # cause twice. scope of a per-attack finding is "<id> <category>".
+    explained = {f.scope.split()[-1] for f in attack_findings if f.kind in _RATE_CONSUMING_KINDS}
     out: list[RedteamFinding] = []
     for cat in sorted(baseline["categories"]):
         b = baseline["categories"][cat]
@@ -272,10 +301,14 @@ def compare_redteam_to_baseline(
     Improvements (a gap newly caught, redacted->blocked, a higher detection rate) never
     produce a finding. Raises RedteamBaselineError (exit 2) when the gate cannot fairly
     compare: suite/mode mismatch, an attack id-set change, a category remap, or a
-    malformed baseline.
+    malformed baseline OR current. Both sides are read defensively (``.get`` + a
+    well-formed check), so a hand-built/future ``current`` yields the clean exit-2 path
+    rather than a raw KeyError the CLI would not catch.
     """
-    if current["suite"] != baseline["suite"]:
-        raise RedteamBaselineError(f"suite {current['suite']!r} != baseline {baseline['suite']!r}")
+    if current.get("suite") != baseline["suite"]:
+        raise RedteamBaselineError(
+            f"suite {current.get('suite')!r} != baseline {baseline['suite']!r}"
+        )
     if current.get("mode") != baseline.get("mode"):
         raise RedteamBaselineError(
             f"mode {current.get('mode')!r} != baseline {baseline.get('mode')!r} "
@@ -291,5 +324,8 @@ def compare_redteam_to_baseline(
             f"(added={added}, removed={removed}); run: aegis redteam gate --update-baseline"
         )
     _require_well_formed(baseline)
+    # Validate current's structure too (guards the pure API against a raw KeyError), but
+    # NOT its rate — that's the live measurement the aggregate rule reads vs the baseline.
+    _require_well_formed(current, check_rate=False)
     attack_findings = _attack_regressions(baseline, current)
     return attack_findings + _category_regressions(baseline, current, tolerance, attack_findings)
