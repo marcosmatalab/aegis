@@ -1,14 +1,14 @@
 # 🛡️ Aegis
 
-> A reliability + security + governance gateway for LLMs and agents — an OpenAI-compatible proxy that sits *in front of* any model and adds input/output guardrails, three-level trajectory evals, OWASP-mapped automated red-teaming, OpenTelemetry observability, and a CI gate that fails the build when quality or safety regress.
+> An OpenAI-compatible proxy that sits in front of any model and adds input/output guardrails, three-level trajectory evals with a human-calibrated LLM judge, OWASP-mapped red-team coverage of those guardrails, and a CI gate that blocks merges on eval regression. OpenTelemetry observability, governance mapping, and red-team gating are on the roadmap.
 
-> **⚠️ Status: under active construction (pre-alpha).** Working today: the OpenAI-compatible `/v1/chat/completions` proxy (F1) with SSE streaming; input/output **guardrails** (F2); a 3-level **eval engine** (F3) with a golden anchor set and `aegis eval run`; **trajectory metrics + CLEAR** (F4); and **judge calibration** via Cohen's κ (F5, `aegis calibrate`). The **real Anthropic (Claude) provider** and a **real G-Eval-inspired judge** are wired behind the same ABCs; a deterministic, keyless **mock provider / mock judge** stays the default so the full suite and CI run offline with no key. Automated red-team (F6), the CI gate that blocks regressions (F7), and governance mapping (F8) land incrementally through the phased roadmap.
+> **⚠️ Status: under active construction (pre-alpha).** Working today: the OpenAI-compatible `/v1/chat/completions` proxy (F1) with SSE streaming; input/output **guardrails** (F2); a 3-level **eval engine** (F3) with a golden anchor set and `aegis eval run`; **trajectory metrics + CLEAR** (F4); **judge calibration** via Cohen's κ (F5, `aegis calibrate`); an **automated red-team** mapped to OWASP that scores the guardrails (F6, `aegis redteam run`); and a **CI eval gate** that blocks merges on eval regression (F7, `aegis eval gate`). The **real Anthropic (Claude) provider** and a **real G-Eval-inspired judge** are wired behind the same ABCs; a deterministic, keyless **mock provider / mock judge** stays the default so the full suite and CI run offline with no key. On the roadmap: OpenTelemetry observability (F1.x), governance mapping (F8), the dashboard (F9), and **red-team gating** (F7 currently gates evals only).
 
 ---
 
 ## Why
 
-A single drop-in change (`base_url`) gives an existing app guardrails, tracing, and continuous evals — without touching its model or business logic. Aegis is not a model; it is the **control layer** around any model or agent.
+A single drop-in change (`base_url`) gives an existing app guardrails and continuous evals — without touching its model or business logic. Aegis is not a model; it is the **control layer** around any model or agent.
 
 The differentiator is **evaluation depth**: not just scoring the final output, but scoring the *trajectory* (every tool call, in order, recovering from errors), validating the LLM judge against human labels, and wiring it all into a CI gate so regressions block merges instead of reaching production.
 
@@ -109,7 +109,7 @@ pytest
 | **F4** | Trajectory metrics (TrajectoryAccuracy, ToolCorrectness, Progress Rate, T-Eval) + CLEAR; Agent-as-a-Judge | ✅ done |
 | **F5** | Judge calibration: hand-labelled set + Cohen's κ (per criterion + global) via `aegis calibrate` | ✅ done |
 | **F6** | Automated red-team: committed attack catalog vs the F2 guardrails, per-OWASP-category detection rate (`aegis redteam run`) — evals categories only; red-team *gating* later | ✅ done |
-| **F7** | CI gate: run **evals** per PR and **block merge** on regression vs a committed baseline (`aegis eval gate`); red-team gating lands with F6 | 🟡 partial |
+| **F7** | CI gate: run **evals** per PR and **block merge** on regression vs a committed baseline (`aegis eval gate`); red-team gating is a later slice | 🟡 partial |
 | **F8** | Governance mapping (EU AI Act Art.15 / NIST AI RMF / ISO 42001) → evidence PDF | ⬜ planned |
 | **F9** | Polished dashboard, trends, 2-min demo | ⬜ planned |
 
