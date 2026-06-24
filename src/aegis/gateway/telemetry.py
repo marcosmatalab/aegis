@@ -58,7 +58,10 @@ AEGIS_COST_SOURCE = "aegis.cost.source"
 OPERATION_CHAT = "chat"
 SERVICE_NAME = "aegis-gateway"
 _INSTRUMENTATION_SCOPE = "aegis.gateway"
-_OTLP_HTTP_MODULE = "opentelemetry.exporter.otlp.proto.http"
+# Probe the exact submodule that _build_span_processor imports (not just the parent
+# package), so a partial install still yields a clean TelemetryConfigError, not a raw
+# ImportError.
+_OTLP_HTTP_MODULE = "opentelemetry.exporter.otlp.proto.http.trace_exporter"
 
 
 class TelemetryConfigError(RuntimeError):
@@ -213,10 +216,16 @@ def set_response_attributes(
 
 
 def mark_span_error(span: Any, exc: BaseException) -> None:
-    """Record an exception + set ERROR status. Used on the streaming path, whose
-    generators swallow-and-return (so the context manager's auto-recording, which
-    the non-stream path relies on, never fires). Records the exception TYPE only via
-    the span's own record_exception; no message text is added as an attribute."""
+    """Record an exception + set ERROR status on the streaming path.
+
+    The streaming generators swallow-and-return, so the context manager's auto-
+    recording (which the non-stream path relies on) never fires — hence the explicit
+    call here, keeping both paths consistent. ``span.record_exception(exc)`` emits an
+    ``exception`` event carrying ``exception.type``, ``exception.message`` (= str(exc))
+    and ``exception.stacktrace``; the status description is the exception type only.
+    The recorded message is the provider/AegisError string (e.g. an upstream
+    rate-limit), NEVER LLM prompt/response content — so no message text reaches the
+    span (consistent with the metadata-only privacy posture)."""
     span.record_exception(exc)
     if not otel_available():
         return

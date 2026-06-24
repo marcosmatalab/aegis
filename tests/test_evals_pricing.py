@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from aegis.evals.pricing import _PRICE_USD_PER_1K, is_priced, price_usd
+from aegis.evals.pricing import _PRICE_USD_PER_1K, price_usd
 
 
 def test_known_model_cost_is_tokens_times_rate():
@@ -19,7 +19,6 @@ def test_zero_tokens_is_zero_not_none_for_a_known_model():
 def test_mock_model_is_unpriced():
     # the mock has no table entry -> None -> it can NEVER yield an estimated cost
     assert price_usd("mock/echo-1", 10, 10) is None
-    assert is_priced("mock/echo-1") is False
 
 
 def test_unknown_model_is_none_not_a_wrong_estimate():
@@ -31,7 +30,6 @@ def test_table_keyed_on_the_prefixed_gateway_model_id():
     # AnthropicProvider echoes response.model = request.model (PREFIXED, verified in
     # from_anthropic_message), so the bridge prices on the prefixed id a real
     # round-trip actually produces.
-    assert is_priced("anthropic/claude-opus-4-8")
     assert price_usd("anthropic/claude-opus-4-8", 500, 250) is not None
     # the bare (un-prefixed) form must NOT accidentally match
     assert price_usd("claude-opus-4-8", 500, 250) is None

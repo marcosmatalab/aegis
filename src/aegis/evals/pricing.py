@@ -45,8 +45,3 @@ def price_usd(model: str, prompt_tokens: int, completion_tokens: int) -> float |
     in_rate, out_rate = rate
     cost = (prompt_tokens / 1000.0) * in_rate + (completion_tokens / 1000.0) * out_rate
     return round(cost, _USD_DECIMALS)
-
-
-def is_priced(model: str) -> bool:
-    """True if ``model`` has a price-table entry (False for the mock/unknown)."""
-    return model in _PRICE_USD_PER_1K
