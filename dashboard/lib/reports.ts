@@ -17,8 +17,8 @@ import { parseRedteam } from "./parse/redteam";
 import type { CalibrationView, EvalView, EvidenceView, RedteamView } from "./types";
 
 export function reportsDir(): string {
-  const env = process.env.AEGIS_REPORTS_DIR;
-  return env && env.trim() ? path.resolve(env) : path.resolve(process.cwd(), "..", "reports");
+  const env = process.env.AEGIS_REPORTS_DIR?.trim();
+  return env ? path.resolve(env) : path.resolve(process.cwd(), "..", "reports");
 }
 
 async function readJson(file: string): Promise<unknown> {

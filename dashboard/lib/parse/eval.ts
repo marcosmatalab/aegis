@@ -1,5 +1,5 @@
 import type { ClearDimView, EvalView, LevelView, TrajectoryMetricView } from "../types";
-import { asArray, asBoolean, asNumber, asObject, asString } from "./raw";
+import { asBoolean, asNumber, asObject, asString } from "./raw";
 
 const CLEAR_ORDER = ["cost", "latency", "efficiency", "accuracy", "reliability"];
 const LEVELS = ["L1", "L2", "L3"];
