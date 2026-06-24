@@ -112,7 +112,12 @@ def test_real_judge_eval_is_covered_redteam_and_posture_too():
         eval_report=_eval("geval"),
         redteam_report=_redteam(),
         calibration_report=_calib("geval"),
-        settings=_settings(guardrails_enabled=True, gr_policy_deny=["a", "b"], otel_enabled=True),
+        settings=_settings(
+            guardrails_enabled=True,
+            gr_policy_deny=["a", "b"],
+            otel_enabled=True,
+            otel_exporter="otlp",
+        ),
     )
     assert _control(rep, "EU AI Act", "Article 15(1)/(3)").status == "covered"
     assert _control(rep, "NIST", "MEASURE 2.5").status == "covered"
@@ -128,7 +133,55 @@ def test_real_judge_eval_is_covered_redteam_and_posture_too():
     posture = _control(rep, "EU AI Act", "Article 15(5)")
     assert posture.status == "covered" and "deny=2" in posture.derived_value
     assert "generation time" in posture.caveat  # posture != red-team run config
-    assert _control(rep, "ISO/IEC 42001", "A.6.2.8").status == "covered"  # otel on
+    assert _control(rep, "ISO/IEC 42001", "A.6.2.8").status == "covered"  # otel on + exported
+
+
+def test_otel_enabled_but_exporter_none_logs_is_partial_not_covered():
+    # spans created in-process but exported nowhere => instrumentation, not a retained log
+    rep = build_evidence(
+        eval_report=None,
+        redteam_report=None,
+        calibration_report=None,
+        settings=_settings(otel_enabled=True, otel_exporter="none"),
+    )
+    logs = _control(rep, "ISO/IEC 42001", "A.6.2.8")
+    assert logs.status == "partial" and "NOT exported" in logs.derived_value
+
+
+def test_vandv_without_level_results_is_not_covered():
+    # a present-but-content-less eval report must not yield a covered V&V control
+    rep = build_evidence(
+        eval_report={"judge": "geval"},
+        redteam_report=None,
+        calibration_report=None,
+        settings=_settings(),
+    )
+    assert _control(rep, "ISO/IEC 42001", "A.6.2.4").status == "not_covered"
+
+
+def test_non_numeric_accuracy_value_is_not_covered():
+    bad = {"judge": "geval", "clear": {"accuracy": {"status": "measured", "value": "oops"}}}
+    rep = build_evidence(
+        eval_report=bad, redteam_report=None, calibration_report=None, settings=_settings()
+    )
+    assert _control(rep, "EU AI Act", "Article 15(1)/(3)").status == "not_covered"
+
+
+def test_null_nested_fields_never_crash():
+    # loader only checks the TOP level is a dict; a present-but-null nested object
+    # (interrupted write / wrong schema) must degrade to not_covered, never crash
+    rep = build_evidence(
+        eval_report={"judge": "geval", "clear": None, "levels": None, "overall_score": None},
+        redteam_report={"overall": None, "categories": {"x": None}, "known_gaps": ["bad", None]},
+        calibration_report={"judge": "geval", "global": None},
+        settings=_settings(guardrails_enabled=True),
+    )
+    # the run completes and the affected controls are not_covered, not a traceback
+    assert _control(rep, "EU AI Act", "Article 15(1)/(3)").status == "not_covered"
+    assert _control(rep, "ISO/IEC 42001", "A.6.2.4").status == "not_covered"
+    assert _control(rep, "NIST", "MEASURE 2.13").status == "not_covered"
+    # red-team robustness still renders (null containers coerced) without crashing
+    assert _control(rep, "EU AI Act", "Article 15(4)").status in {"covered", "not_covered"}
 
 
 def test_mock_judge_caps_eval_controls_at_partial():
