@@ -62,8 +62,19 @@ from aegis.evidence.loader import EvidenceInputError, read_report
 from aegis.evidence.persistence import write_evidence_json
 from aegis.gateway.config import get_settings
 from aegis.gateway.errors import ProviderNotConfiguredError
+from aegis.redteam.baseline import (
+    REDTEAM_DEFAULT_TOLERANCE,
+    REDTEAM_MODE,
+    REGRESSION_KINDS,
+    RedteamBaselineError,
+    compare_redteam_to_baseline,
+    load_redteam_baseline,
+    redteam_baseline_path,
+    to_redteam_baseline,
+)
 from aegis.redteam.dataset import DEFAULT_ATTACKS_PATH, AttackDatasetError, load_attacks
-from aegis.redteam.runner import run_redteam
+from aegis.redteam.report import build_report
+from aegis.redteam.runner import run_redteam, scan
 
 _CLEAR_ORDER = ("cost", "latency", "efficiency", "accuracy", "reliability")
 
@@ -266,6 +277,57 @@ def _redteam_run(args: argparse.Namespace) -> int:
     return 0
 
 
+def _redteam_gate(args: argparse.Namespace) -> int:
+    # Deterministic + offline BY CONSTRUCTION: scan() builds the F2 pipeline from
+    # build_redteam_settings (every guardrail field pinned as an init kwarg, so no
+    # AEGIS_* process env var can change detection) — the SAME scoring path as
+    # `aegis redteam run`. The gate compares the run to the committed baseline.
+    try:
+        cases = load_attacks(args.dataset)
+    except AttackDatasetError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    results = scan(cases)
+    report = build_report(results, suite=args.suite, created=0)
+    current = to_redteam_baseline(report, results)
+    out = args.baseline or redteam_baseline_path(args.suite)
+
+    if args.update_baseline:
+        write_baseline(current, out)
+        print(
+            f"wrote red-team baseline {out} "
+            f"(suite={current['suite']} mode={current['mode']} cases={current['case_count']})"
+        )
+        return 0
+
+    try:
+        baseline = load_redteam_baseline(out)
+        findings = compare_redteam_to_baseline(baseline, current, tolerance=args.tolerance)
+    except RedteamBaselineError as exc:
+        # Cannot fairly compare (missing/stale/remapped/malformed) -> exit 2, not 1.
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+
+    # block_code_changed is informational (codes have no strength ordering) -> a named
+    # note, never a block; surfaced so a silent code drift is still visible.
+    for note in (f for f in findings if f.kind not in REGRESSION_KINDS):
+        print(f"  note: {note}", file=sys.stderr)
+    regressions = [f for f in findings if f.kind in REGRESSION_KINDS]
+    if regressions:
+        print(
+            f"FAIL: {len(regressions)} red-team regression(s) vs baseline {out}:", file=sys.stderr
+        )
+        for reg in regressions:
+            print(f"  {reg}", file=sys.stderr)
+        return 1
+
+    print(
+        f"PASS: no red-team regressions vs baseline {out} "
+        f"({current['case_count']} cases, mode={REDTEAM_MODE})"
+    )
+    return 0
+
+
 def _evidence(args: argparse.Namespace) -> int:
     # Per-source resolution (the three reports use DIFFERENT default suites): the eval
     # report follows --suite (default golden), the red-team report its own default
@@ -417,6 +479,37 @@ def build_parser() -> argparse.ArgumentParser:
         help="exit 1 if overall detection rate < floor (opt-in; NOT the red-team gate)",
     )
     rt_run.set_defaults(func=_redteam_run)
+
+    # `aegis redteam gate` — the F7 red-team regression gate: score the catalog vs the
+    # F2 guardrails on the HERMETIC offline pipeline and compare to the committed
+    # baseline; exit 1 on regression, 2 on a stale/misconfigured baseline. Sibling of
+    # `aegis eval gate`; the two gate DIFFERENT artifacts, so they stay separate.
+    rt_gate = rt_cmds.add_parser(
+        "gate", help="block on red-team regression vs the committed baseline (offline, hermetic)"
+    )
+    rt_gate.add_argument(
+        "--dataset", default=None, help=f"attack JSONL path (default: {DEFAULT_ATTACKS_PATH})"
+    )
+    rt_gate.add_argument(
+        "--suite", default="redteam", help="suite name (selects the baseline file)"
+    )
+    rt_gate.add_argument(
+        "--baseline",
+        default=None,
+        help="baseline JSON path (default: src/aegis/redteam/baselines/<suite>.json)",
+    )
+    rt_gate.add_argument(
+        "--tolerance",
+        type=float,
+        default=REDTEAM_DEFAULT_TOLERANCE,
+        help=f"per-category detection-rate drop band (default: {REDTEAM_DEFAULT_TOLERANCE})",
+    )
+    rt_gate.add_argument(
+        "--update-baseline",
+        action="store_true",
+        help="regenerate + write the baseline from a fresh hermetic run, then exit 0 (no compare)",
+    )
+    rt_gate.set_defaults(func=_redteam_gate)
 
     # `aegis evidence` — single-action group (F8): build a PARTIAL-TECHNICAL-EVIDENCE
     # PDF (or JSON) from the real eval/red-team/calibration reports + effective config.
