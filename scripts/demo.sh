@@ -49,6 +49,16 @@ GATEWAY_URL="http://127.0.0.1:${GATEWAY_PORT}"
 DASHBOARD_URL="http://localhost:${DASHBOARD_PORT}/"
 PYTHON="${PYTHON:-python}"
 
+# Guardrails ON for the WHOLE demo, not just the gateway subprocess. The gateway
+# shows them redacting/blocking (beats 3-4); exporting the flag means the `aegis
+# evidence` subprocess (beat 9) reads the SAME posture, so its guardrail-backed
+# controls (EU AI Act Art.15(5) / ISO A.6.2.6) reflect what the demo actually runs
+# instead of reporting "guardrails disabled" — the demo no longer contradicts
+# itself between beats 4 and 9. Honest: guardrails really are on here. This does
+# NOT touch eval/red-team/calibrate (offline; they never pass through the gateway's
+# guardrail pipeline, so their numbers are identical with the flag set or unset).
+export AEGIS_GUARDRAILS_ENABLED=true
+
 # Prefer the installed `aegis` console script; fall back to the module form so the
 # demo runs even when only `pip install -e .` (no PATH refresh) has happened.
 if command -v aegis >/dev/null 2>&1; then
@@ -145,8 +155,8 @@ note "honest by construction: every number below is produced live over the keyle
 # ============================================================================ #
 say "1/10 · Gateway up — /health liveness"
 note "\$ AEGIS_GUARDRAILS_ENABLED=true uvicorn aegis.gateway.main:app --port ${GATEWAY_PORT}"
-AEGIS_GUARDRAILS_ENABLED=true \
-  "$PYTHON" -m uvicorn aegis.gateway.main:app --host 127.0.0.1 --port "$GATEWAY_PORT" \
+# (the flag is exported above, so the gateway — and the evidence subprocess — inherit it)
+"$PYTHON" -m uvicorn aegis.gateway.main:app --host 127.0.0.1 --port "$GATEWAY_PORT" \
   >"$GATEWAY_LOG" 2>&1 &
 GATEWAY_PID=$!
 if ! wait_for_http "${GATEWAY_URL}/health" gateway 30; then
@@ -211,7 +221,8 @@ pause
 say "6/10 · Judge calibration — Cohen's kappa vs human labels"
 note "\$ aegis calibrate"
 "${AEGIS[@]}" calibrate
-note "the mock kappa is a wiring smoke test, not a real calibration — that needs --judge geval + ANTHROPIC_API_KEY"
+note "the mock kappa is a wiring smoke test, not a real calibration: it's lexical and does NOT track human judgment, so a negative/poor kappa here is EXPECTED"
+note "the REAL judge (aegis calibrate --judge geval, needs ANTHROPIC_API_KEY) scored kappa~=0.93 (p_o~=0.97) over these same 30 labels — see README section F5"
 pause
 
 # ============================================================================ #
