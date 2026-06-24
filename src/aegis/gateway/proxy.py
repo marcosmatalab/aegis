@@ -143,15 +143,22 @@ def _stamp_stream_attrs(span: object, chunks: list[ChatCompletionChunk]) -> None
 
 
 async def _sse_generator(
-    provider: Provider, request: ChatCompletionRequest, span: object | None = None
+    provider: Provider, request: ChatCompletionRequest, tracer: object | None = None
 ) -> AsyncIterator[str]:
-    # The span (when present) is started by the caller and ENDED HERE in finally, so
-    # its duration spans real chunk emission and it closes on normal completion, on a
-    # mid-stream error, AND on client-disconnect (GeneratorExit). The provider error
-    # is swallowed-and-returned (no [DONE], matching OpenAI), so ERROR status is set
-    # explicitly in the except block — a wrapping context manager would never see it.
+    # The span is CREATED HERE (first in the try) and ended in the SAME finally, so its
+    # whole lifetime is bounded by this generator — there is no started-but-never-
+    # iterated leak window (the span does not exist until iteration begins). It ends
+    # exactly once: on normal completion, on a mid-stream error, and at generator
+    # finalization on client-disconnect (GeneratorExit via aclose/GC or the loop's
+    # shutdown_asyncgens — so the end may trail the disconnect, but never leaks). The
+    # provider error is swallowed-and-returned (no [DONE], matching OpenAI), so ERROR
+    # status is set explicitly in the except — a context manager would never see it.
+    span = None
     seen: list[ChatCompletionChunk] = []
     try:
+        if tracer is not None:
+            span = tracer.start_span(telemetry.span_name(request.model))
+            telemetry.set_request_attributes(span, model=request.model, provider_name=provider.name)
         try:
             async for chunk in provider.stream(request):
                 if span is not None:
@@ -188,17 +195,22 @@ async def _guarded_sse_generator(
     provider: Provider,
     request: ChatCompletionRequest,
     pipeline: GuardrailPipeline,
-    span: object | None = None,
+    tracer: object | None = None,
 ) -> AsyncIterator[str]:
     """Buffer the whole stream, run output guardrails, then emit.
 
     Trades incremental delivery for leak-safe output scanning (the inherent
     guardrail/streaming tension). A block becomes a guardrail_blocked error frame
-    with no [DONE]; a provider error stays an api_error frame. The span (when
-    present) is ended HERE in finally and carries ERROR status on a provider error.
+    with no [DONE]; a provider error stays an api_error frame. The span (when a
+    tracer is given) is created and ended HERE — fully bounded by this generator, no
+    leak window — and carries ERROR status on a provider error.
     """
+    span = None
     chunks: list[ChatCompletionChunk] = []
     try:
+        if tracer is not None:
+            span = tracer.start_span(telemetry.span_name(request.model))
+            telemetry.set_request_attributes(span, model=request.model, provider_name=provider.name)
         try:
             async for chunk in provider.stream(request):
                 chunks.append(chunk)
@@ -287,16 +299,14 @@ async def chat_completions(
     tracer_provider = getattr(http_request.app.state, "tracer_provider", None)
 
     if request.stream:
-        span = None
-        if tracer_provider is not None:
-            span = telemetry.get_tracer(tracer_provider).start_span(
-                telemetry.span_name(request.model)
-            )
-            telemetry.set_request_attributes(span, model=request.model, provider_name=provider.name)
+        # Hand the GENERATOR the tracer, not a pre-started span: it owns the span's
+        # full lifetime in its own try/finally, so a span is never started unless the
+        # body is actually iterated (no started-but-never-iterated leak window).
+        tracer = telemetry.get_tracer(tracer_provider) if tracer_provider is not None else None
         generator = (
-            _guarded_sse_generator(provider, request, pipeline, span=span)
+            _guarded_sse_generator(provider, request, pipeline, tracer=tracer)
             if pipeline.output_active
-            else _sse_generator(provider, request, span=span)
+            else _sse_generator(provider, request, tracer=tracer)
         )
         return StreamingResponse(
             generator, media_type="text/event-stream", headers={"Cache-Control": "no-cache"}

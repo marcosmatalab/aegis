@@ -135,25 +135,49 @@ def test_stream_error_sets_span_error_status_and_records_exception():
     assert any(e.name == "exception" for e in s.events)
 
 
-def test_sse_generator_ends_span_exactly_once_on_client_disconnect():
-    # Drive the generator directly and aclose() it mid-stream (a client disconnect):
-    # the manual span must still be ended exactly once via the finally.
-    ends = {"n": 0}
+class _CountingSpan:
+    def __init__(self, events):
+        self._events = events
 
-    class _FakeSpan:
-        def set_attribute(self, *a, **k): ...
-        def record_exception(self, *a, **k): ...
-        def set_status(self, *a, **k): ...
-        def end(self):
-            ends["n"] += 1
+    def set_attribute(self, *a, **k): ...
+    def record_exception(self, *a, **k): ...
+    def set_status(self, *a, **k): ...
+    def end(self):
+        self._events["ended"] += 1
+
+
+class _CountingTracer:
+    def __init__(self, events):
+        self._events = events
+
+    def start_span(self, name):
+        self._events["started"] += 1
+        return _CountingSpan(self._events)
+
+
+def test_sse_generator_creates_then_ends_span_exactly_once_on_client_disconnect():
+    # Drive the generator directly and aclose() it mid-stream (a client disconnect):
+    # the span is created on first iteration and ended exactly once via the finally.
+    events = {"started": 0, "ended": 0}
 
     async def _run():
         req = ChatCompletionRequest(
             model="mock/echo-1", messages=[{"role": "user", "content": "hi"}]
         )
-        gen = _sse_generator(MockProvider(), req, span=_FakeSpan())
-        await gen.__anext__()  # pull the first frame...
-        await gen.aclose()  # ...then disconnect mid-stream
+        gen = _sse_generator(MockProvider(), req, tracer=_CountingTracer(events))
+        await gen.__anext__()  # iteration begins -> span created
+        await gen.aclose()  # ...then disconnect mid-stream -> finally ends it
 
     asyncio.run(_run())
-    assert ends["n"] == 1
+    assert events == {"started": 1, "ended": 1}
+
+
+def test_uniterated_stream_generator_never_starts_a_span():
+    # The leak-window fix: a generator that is never iterated must not start a span,
+    # so an unstarted span can never leak unended. Span lifetime is fully bounded by
+    # the generator's own try/finally — nothing happens until the first __anext__.
+    events = {"started": 0, "ended": 0}
+    req = ChatCompletionRequest(model="mock/echo-1", messages=[{"role": "user", "content": "hi"}])
+    gen = _sse_generator(MockProvider(), req, tracer=_CountingTracer(events))
+    asyncio.run(gen.aclose())  # discard without ever iterating
+    assert events == {"started": 0, "ended": 0}
