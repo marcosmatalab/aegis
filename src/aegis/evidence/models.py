@@ -25,9 +25,11 @@ DISCLAIMER = (
     "artifacts. It maps specific technical controls to framework clauses where Aegis "
     "produces real measurements, and is NOT a compliance certificate, conformity "
     "assessment, or claim of full conformance with the EU AI Act, NIST AI RMF, or "
-    "ISO/IEC 42001. The majority of each framework's controls are out of scope. Every "
-    "value is derived from the named artifact at generation time; absent artifacts are "
-    "shown as not-covered."
+    "ISO/IEC 42001. Aegis maps only the small set of technical controls shown below; "
+    "the majority of each framework's underlying clauses are out of scope (bundled into "
+    "the aggregate out-of-scope rows), so the control counts are NOT a coverage "
+    "percentage. Every value is derived from the named artifact at generation time; "
+    "absent artifacts are shown as not-covered."
 )
 
 
