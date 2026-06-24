@@ -1,14 +1,13 @@
+"use client";
+
 import { fmtInt, fmtNum } from "@/lib/format";
+import { useLocale } from "@/lib/i18n/LocaleProvider";
 import type { CalibrationView, KappaSectionView } from "@/lib/types";
 import { Card } from "./Card";
 
-const CAVEAT =
-  "Cohen's κ is DIRECTIONAL — agreement with one annotator's rubric (small N), not ground truth. Landis-Koch bands are arbitrary conventions; a degenerate table yields an undefined κ (shown as 'undefined', never 0).";
-const MOCK_CAVEAT =
-  "judge=mock — a wiring smoke test (κ of the heuristic mock vs the labels), not a real-judge calibration";
-
 function kappaText(s: KappaSectionView): string {
-  // null kappa = undefined (degenerate agreement table) — never rendered as a number
+  // null kappa = undefined (degenerate agreement table) — never rendered as a number,
+  // and the verbatim "undefined" / band come from the report, so they are NOT translated.
   const k = s.kappa === null ? "undefined" : fmtNum(s.kappa);
   return `${k} (${s.band ?? "—"})`;
 }
@@ -25,24 +24,35 @@ function SectionRow({ label, s }: { label: string; s: KappaSectionView }) {
 }
 
 export function KappaPanel({ view }: { view: CalibrationView }) {
+  const { t } = useLocale();
   const m = view.global?.matrix ?? null;
+  const base = [
+    t("kappa.caveatDirectional"),
+    t("kappa.caveatSmallN"),
+    t("kappa.caveatDegenerate"),
+  ].join(" ");
+  const caveat = view.judgeIsMock ? `${t("kappa.mockCaveat")}. ${base}` : base;
   return (
     <Card
-      title="Judge calibration (Cohen's κ)"
-      subtitle={`judge=${view.judge ?? "—"} · n=${fmtInt(view.nCases)} · parse-failed=${fmtInt(view.nParseFailed)}`}
-      caveat={view.judgeIsMock ? `${MOCK_CAVEAT}. ${CAVEAT}` : CAVEAT}
+      title={t("kappa.title")}
+      subtitle={t("kappa.subtitle", {
+        judge: view.judge ?? "—",
+        n: fmtInt(view.nCases),
+        pf: fmtInt(view.nParseFailed),
+      })}
+      caveat={caveat}
     >
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
         <thead>
           <tr style={{ textAlign: "left", color: "#9aa0aa" }}>
-            <th style={{ padding: "2px 8px 2px 0" }}>Scope</th>
-            <th style={{ padding: "2px 8px" }}>κ (band)</th>
-            <th style={{ padding: "2px 8px" }}>p_o</th>
-            <th style={{ padding: "2px 0" }}>n</th>
+            <th style={{ padding: "2px 8px 2px 0" }}>{t("kappa.colScope")}</th>
+            <th style={{ padding: "2px 8px" }}>{t("kappa.colKappa")}</th>
+            <th style={{ padding: "2px 8px" }}>{t("kappa.colPo")}</th>
+            <th style={{ padding: "2px 0" }}>{t("kappa.colN")}</th>
           </tr>
         </thead>
         <tbody>
-          {view.global ? <SectionRow label="global" s={view.global} /> : null}
+          {view.global ? <SectionRow label={t("kappa.globalRow")} s={view.global} /> : null}
           {view.perCriterion.map((c) => (
             <SectionRow key={c.criterion} label={c.criterion} s={c.section} />
           ))}
@@ -51,19 +61,27 @@ export function KappaPanel({ view }: { view: CalibrationView }) {
 
       {m ? (
         <>
-          <h3 style={{ margin: "0.9rem 0 0.35rem", fontSize: 14 }}>Global confusion matrix</h3>
+          <h3 style={{ margin: "0.9rem 0 0.35rem", fontSize: 14 }}>{t("kappa.matrixTitle")}</h3>
           <p style={{ margin: "0 0 0.35rem", color: "#9aa0aa", fontSize: 12 }}>
-            {m.orientation ?? "rows=human, cols=judge; positive='pass'"}
+            {m.orientation ?? t("kappa.matrixOrientationDefault")}
           </p>
           <table style={{ borderCollapse: "collapse", fontSize: 13 }}>
             <tbody>
               <tr>
-                <td style={cell}>human pass / judge pass: {fmtInt(m.humanPassJudgePass)}</td>
-                <td style={cell}>human pass / judge fail: {fmtInt(m.humanPassJudgeFail)}</td>
+                <td style={cell}>
+                  {t("kappa.cellHpJp")}: {fmtInt(m.humanPassJudgePass)}
+                </td>
+                <td style={cell}>
+                  {t("kappa.cellHpJf")}: {fmtInt(m.humanPassJudgeFail)}
+                </td>
               </tr>
               <tr>
-                <td style={cell}>human fail / judge pass: {fmtInt(m.humanFailJudgePass)}</td>
-                <td style={cell}>human fail / judge fail: {fmtInt(m.humanFailJudgeFail)}</td>
+                <td style={cell}>
+                  {t("kappa.cellHfJp")}: {fmtInt(m.humanFailJudgePass)}
+                </td>
+                <td style={cell}>
+                  {t("kappa.cellHfJf")}: {fmtInt(m.humanFailJudgeFail)}
+                </td>
               </tr>
             </tbody>
           </table>
