@@ -4,7 +4,30 @@ from __future__ import annotations
 
 import json
 
-from aegis.cli import main
+from aegis.cli import _format_clear, main
+
+
+def _dim(name, status, *, score=None, value=None, unit="usd", applicable=True):
+    return {
+        "name": name,
+        "status": status,
+        "applicable": applicable,
+        "score": score,
+        "value": value,
+        "unit": unit,
+        "basis": "",
+    }
+
+
+def test_format_clear_marks_non_measured_and_keeps_measured_clean():
+    # measured renders WITHOUT a suffix on both the scored and raw-value paths
+    assert _format_clear(_dim("latency", "measured", value=120.0, unit="ms")) == "latency=120ms"
+    assert _format_clear(_dim("accuracy", "measured", score=0.9, unit="ratio")) == "accuracy=0.900"
+    # estimated / synthetic / placeholder always carry the honest suffix
+    assert _format_clear(_dim("cost", "estimated", value=0.012)) == "cost=0.012usd(estimated)"
+    assert _format_clear(_dim("cost", "synthetic", value=0.03)) == "cost=0.03usd(synthetic)"
+    ph = _format_clear(_dim("cost", "placeholder", value=None, applicable=False))
+    assert ph == "cost=n/a(placeholder)"
 
 
 def test_eval_run_writes_report_and_summary(tmp_path, capsys):

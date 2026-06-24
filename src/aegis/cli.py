@@ -65,13 +65,17 @@ _CLEAR_ORDER = ("cost", "latency", "efficiency", "accuracy", "reliability")
 
 
 def _format_clear(dim: dict) -> str:
-    """Compact one-token rendering of a CLEAR dimension, marking synthetic data."""
+    """Compact one-token rendering of a CLEAR dimension.
+
+    'measured' is the trusted baseline and renders clean; 'estimated', 'synthetic',
+    and 'placeholder' carry their status suffix so non-measured data is never mistaken
+    for a real measurement (applies on both the scored and raw-value paths)."""
     if not dim["applicable"]:
         return f"{dim['name']}=n/a({dim['status']})"
+    suffix = "" if dim["status"] == "measured" else f"({dim['status']})"
     if dim["score"] is not None:
-        suffix = "" if dim["status"] == "measured" else f"({dim['status']})"
         return f"{dim['name']}={dim['score']:.3f}{suffix}"
-    return f"{dim['name']}={dim['value']:.3g}{dim['unit']}({dim['status']})"
+    return f"{dim['name']}={dim['value']:.3g}{dim['unit']}{suffix}"
 
 
 def _eval_run(args: argparse.Namespace) -> int:

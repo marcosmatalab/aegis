@@ -58,6 +58,29 @@ def test_empty_dataset_rejected(tmp_path):
         load_golden(p)
 
 
+def test_synthetic_trace_provenance_loads_fine(tmp_path):
+    # explicit synthetic provenance (or none) is the only legal file-authored form
+    p = _write(
+        tmp_path,
+        [_line("a", trace={"latency_ms": 12.0, "cost_usd": 0.001, "latency_source": "synthetic"})],
+    )
+    cases = load_golden(p)
+    assert cases[0].trace.latency_source == "synthetic"
+
+
+def test_hand_authored_measured_source_is_rejected(tmp_path):
+    # a golden line cannot self-declare 'measured' — that is earned only at runtime
+    p = _write(tmp_path, [_line("a", trace={"latency_ms": 12.0, "latency_source": "measured"})])
+    with pytest.raises(GoldenDatasetError, match=r"must be 'synthetic'.*telemetry bridge"):
+        load_golden(p)
+
+
+def test_hand_authored_estimated_cost_source_is_rejected(tmp_path):
+    p = _write(tmp_path, [_line("a", trace={"cost_usd": 0.01, "cost_source": "estimated"})])
+    with pytest.raises(GoldenDatasetError, match=r"must be 'synthetic'"):
+        load_golden(p)
+
+
 def test_missing_file_rejected(tmp_path):
     with pytest.raises(GoldenDatasetError, match=r"not found"):
         load_golden(tmp_path / "nope.jsonl")

@@ -164,6 +164,8 @@ def run_suite(
                 actual_calls=len(case.actual.tool_calls),
                 latency_ms=case.trace.latency_ms if case.trace else None,
                 cost_usd=case.trace.cost_usd if case.trace else None,
+                latency_source=case.trace.latency_source if case.trace else "synthetic",
+                cost_source=case.trace.cost_source if case.trace else "synthetic",
             )
         )
 

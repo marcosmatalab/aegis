@@ -18,6 +18,7 @@ from collections.abc import AsyncIterator
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
+from aegis.gateway import telemetry
 from aegis.gateway.config import Settings, get_settings
 from aegis.gateway.errors import AegisError, GuardrailBlockedError
 from aegis.gateway.schemas import (
@@ -119,17 +120,64 @@ def _serialize_chunk(chunk: ChatCompletionChunk) -> str:
     return f"data: {json.dumps(data, separators=(',', ':'))}\n\n"
 
 
-async def _sse_generator(provider: Provider, request: ChatCompletionRequest) -> AsyncIterator[str]:
-    try:
-        async for chunk in provider.stream(request):
-            yield _serialize_chunk(chunk)
-    except Exception as exc:
-        # Headers/200 already sent; emit an OpenAI error frame and terminate
-        # WITHOUT a [DONE] sentinel (OpenAI sends no [DONE] after an error).
-        log.exception("Error during streaming: %s", exc)
-        yield _exception_frame(exc)
+def _stamp_stream_attrs(span: object, chunks: list[ChatCompletionChunk]) -> None:
+    """Set GenAI response attrs on a streaming span from the observed chunks.
+
+    Latency is the span's own duration; usage is set only if the provider emitted a
+    terminal usage chunk (the mock never does, Anthropic only with include_usage) —
+    otherwise the token attrs are honestly omitted, never fabricated."""
+    if not chunks:
         return
-    yield SSE_DONE
+    finish: str | None = None
+    for chunk in chunks:
+        if chunk.choices and chunk.choices[0].finish_reason:
+            finish = chunk.choices[0].finish_reason
+    usage = next((c.usage for c in chunks if getattr(c, "usage", None)), None)
+    telemetry.set_response_attributes(
+        span,
+        model=chunks[0].model,
+        prompt_tokens=usage.prompt_tokens if usage else None,
+        completion_tokens=usage.completion_tokens if usage else None,
+        finish_reason=finish,
+    )
+
+
+async def _sse_generator(
+    provider: Provider, request: ChatCompletionRequest, tracer: object | None = None
+) -> AsyncIterator[str]:
+    # The span is CREATED HERE (first in the try) and ended in the SAME finally, so its
+    # whole lifetime is bounded by this generator — there is no started-but-never-
+    # iterated leak window (the span does not exist until iteration begins). It ends
+    # exactly once: on normal completion, on a mid-stream error, and at generator
+    # finalization on client-disconnect (GeneratorExit via aclose/GC or the loop's
+    # shutdown_asyncgens — so the end may trail the disconnect, but never leaks). The
+    # provider error is swallowed-and-returned (no [DONE], matching OpenAI), so ERROR
+    # status is set explicitly in the except — a context manager would never see it.
+    span = None
+    seen: list[ChatCompletionChunk] = []
+    try:
+        if tracer is not None:
+            span = tracer.start_span(telemetry.span_name(request.model))
+            telemetry.set_request_attributes(span, model=request.model, provider_name=provider.name)
+        try:
+            async for chunk in provider.stream(request):
+                if span is not None:
+                    seen.append(chunk)
+                yield _serialize_chunk(chunk)
+        except Exception as exc:
+            # Headers/200 already sent; emit an OpenAI error frame and terminate
+            # WITHOUT a [DONE] sentinel (OpenAI sends no [DONE] after an error).
+            log.exception("Error during streaming: %s", exc)
+            if span is not None:
+                telemetry.mark_span_error(span, exc)
+            yield _exception_frame(exc)
+            return
+        if span is not None:
+            _stamp_stream_attrs(span, seen)
+        yield SSE_DONE
+    finally:
+        if span is not None:
+            span.end()
 
 
 def _chunk_like(
@@ -144,52 +192,73 @@ def _chunk_like(
 
 
 async def _guarded_sse_generator(
-    provider: Provider, request: ChatCompletionRequest, pipeline: GuardrailPipeline
+    provider: Provider,
+    request: ChatCompletionRequest,
+    pipeline: GuardrailPipeline,
+    tracer: object | None = None,
 ) -> AsyncIterator[str]:
     """Buffer the whole stream, run output guardrails, then emit.
 
     Trades incremental delivery for leak-safe output scanning (the inherent
     guardrail/streaming tension). A block becomes a guardrail_blocked error frame
-    with no [DONE]; a provider error stays an api_error frame.
+    with no [DONE]; a provider error stays an api_error frame. The span (when a
+    tracer is given) is created and ended HERE — fully bounded by this generator, no
+    leak window — and carries ERROR status on a provider error.
     """
+    span = None
     chunks: list[ChatCompletionChunk] = []
     try:
-        async for chunk in provider.stream(request):
-            chunks.append(chunk)
-    except Exception as exc:
-        log.exception("Error during streaming: %s", exc)
-        yield _exception_frame(exc)
-        return
+        if tracer is not None:
+            span = tracer.start_span(telemetry.span_name(request.model))
+            telemetry.set_request_attributes(span, model=request.model, provider_name=provider.name)
+        try:
+            async for chunk in provider.stream(request):
+                chunks.append(chunk)
+        except Exception as exc:
+            log.exception("Error during streaming: %s", exc)
+            if span is not None:
+                telemetry.mark_span_error(span, exc)
+            yield _exception_frame(exc)
+            return
 
-    text = "".join(
-        c.choices[0].delta.content for c in chunks if c.choices and c.choices[0].delta.content
-    )
-    result = await pipeline.check_output(text)
-    if result.blocked:
-        yield _error_frame(result.reason, "guardrail_blocked", code=result.code, param=result.param)
-        return
-    if result.redacted_text is not None and chunks:
-        # Re-emit the redacted content as role -> content -> terminal frames,
-        # carrying the provider's actual finish_reason from the last chunk (not a
-        # hardcoded "stop"). NOTE (F2 limitation): a streamed usage object on the
-        # final chunk is not reconstructed here; the mock never emits one.
-        template = chunks[0]
-        last_choices = chunks[-1].choices
-        final_reason = last_choices[0].finish_reason if last_choices else "stop"
-        yield _serialize_chunk(
-            _chunk_like(template, delta=Delta(role="assistant"), finish_reason=None)
+        if span is not None:
+            _stamp_stream_attrs(span, chunks)
+        text = "".join(
+            c.choices[0].delta.content for c in chunks if c.choices and c.choices[0].delta.content
         )
-        if result.redacted_text:
-            yield _serialize_chunk(
-                _chunk_like(template, delta=Delta(content=result.redacted_text), finish_reason=None)
+        result = await pipeline.check_output(text)
+        if result.blocked:
+            yield _error_frame(
+                result.reason, "guardrail_blocked", code=result.code, param=result.param
             )
-        yield _serialize_chunk(
-            _chunk_like(template, delta=Delta(), finish_reason=final_reason or "stop")
-        )
-    else:
-        for chunk in chunks:
-            yield _serialize_chunk(chunk)
-    yield SSE_DONE
+            return
+        if result.redacted_text is not None and chunks:
+            # Re-emit the redacted content as role -> content -> terminal frames,
+            # carrying the provider's actual finish_reason from the last chunk (not a
+            # hardcoded "stop"). NOTE (F2 limitation): a streamed usage object on the
+            # final chunk is not reconstructed here; the mock never emits one.
+            template = chunks[0]
+            last_choices = chunks[-1].choices
+            final_reason = last_choices[0].finish_reason if last_choices else "stop"
+            yield _serialize_chunk(
+                _chunk_like(template, delta=Delta(role="assistant"), finish_reason=None)
+            )
+            if result.redacted_text:
+                yield _serialize_chunk(
+                    _chunk_like(
+                        template, delta=Delta(content=result.redacted_text), finish_reason=None
+                    )
+                )
+            yield _serialize_chunk(
+                _chunk_like(template, delta=Delta(), finish_reason=final_reason or "stop")
+            )
+        else:
+            for chunk in chunks:
+                yield _serialize_chunk(chunk)
+        yield SSE_DONE
+    finally:
+        if span is not None:
+            span.end()
 
 
 def _first_choice_text(response: ChatCompletionResponse) -> str:
@@ -211,6 +280,7 @@ def _with_redacted_content(
 @router.post("/v1/chat/completions")
 async def chat_completions(
     request: ChatCompletionRequest,
+    http_request: Request,
     provider: Provider = Depends(get_provider),
     pipeline: GuardrailPipeline = Depends(get_guardrail_pipeline),
 ):
@@ -223,17 +293,43 @@ async def chat_completions(
     if input_result.redacted_request is not None:
         request = input_result.redacted_request
 
+    # F1.x: the TracerProvider is installed on app.state ONLY when AEGIS_OTEL_ENABLED
+    # (lifespan). When absent (the default), there is NO span, NO timing, NO added
+    # work — a byte-identical F1/F2 passthrough. A no-op tracer is never even built.
+    tracer_provider = getattr(http_request.app.state, "tracer_provider", None)
+
     if request.stream:
+        # Hand the GENERATOR the tracer, not a pre-started span: it owns the span's
+        # full lifetime in its own try/finally, so a span is never started unless the
+        # body is actually iterated (no started-but-never-iterated leak window).
+        tracer = telemetry.get_tracer(tracer_provider) if tracer_provider is not None else None
         generator = (
-            _guarded_sse_generator(provider, request, pipeline)
+            _guarded_sse_generator(provider, request, pipeline, tracer=tracer)
             if pipeline.output_active
-            else _sse_generator(provider, request)
+            else _sse_generator(provider, request, tracer=tracer)
         )
         return StreamingResponse(
             generator, media_type="text/event-stream", headers={"Cache-Control": "no-cache"}
         )
 
-    response = await provider.complete(request)
+    if tracer_provider is None:
+        response = await provider.complete(request)
+    else:
+        # start_as_current_span auto-records the exception + sets ERROR on the way
+        # out (the non-stream call re-raises, unlike the swallowing stream path), so
+        # a provider failure is captured without manual handling here.
+        tracer = telemetry.get_tracer(tracer_provider)
+        with tracer.start_as_current_span(telemetry.span_name(request.model)) as span:
+            telemetry.set_request_attributes(span, model=request.model, provider_name=provider.name)
+            response = await provider.complete(request)
+            telemetry.set_response_attributes(
+                span,
+                model=response.model,
+                prompt_tokens=response.usage.prompt_tokens,
+                completion_tokens=response.usage.completion_tokens,
+                finish_reason=response.choices[0].finish_reason if response.choices else None,
+            )
+
     # --- OUTPUT guardrails (non-stream) ---
     output_result = await pipeline.check_output(_first_choice_text(response))
     if output_result.blocked:

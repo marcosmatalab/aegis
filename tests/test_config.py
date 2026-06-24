@@ -207,3 +207,36 @@ def test_anthropic_timeout_must_be_positive(monkeypatch):
     monkeypatch.setenv("AEGIS_ANTHROPIC_TIMEOUT_S", "0")
     with pytest.raises(ValueError):
         Settings(_env_file=None)
+
+
+# --- F1.x OpenTelemetry settings -------------------------------------------- #
+def test_otel_disabled_by_default(monkeypatch):
+    for var in ("AEGIS_OTEL_ENABLED", "AEGIS_OTEL_EXPORTER"):
+        monkeypatch.delenv(var, raising=False)
+    s = Settings(_env_file=None)
+    assert s.otel_enabled is False
+    assert s.otel_exporter == "none"
+
+
+def test_otel_master_toggle(monkeypatch):
+    monkeypatch.setenv("AEGIS_OTEL_ENABLED", "true")
+    assert Settings(_env_file=None).otel_enabled is True
+
+
+def test_otel_exporter_override(monkeypatch):
+    monkeypatch.setenv("AEGIS_OTEL_EXPORTER", "otlp")
+    assert Settings(_env_file=None).otel_exporter == "otlp"
+
+
+def test_invalid_otel_exporter_rejected(monkeypatch):
+    monkeypatch.setenv("AEGIS_OTEL_EXPORTER", "jaeger")
+    with pytest.raises(ValueError):
+        Settings(_env_file=None)
+
+
+def test_bare_otel_env_vars_are_ignored_by_settings(monkeypatch):
+    # The non-prefixed OTLP endpoint is consumed by the OTel SDK itself, never by
+    # Settings (extra="ignore"); setting it must not error nor leak onto the model.
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4318")
+    s = Settings(_env_file=None)
+    assert not hasattr(s, "otel_exporter_otlp_endpoint")
