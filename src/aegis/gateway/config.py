@@ -3,10 +3,13 @@
 Settings load from environment variables (prefix ``AEGIS_``) and an optional
 ``.env`` file via pydantic-settings.
 
-Scope: gateway/runtime fields, optional provider API keys, and the F2 guardrail
-toggles/thresholds. Later-phase variables that already appear in ``.env.example``
-(``DATABASE_URL``, ``OTEL_*``, ``LANGFUSE_*``, ``AEGIS_JUDGE_MODEL``,
-``AEGIS_EVAL_FAIL_UNDER``) are intentionally ignored here via ``extra="ignore"``.
+Scope: gateway/runtime fields, optional provider API keys, the F2 guardrail
+toggles/thresholds, and the F1.x OTel master switch/exporter. The F1.x fields use
+the ``AEGIS_`` prefix (``AEGIS_OTEL_ENABLED``/``AEGIS_OTEL_EXPORTER``); the BARE,
+non-prefixed OTel vars in ``.env.example`` (``OTEL_EXPORTER_OTLP_ENDPOINT``,
+``LANGFUSE_*``) are read by the OpenTelemetry SDK itself, not here, so they stay
+intentionally ignored via ``extra="ignore"`` (as do ``DATABASE_URL``,
+``AEGIS_JUDGE_MODEL``, ``AEGIS_EVAL_FAIL_UNDER``).
 """
 
 from __future__ import annotations
@@ -139,6 +142,23 @@ class Settings(BaseSettings):
     )
     clear_latency_budget_ms: float | None = Field(
         default=None, ge=0.0, description="Per-case latency SLO for CLEAR Latency normalization."
+    )
+
+    # --- F1.x OpenTelemetry observability -----------------------------------
+    # Master switch. Default FALSE so the gateway is a byte-identical F1/F2
+    # passthrough (no TracerProvider installed, no SDK import, no spans) unless
+    # tracing is explicitly turned on — exactly the guardrails_enabled posture.
+    otel_enabled: bool = Field(
+        default=False, description="Master switch for OpenTelemetry tracing (F1.x)."
+    )
+    # Where finished spans go. "none" (default) installs a TracerProvider with NO
+    # exporter: spans are created + attributed (tests read them via an in-memory
+    # exporter) but nothing leaves the process — zero network, no collector in CI.
+    # "console" prints to STDERR (never stdout, shared with the CLI) for local
+    # debugging. "otlp" exports to an OTLP collector / Langfuse and needs the
+    # optional [otel] extra + OTEL_EXPORTER_OTLP_ENDPOINT (read by the SDK itself).
+    otel_exporter: Literal["none", "console", "otlp"] = Field(
+        default="none", description="Span exporter when OTel is enabled."
     )
 
     @field_validator("log_level")
