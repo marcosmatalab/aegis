@@ -1,14 +1,14 @@
 # 🛡️ Aegis
 
-> An OpenAI-compatible proxy that sits in front of any model and adds input/output guardrails, three-level trajectory evals with a human-calibrated LLM judge, OWASP-mapped red-team coverage of those guardrails, and a CI gate that blocks merges on eval regression. OpenTelemetry observability, governance mapping, and red-team gating are on the roadmap.
+> An OpenAI-compatible proxy that sits in front of any model and adds input/output guardrails, three-level trajectory evals with a human-calibrated LLM judge, OWASP-mapped red-team coverage of those guardrails, OpenTelemetry tracing of every request, and a CI gate that blocks merges on eval regression. Governance mapping and red-team gating are on the roadmap.
 
-> **⚠️ Status: under active construction (pre-alpha).** Working today: the OpenAI-compatible `/v1/chat/completions` proxy (F1) with SSE streaming; input/output **guardrails** (F2); a 3-level **eval engine** (F3) with a golden anchor set and `aegis eval run`; **trajectory metrics + CLEAR** (F4); **judge calibration** via Cohen's κ (F5, `aegis calibrate`); an **automated red-team** mapped to OWASP that scores the guardrails (F6, `aegis redteam run`); and a **CI eval gate** that blocks merges on eval regression (F7, `aegis eval gate`). The **real Anthropic (Claude) provider** and a **real G-Eval-inspired judge** are wired behind the same ABCs; a deterministic, keyless **mock provider / mock judge** stays the default so the full suite and CI run offline with no key. On the roadmap: OpenTelemetry observability (F1.x), governance mapping (F8), the dashboard (F9), and **red-team gating** (F7 currently gates evals only).
+> **⚠️ Status: under active construction (pre-alpha).** Working today: the OpenAI-compatible `/v1/chat/completions` proxy (F1) with SSE streaming; input/output **guardrails** (F2); a 3-level **eval engine** (F3) with a golden anchor set and `aegis eval run`; **trajectory metrics + CLEAR** (F4); **judge calibration** via Cohen's κ (F5, `aegis calibrate`); an **automated red-team** mapped to OWASP that scores the guardrails (F6, `aegis redteam run`); and a **CI eval gate** that blocks merges on eval regression (F7, `aegis eval gate`); and opt-in **OpenTelemetry tracing** of each request (F1.x, GenAI semconv) — metadata only, no message content — that turns CLEAR Latency into a real measurement and Cost into a token×price estimate. The **real Anthropic (Claude) provider** and a **real G-Eval-inspired judge** are wired behind the same ABCs; a deterministic, keyless **mock provider / mock judge** stays the default so the full suite and CI run offline with no key. On the roadmap: governance mapping (F8), the dashboard (F9), and **red-team gating** (F7 currently gates evals only).
 
 ---
 
 ## Why
 
-A single drop-in change (`base_url`) gives an existing app guardrails and continuous evals — without touching its model or business logic. Aegis is not a model; it is the **control layer** around any model or agent.
+A single drop-in change (`base_url`) gives an existing app guardrails, request tracing, and continuous evals — without touching its model or business logic. Aegis is not a model; it is the **control layer** around any model or agent.
 
 The differentiator is **evaluation depth**: not just scoring the final output, but scoring the *trajectory* (every tool call, in order, recovering from errors), validating the LLM judge against human labels, and wiring it all into a CI gate so regressions block merges instead of reaching production.
 
@@ -103,7 +103,7 @@ pytest
 |-------|-------------|--------|
 | **F0** | Skeleton: packaging, CI, `/health` gateway | ✅ done |
 | **F1** | OpenAI-compatible proxy (`/v1/chat/completions`): drop-in `base_url`, SSE streaming, deterministic mock provider, OpenAI error envelope | ✅ done |
-| **F1.x** | OTel → Langfuse tracing of each request (observability) | ⬜ planned |
+| **F1.x** | OpenTelemetry GenAI-semconv tracing of each request (opt-in, no-op default); CLEAR Latency→measured / Cost→estimated from real spans; OTLP/Langfuse optional | ✅ done |
 | **F2** | Input/output guardrails: prompt-injection scan (OWASP LLM01), PII redaction (regex default, Presidio optional), allow/deny policy, basic toxicity — off by default | ✅ done |
 | **F3** | Evals L1 (session/goal) · L2 (trace/quality, G-Eval CoT) · L3 (tool correctness); golden set + `aegis eval run` + JSON report | ✅ done |
 | **F4** | Trajectory metrics (TrajectoryAccuracy, ToolCorrectness, Progress Rate, T-Eval) + CLEAR; Agent-as-a-Judge | ✅ done |
@@ -210,17 +210,17 @@ F4 adds richer, mostly-deterministic **trajectory** scoring on top of L3, a per-
 | **Progress Rate** | AgentBoard-style fraction of **milestones** (subgoals) reached, **order-independent**; milestones are explicit or derived from the expected tools | survives reordering, unlike Trajectory/T-Eval |
 | **T-Eval** | step-by-step planning: is the call at each **position** the expected one? strict positional match, so one early insertion penalizes every later step | TrajectoryAccuracy (which realigns via subsequence) |
 
-**CLEAR** (five dimensions per run) — and an explicit table of what is **measurable today** vs a **placeholder until F1.x** (live providers + OpenTelemetry):
+**CLEAR** (five dimensions per run) — and an explicit table of each dimension's `status`, which is honest about *how* the number was obtained:
 
-| Dimension | Status today | How it's computed |
-|-----------|--------------|-------------------|
+| Dimension | Status | How it's computed |
+|-----------|--------|-------------------|
 | **Accuracy** | ✅ measured | mean of the per-level eval scores (the suite `overall`) |
 | **Efficiency** | ✅ measured | useful (exact) tool calls / total calls — penalizes redundant, extra, wrong-args calls |
 | **Reliability** | ✅ measured (proxy) | end-to-end success rate (all applicable levels pass); cross-run flakiness deferred to F5+ |
-| **Cost** | ⚠️ **synthetic / placeholder** | mean of hand-authored `trace.cost_usd`; real cost needs provider token+price telemetry (**F1.x**) |
-| **Latency** | ⚠️ **synthetic / placeholder** | mean of hand-authored `trace.latency_ms`; real latency needs live request timing via OTel (**F1.x**) |
+| **Latency** | 📈 **measured** *with real telemetry* | the request span's wall-clock duration (F1.x); **synthetic** from hand-authored `trace.latency_ms`, **placeholder** with no trace |
+| **Cost** | 🧮 **estimated** *with real telemetry* | real measured tokens × a **static list price** (`evals/pricing.py`) — an estimate, not a measurement; **synthetic** from hand-authored `trace.cost_usd`, **placeholder** with no trace / unpriced model |
 
-Each CLEAR dimension carries its `status` (`measured` / `synthetic` / `placeholder`) in the JSON report and is flagged in the CLI summary, so Cost/Latency are never mistaken for real measurements — and the synthetic basis discloses how many cases actually carried a trace (e.g. `1/32 traced cases`). They only get a normalized 0..1 score when an optional budget/SLO (`AEGIS_CLEAR_COST_BUDGET_USD` / `AEGIS_CLEAR_LATENCY_BUDGET_MS`) is set.
+The four statuses — `measured`, `estimated`, `synthetic`, `placeholder` — ride in the JSON report and the CLI summary (only `measured` renders without a suffix), so a list-price estimate is never mistaken for a real measurement and a hand-authored number is never mistaken for either. **`measured`/`estimated` are reached ONLY when real telemetry flows through the F1.x bridge** (see [Observability](#observability--opentelemetry-tracing-f1x)); the committed mock suite has no real telemetry, so `aegis eval run` over the golden set stays `placeholder`/`synthetic`. The basis string discloses the traced denominator (e.g. `1/32 traced cases`), and a mixed-provenance suite honestly **downgrades to `synthetic`** rather than letting one real case launder the rest. Cost/Latency only get a normalized 0..1 score when an optional budget/SLO (`AEGIS_CLEAR_COST_BUDGET_USD` / `AEGIS_CLEAR_LATENCY_BUDGET_MS`) is set.
 
 **Agent-as-a-Judge** evaluates the trajectory itself — **loops**, **redundant steps**, and **error recovery** (via each call's `status`). It reuses F3's judge *pattern* (an async ABC + a deterministic mock + a clearly-stubbed real backend) but not F3's output-centric `Judge` interface.
 
@@ -314,6 +314,31 @@ A **regression** is any of: a per-level mean drop beyond `--tolerance` (default 
 - **Red-team is not gated yet (F6).** F7 ships in two slices: the eval gate today, red-team gating in a later slice. The comparator returns a typed list of regressions, so a red-team gate unions its own findings **additively** — no redesign.
 
 **Enabling the block (one-time, maintainer action in GitHub):** Settings → Branches → branch-protection rule for `main` → *Require status checks to pass before merging* → require the **`eval-gate`** check (alongside `lint-and-test`). Until that toggle is on, the job runs and reports but does not hard-block; the repo cannot self-apply branch protection.
+
+---
+
+## Observability — OpenTelemetry tracing (F1.x)
+
+The gateway emits **one OpenTelemetry span per `/v1/chat/completions` request**, following the **GenAI semantic conventions (~v1.38)**. Attributes are `gen_ai.operation.name` (`chat`), `gen_ai.request.model`, `gen_ai.response.model`, `gen_ai.provider.name` (the attribute that superseded `gen_ai.system`), and `gen_ai.usage.input_tokens` / `output_tokens`; the span name is `chat {model}` and its wall-clock duration is the gateway's first real request timing.
+
+> **Young convention, pinned + disclosed.** The GenAI semconv moved to its own repo, [`open-telemetry/semantic-conventions-genai`](https://github.com/open-telemetry/semantic-conventions-genai), and is **still evolving** — client spans left *experimental* in early 2026 but parts of the spans spec remain "Development" and `OTEL_SEMCONV_STABILITY_OPT_IN` exists. Aegis pins the attribute keys as its own string constants (so a package bump can't break it) and discloses the version in the module docstring.
+
+- **Opt-in, no-op by default.** `AEGIS_OTEL_ENABLED=false` (default) installs no `TracerProvider` and the proxy is a **byte-identical F1/F2 passthrough** — no span, no timing, no SDK import (the `[otel]` extra need not even be installed). This mirrors the `guardrails_enabled` posture. A monkeypatched-absent test proves the no-op branch even though CI installs OTel.
+- **Exporter needs no collector.** `AEGIS_OTEL_EXPORTER=none` (default when enabled) creates + attributes spans but exports nowhere — tests assert on them via an in-memory exporter, so **CI is green offline**. `console` writes to stderr for local debugging; `otlp` (→ an OTLP collector or **Langfuse**) is lazy-imported behind the `[otel]` extra and reads `OTEL_EXPORTER_OTLP_ENDPOINT`, using a `BatchSpanProcessor` so a stalled collector never adds latency to a request.
+- **Privacy default (ties into F2).** Spans carry **metadata only** — model, token counts, duration. **No message content** (`gen_ai.input.messages` / `output.messages`; `gen_ai.prompt` / `completion` are deprecated) is ever captured, because dumping prompt/response text into telemetry would re-leak the very PII the F2 guardrails strip. Content capture is not implemented; any future capture would be an explicit, documented, off-by-default opt-in.
+
+**This is what turns CLEAR honest about Cost/Latency.** A real request span is bridged into a `CaseTrace` (`evals/telemetry_bridge`): the span's duration is a **measured** Latency, and real tokens × a **static list price** (`evals/pricing.py`) is an **estimated** Cost (an estimate, not a measurement — hence the distinct status). The mock and any unpriced model have no price-table entry, so they can **never** produce a cost; and `measured`/`estimated` provenance is set only by this runtime bridge — the golden loader **rejects** a hand-authored file that claims it. Anthropic's v1.38 cache-token attributes are a noted future enhancement, not yet implemented.
+
+```bash
+# Trace to stderr locally (mock provider, no collector needed):
+AEGIS_OTEL_ENABLED=true AEGIS_OTEL_EXPORTER=console \
+  uvicorn aegis.gateway.main:app --port 8080
+# Export to an OTLP collector / Langfuse (needs the [otel] extra + an endpoint):
+pip install -e ".[otel]"
+AEGIS_OTEL_ENABLED=true AEGIS_OTEL_EXPORTER=otlp \
+  OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
+  uvicorn aegis.gateway.main:app --port 8080
+```
 
 ---
 
