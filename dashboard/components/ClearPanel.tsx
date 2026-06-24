@@ -25,10 +25,25 @@ export function ClearPanel({ dims }: { dims: ClearDimView[] }) {
               <td style={{ padding: "4px 8px" }}>
                 <StatusBadge status={d.status} />
               </td>
-              <td style={{ padding: "4px 8px" }}>
-                {/* placeholder/synthetic dims carry a null value -> renders as em-dash */}
-                {d.applicable ? fmtNum(d.score ?? d.value) : "n/a"}
-                {d.unit && d.value !== null ? ` ${d.unit}` : ""}
+              {/* A non-measured value carries its provenance on the number itself
+                  (mirrors the CLI's `0.012usd(estimated)`), and is muted — so an
+                  estimated/synthetic/placeholder number never reads as a confident
+                  measurement, not even before the eye reaches the badge. */}
+              <td
+                style={{
+                  padding: "4px 8px",
+                  color: d.status === "measured" ? undefined : "#9aa0aa",
+                }}
+              >
+                {d.applicable ? (
+                  <>
+                    {fmtNum(d.score ?? d.value)}
+                    {d.unit && d.value !== null ? ` ${d.unit}` : ""}
+                    {d.status === "measured" ? "" : ` (${d.status})`}
+                  </>
+                ) : (
+                  "n/a"
+                )}
               </td>
               <td style={{ padding: "4px 0", color: "#9aa0aa", fontSize: 12.5 }}>
                 {d.basis ?? ""}
