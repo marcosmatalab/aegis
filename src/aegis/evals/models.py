@@ -65,18 +65,33 @@ class ExpectedVerdict(BaseModel):
 
 
 class CaseTrace(BaseModel):
-    """Optional per-case run telemetry (F4) for the CLEAR Cost/Latency dimensions.
+    """Optional per-case run telemetry for the CLEAR Cost/Latency dimensions.
 
-    Every field is optional because Aegis still runs offline over a recorded
-    golden set on the deterministic mock provider — real latency/cost/token
-    telemetry arrives with live providers + OpenTelemetry (F1.x). Until then these
-    are SYNTHETIC placeholders, and CLEAR marks Cost/Latency accordingly."""
+    Every value field is optional because Aegis runs offline over a recorded golden
+    set on the deterministic mock provider by default. Real telemetry arrives via the
+    F1.x OTel bridge (``evals/telemetry_bridge``): a real provider span yields a
+    real ``latency_ms`` and tokens, and ``cost_usd`` from the static price table.
+
+    PROVENANCE is PER METRIC, because they differ honestly: latency from a real span
+    is ``measured``; cost from real tokens x a STATIC list price is ``estimated``
+    (not a true measurement); a hand-authored golden number is ``synthetic``. Both
+    default to ``synthetic`` so every existing golden line stays synthetic with no
+    edits. ``measured``/``estimated`` are LEGITIMATE ONLY when set programmatically by
+    the runtime bridge — the dataset loader rejects them on hand-authored files (see
+    :meth:`claims_real_telemetry`)."""
 
     model_config = ConfigDict(extra="forbid")
     latency_ms: float | None = Field(default=None, ge=0.0)
     cost_usd: float | None = Field(default=None, ge=0.0)
     prompt_tokens: int | None = Field(default=None, ge=0)
     completion_tokens: int | None = Field(default=None, ge=0)
+    latency_source: Literal["measured", "synthetic"] = "synthetic"
+    cost_source: Literal["estimated", "synthetic"] = "synthetic"
+
+    def claims_real_telemetry(self) -> bool:
+        """True if either provenance is non-synthetic — only valid via the runtime
+        bridge, never from a hand-authored dataset line."""
+        return self.latency_source != "synthetic" or self.cost_source != "synthetic"
 
 
 class Milestone(BaseModel):

@@ -50,6 +50,17 @@ def load_golden(path: str | Path | None = None) -> list[EvalCase]:
             ) from exc
         if case.id in seen_ids:
             raise GoldenDatasetError(f"{path}:{lineno}: duplicate case id {case.id!r}")
+        if case.trace is not None and case.trace.claims_real_telemetry():
+            # 'measured'/'estimated' provenance is EARNED only from a real runtime
+            # span via the telemetry bridge — a hand-authored file claiming it would
+            # be synthetic data wearing a measured badge (and would drop the CLI's
+            # honesty suffix). Reject it; golden lines are always synthetic.
+            raise GoldenDatasetError(
+                f"{path}:{lineno}: trace.latency_source/cost_source must be 'synthetic' "
+                f"in a golden file (got latency={case.trace.latency_source!r}, "
+                f"cost={case.trace.cost_source!r}); 'measured'/'estimated' are set only "
+                f"by the runtime telemetry bridge, never hand-authored"
+            )
         seen_ids.add(case.id)
         cases.append(case)
 
