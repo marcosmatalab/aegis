@@ -463,14 +463,15 @@ cd dashboard && npm ci && npm run dev   # http://localhost:3000 — reads ../rep
 | Layer | Technology |
 |-------|------------|
 | API gateway | FastAPI + uvicorn (OpenAI-compatible endpoint) |
-| Providers | `anthropic`, `openai`, `google-genai` (multi-provider) |
-| Guardrails | Presidio (PII), injection/output scanners, optional safety classifier |
-| Evals | G-Eval-inspired CoT judge (Anthropic), trajectory metrics, Agent-as-a-Judge |
-| Red-team | Synthetic attacks mapped to OWASP LLM + OWASP Agentic (ASI) |
-| Observability | OpenTelemetry (GenAI semconv) → Langfuse |
-| Persistence | PostgreSQL (runs, verdicts, cases) |
-| Dashboard | Next.js + Tailwind + Recharts |
-| CI | GitHub Actions (eval gate, report artifact, status check) |
+| Real provider | Anthropic SDK (lazy, optional `[anthropic]` extra); the `Provider` ABC is multi-provider-ready — OpenAI/Gemini are interface seams, not yet implemented |
+| Guardrails | deterministic regex/lexicon scanners (default, keyless); Microsoft **Presidio** optional for richer PII (`[guardrails]`) |
+| Evals & judge | G-Eval-inspired CoT judge (Anthropic), 3-level + trajectory metrics, Agent-as-a-Judge (stub backend) |
+| Red-team | committed synthetic-attack catalog mapped to OWASP LLM 2025 (`redteam run` + `redteam gate`) |
+| Observability | OpenTelemetry GenAI semconv (~v1.38); OTLP → Langfuse optional (`[otel]`) |
+| Persistence | JSON reports on disk (`reports/`, gitignored) — no database |
+| Dashboard | Next.js + React + Recharts (read-only, server-read) |
+| Governance | `fpdf2` evidence PDF + JSON sidecar (optional `[reporting]`) |
+| CI | GitHub Actions — `eval-gate` + `redteam-gate` regression gates, fully offline |
 
 ---
 
