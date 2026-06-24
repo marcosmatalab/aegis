@@ -62,6 +62,34 @@ The differentiator is **evaluation depth**: not just scoring the final output, b
 
 ---
 
+## Demo
+
+One script — [`scripts/demo.sh`](scripts/demo.sh) — drives the whole system end to end over the keyless deterministic mock and finishes on the live dashboard:
+
+<!-- GIF pending recording — see DEMO.md. Un-comment when docs/demo.gif exists (no broken image until then):
+![Aegis end-to-end demo](docs/demo.gif)
+-->
+
+1. **Gateway + `/health`** — the OpenAI-compatible gateway comes up.
+2. **Drop-in call** — point any OpenAI client's `base_url` here; `mock/echo-1` answers.
+3. **PII redacted** — email/phone become `<EMAIL_ADDRESS>`/`<PHONE_NUMBER>` *before* the provider sees them.
+4. **Injection blocked** — an OWASP-LLM01 payload → clean `400 guardrail_blocked` / `prompt_injection`, nothing forwarded.
+5. **`aegis eval run`** — L1/L2/L3 + CLEAR over the golden set → `reports/eval-golden.json`.
+6. **`aegis calibrate`** — judge-vs-human Cohen's κ → `reports/calibration.json`.
+7. **`aegis eval gate`** — PASS vs the committed baseline, then a **tampered baseline copy FAILs** with a named regression.
+8. **`aegis redteam run`** — per-OWASP detection rate + the **named gaps** that get through → `reports/redteam-redteam.json`.
+9. **`aegis evidence`** — governance pack with **derived** control statuses + the partial-coverage disclaimer → `reports/evidence-golden.json`.
+10. **Dashboard** — live over the reports beats 5/6/8/9 just produced, caveats verbatim, missing data shown as absent.
+
+```bash
+bash scripts/demo.sh                   # paced for recording (2s between beats)
+DEMO_SLEEP=0 bash scripts/demo.sh      # flat-out smoke run (exits 0, no orphan processes)
+```
+
+The first run installs the dashboard's deps with `npm ci` (a minute the first time; skipped thereafter). **Nothing is staged:** every number is produced live, the gate FAIL is a real regression against a *throwaway* baseline copy (the committed one is never touched), and the dashboard reads the very reports the run just wrote. Full recording guide (asciinema → GIF) in **[DEMO.md](DEMO.md)**.
+
+---
+
 ## Quickstart
 
 > The `/health` probe and the `/v1/chat/completions` proxy run today — on the keyless deterministic mock by default, or against **real Claude** (see [Real provider](#real-provider--anthropic--claude)). Evals run today (`aegis eval run`, `aegis calibrate`), the **eval CI gate** blocks regressions (`aegis eval gate`), and an **automated red-team** scores the guardrails (`aegis redteam run`); red-team gating and the dashboard are on the roadmap.
@@ -111,7 +139,7 @@ pytest
 | **F6** | Automated red-team: committed attack catalog vs the F2 guardrails, per-OWASP-category detection rate (`aegis redteam run`) — evals categories only; red-team *gating* later | ✅ done |
 | **F7** | CI gate: run **evals** per PR and **block merge** on regression vs a committed baseline (`aegis eval gate`); red-team gating is a later slice | 🟡 partial |
 | **F8** | Governance evidence: map real eval/red-team/calibration artifacts + config to EU AI Act Art.15 / NIST MEASURE / ISO 42001 controls → `aegis evidence` PDF (partial technical evidence) | ✅ done |
-| **F9** | Read-only dashboard (Next.js + Recharts) over the real reports — scorecards, trends, caveats verbatim (`dashboard/`); 2-min demo is part 2 | 🟡 partial |
+| **F9** | Read-only dashboard (Next.js + Recharts) over the real reports — scorecards, trends, caveats verbatim (`dashboard/`); end-to-end demo script (`scripts/demo.sh`, [DEMO.md](DEMO.md)) — **demo script complete; GIF recording pending** | 🟡 partial |
 
 ---
 
