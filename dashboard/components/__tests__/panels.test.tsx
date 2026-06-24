@@ -22,6 +22,23 @@ describe("ClearPanel", () => {
     render(<ClearPanel dims={dims} />);
     expect(screen.getByText("placeholder").getAttribute("data-tone")).not.toBe("success");
   });
+
+  it("attaches provenance to a non-measured value (never a bare confident number)", () => {
+    const dims: ClearDimView[] = [
+      {
+        name: "cost",
+        status: "estimated",
+        applicable: true,
+        score: 0.012,
+        value: 0.012,
+        unit: "usd",
+        basis: "real tokens x static list price",
+      },
+    ];
+    render(<ClearPanel dims={dims} />);
+    expect(screen.getByText(/\(estimated\)/)).toBeInTheDocument(); // value carries provenance
+    expect(screen.getByText("estimated").getAttribute("data-tone")).not.toBe("success");
+  });
 });
 
 describe("EvalScorecard", () => {

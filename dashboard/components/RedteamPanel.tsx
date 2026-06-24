@@ -3,7 +3,7 @@ import type { RedteamView } from "@/lib/types";
 import { Card } from "./Card";
 
 const CAVEAT =
-  "Detection rate is DIRECTIONAL coverage-against-the-catalog, not a pass/fail compliance number. The named gaps below pass by design and are disclosed, not hidden.";
+  "Detection rate is DIRECTIONAL coverage-against-the-catalog, not a pass/fail compliance number. 'Got through' counts attacks that BYPASSED the guardrails (a miss — higher is worse), not test passes. The named gaps below get through by design and are disclosed, not hidden.";
 
 export function RedteamPanel({ view }: { view: RedteamView }) {
   return (
@@ -18,7 +18,8 @@ export function RedteamPanel({ view }: { view: RedteamView }) {
             <th style={{ padding: "2px 8px 2px 0" }}>Category</th>
             <th style={{ padding: "2px 8px" }}>OWASP</th>
             <th style={{ padding: "2px 8px" }}>Detection</th>
-            <th style={{ padding: "2px 0" }}>Passed</th>
+            {/* attacks that BYPASSED the guardrails — a miss, NOT a test pass */}
+            <th style={{ padding: "2px 0" }}>Got through</th>
           </tr>
         </thead>
         <tbody>
@@ -27,14 +28,17 @@ export function RedteamPanel({ view }: { view: RedteamView }) {
               <td style={{ padding: "4px 8px 4px 0" }}>{c.category}</td>
               <td style={{ padding: "4px 8px", color: "#9aa0aa" }}>{c.owasp ?? "—"}</td>
               <td style={{ padding: "4px 8px" }}>{fmtPct(c.detectionRate)}</td>
-              <td style={{ padding: "4px 0" }}>{fmtInt(c.passed)}</td>
+              {/* warn tone: a non-zero "got through" is a bad outcome, never success-coloured */}
+              <td style={{ padding: "4px 0", color: c.passed ? "#e0b15e" : "#9aa0aa" }}>
+                {fmtInt(c.passed)}
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
 
       <h3 style={{ margin: "0.9rem 0 0.35rem", fontSize: 14 }}>
-        Named gaps ({view.knownGaps.length}) — passed by design
+        Named gaps ({view.knownGaps.length}) — get through by design
       </h3>
       {view.knownGaps.length === 0 ? (
         <p style={{ margin: 0, color: "#9aa0aa", fontSize: 13 }}>none in this run</p>
