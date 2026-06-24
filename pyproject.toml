@@ -29,6 +29,13 @@ dev = [
     "pytest>=8.3",
     "httpx>=0.27",
     "ruff>=0.7",
+    # OTel API + SDK only (NOT the OTLP exporter): pure-python, keyless, no network,
+    # so CI exercises the real GenAI span path + the CLEAR telemetry bridge fully
+    # OFFLINE via the in-memory exporter — and still hits the "exporter=otlp but the
+    # OTLP package is absent => clean config error" branch (the exporter ships only
+    # in the [otel] extra below).
+    "opentelemetry-api>=1.38",
+    "opentelemetry-sdk>=1.38",
 ]
 # Optional richer PII engine (F2). The deterministic regex engine is the default
 # and needs none of this. Presidio also requires a spaCy model at runtime, e.g.
@@ -43,6 +50,16 @@ guardrails = [
 # and no API key (the one live test self-skips).
 anthropic = [
     "anthropic>=0.40",
+]
+# Optional OpenTelemetry observability (F1.x). OFF by default (AEGIS_OTEL_ENABLED);
+# the gateway is a byte-identical F1 passthrough without it. api+sdk give in-process
+# GenAI spans with NO collector; the OTLP/proto-http exporter (for an OTLP collector
+# or Langfuse) is included here and lazy-imported only when AEGIS_OTEL_EXPORTER=otlp,
+# so the default install never pulls protobuf and never touches the network.
+otel = [
+    "opentelemetry-api>=1.38",
+    "opentelemetry-sdk>=1.38",
+    "opentelemetry-exporter-otlp-proto-http>=1.38",
 ]
 
 [project.scripts]
