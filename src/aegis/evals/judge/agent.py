@@ -20,9 +20,9 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+from aegis.core.config import Settings
 from aegis.evals.judge.geval import JudgeNotConfiguredError
 from aegis.evals.models import EvalCase
-from aegis.gateway.config import Settings
 
 # Fixed, illustrative penalty weights (see module docstring).
 _LOOP_PENALTY = 0.5

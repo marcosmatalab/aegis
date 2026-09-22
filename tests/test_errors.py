@@ -8,6 +8,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from aegis.core.schemas import ChatCompletionRequest
 from aegis.gateway.errors import (
     GuardrailBlockedError,
     ProviderNotConfiguredError,
@@ -15,7 +16,6 @@ from aegis.gateway.errors import (
     error_response,
     register_exception_handlers,
 )
-from aegis.gateway.schemas import ChatCompletionRequest
 
 
 # --- _param_from_loc (direct unit tests) ------------------------------------ #

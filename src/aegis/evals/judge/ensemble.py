@@ -7,6 +7,7 @@ median. Members all run at temperature 0 (deterministic) in this design.
 from __future__ import annotations
 
 import statistics
+from collections.abc import Sequence
 from typing import Any
 
 from aegis.evals.judge.base import Judge, JudgeVerdict
@@ -15,7 +16,7 @@ from aegis.evals.judge.base import Judge, JudgeVerdict
 class EnsembleJudge(Judge):
     name = "ensemble"
 
-    def __init__(self, members: list[Judge], aggregate: str = "mean", *, provider: Any = None):
+    def __init__(self, members: Sequence[Judge], aggregate: str = "mean", *, provider: Any = None):
         if not members:
             raise ValueError("ensemble needs at least one member judge")
         if aggregate not in {"mean", "median"}:

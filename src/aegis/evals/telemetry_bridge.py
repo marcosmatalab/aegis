@@ -19,7 +19,7 @@ exists only in-memory for a recorded-from-real-telemetry case.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from aegis.evals.models import CaseTrace
 from aegis.evals.pricing import price_usd
@@ -48,7 +48,8 @@ def build_measured_trace(
     cost, and a usage-less stream gets measured latency with no cost).
     """
     cost: float | None = None
-    cost_source = "synthetic"  # never surfaces while cost_usd is None
+    # never surfaces while cost_usd is None
+    cost_source: Literal["estimated", "synthetic"] = "synthetic"
     if prompt_tokens is not None and completion_tokens is not None:
         cost = price_usd(model, prompt_tokens, completion_tokens)
         if cost is not None:

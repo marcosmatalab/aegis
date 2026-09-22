@@ -37,9 +37,9 @@ import importlib.util
 import logging
 import sys
 from contextlib import contextmanager
-from typing import Any
+from typing import Any, Literal
 
-from aegis.gateway.config import Settings
+from aegis.core.config import Settings
 
 log = logging.getLogger("aegis.telemetry")
 
@@ -91,7 +91,10 @@ class _NoOpSpan:
     def __enter__(self) -> _NoOpSpan:
         return self
 
-    def __exit__(self, *exc: object) -> bool:
+    # Literal[False], not bool: a bool return means "this context manager may
+    # swallow exceptions". This one never does, and the no-op span must not
+    # change control flow in the caller.
+    def __exit__(self, *exc: object) -> Literal[False]:
         return False
 
 

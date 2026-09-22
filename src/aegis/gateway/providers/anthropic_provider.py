@@ -20,13 +20,13 @@ import time
 from collections.abc import AsyncIterator
 from typing import Any
 
-from aegis.gateway.errors import ProviderNotConfiguredError
-from aegis.gateway.providers import anthropic_translate as tr
-from aegis.gateway.schemas import (
+from aegis.core.schemas import (
     ChatCompletionChunk,
     ChatCompletionRequest,
     ChatCompletionResponse,
 )
+from aegis.gateway.errors import ProviderNotConfiguredError
+from aegis.gateway.providers import anthropic_translate as tr
 from aegis.gateway.upstream import Provider
 
 log = logging.getLogger("aegis.gateway")

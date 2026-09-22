@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from aegis.gateway.config import Settings, get_settings
+from aegis.core.config import Settings, get_settings
 
 _APP_VARS = (
     "AEGIS_HOST",

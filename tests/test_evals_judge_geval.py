@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import pytest
 
+from aegis.core.config import Settings
 from aegis.evals.judge import (
     EnsembleJudge,
     GEvalJudge,
@@ -12,7 +13,6 @@ from aegis.evals.judge import (
     build_judge,
 )
 from aegis.evals.judge.geval import build_prompt, model_split, parse_verdict
-from aegis.gateway.config import Settings
 from aegis.gateway.errors import ProviderNotConfiguredError
 from aegis.gateway.upstream import MockProvider
 

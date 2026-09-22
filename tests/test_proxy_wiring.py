@@ -11,7 +11,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from aegis.gateway.config import get_settings
+from aegis.core.config import get_settings
 from aegis.gateway.main import app
 
 _PAYLOAD = {"model": "mock/echo-1", "messages": [{"role": "user", "content": "hi"}]}

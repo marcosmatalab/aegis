@@ -8,15 +8,15 @@ import asyncio
 
 import pytest
 
-from aegis.evals.judge.geval import GEvalJudge
-from aegis.gateway.config import Settings
-from aegis.gateway.providers.anthropic_translate import to_anthropic_params
-from aegis.gateway.schemas import (
+from aegis.core.config import Settings
+from aegis.core.schemas import (
     ChatCompletionResponse,
     Choice,
     ResponseMessage,
     Usage,
 )
+from aegis.evals.judge.geval import GEvalJudge
+from aegis.gateway.providers.anthropic_translate import to_anthropic_params
 
 
 class _FakeJudgeProvider:

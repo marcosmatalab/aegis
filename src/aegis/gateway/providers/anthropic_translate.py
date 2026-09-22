@@ -19,23 +19,24 @@ import re
 import time
 from typing import Any
 
-from aegis.gateway.errors import UnsupportedFeatureError, UpstreamProviderError
-from aegis.gateway.schemas import (
+from aegis.core.schemas import (
     ChatCompletionChunk,
     ChatCompletionRequest,
     ChatCompletionResponse,
     Choice,
     ChunkChoice,
     Delta,
+    FinishReason,
     ResponseMessage,
     Usage,
 )
+from aegis.gateway.errors import UnsupportedFeatureError, UpstreamProviderError
 
 _SYSTEM_ROLES = {"system", "developer"}
 
 # Anthropic stop_reason -> OpenAI finish_reason. ``.get(..., "stop")`` is the
 # catch-all so an unknown/None stop reason can never KeyError or serialize null.
-_FINISH_REASON = {
+_FINISH_REASON: dict[str, FinishReason] = {
     "end_turn": "stop",
     "stop_sequence": "stop",
     "max_tokens": "length",
@@ -53,7 +54,7 @@ def _get(obj: Any, key: str, default: Any = None) -> Any:
     return getattr(obj, key, default)
 
 
-def map_finish_reason(stop_reason: str | None) -> str:
+def map_finish_reason(stop_reason: str | None) -> FinishReason:
     """Map an Anthropic stop_reason to an OpenAI finish_reason; unknown/None ->
     ``"stop"`` (never KeyError, never null)."""
     return _FINISH_REASON.get(stop_reason or "", "stop")

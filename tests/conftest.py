@@ -7,7 +7,7 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from aegis.gateway.config import Settings, get_settings
+from aegis.core.config import Settings, get_settings
 from aegis.gateway.main import app
 from aegis.gateway.proxy import get_provider
 from aegis.gateway.upstream import MockProvider

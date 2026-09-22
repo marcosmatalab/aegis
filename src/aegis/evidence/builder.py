@@ -23,12 +23,15 @@ from __future__ import annotations
 
 from collections import Counter
 
+from aegis.core.config import Settings
 from aegis.evidence.mapping import MAPPING, ControlSpec
-from aegis.evidence.models import DISCLAIMER, EvidenceControl, EvidenceReport
-from aegis.gateway.config import Settings
+from aegis.evidence.models import DISCLAIMER, EvidenceControl, EvidenceReport, Status
 
 # (status, artifact_source, fields_read, derived_value, caveat)
-_Derived = tuple[str, str, list[str], str, str]
+# (status, artifact_source, fields_read, derived_value, caveat). The status slot is
+# the real Status literal, not a bare str, so every _derive_* branch below is
+# checked against the four legal values instead of silently widening.
+_Derived = tuple[Status, str, list[str], str, str]
 
 _MOCK_CAVEAT = (
     "judge=mock: deterministic wiring smoke test (L2 produced by the heuristic judge), "
@@ -79,7 +82,7 @@ def _derive_eval(aspect: str, report: dict | None, judge_is_mock_caveat: str) ->
             f"overall={_fmt(report.get('overall_score'))}; "
             f"{_levels_str(report.get('levels', {}))}; judge={judge}"
         )
-        status = "partial" if is_mock else "covered"
+        status: Status = "partial" if is_mock else "covered"
         caveat = judge_is_mock_caveat if is_mock else _GOLDEN_CAVEAT
         return (status, src, fields, val, caveat)
     if aspect == "reliability":

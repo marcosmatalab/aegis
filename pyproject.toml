@@ -27,8 +27,14 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.3",
+    "pytest-cov>=6",
     "httpx>=0.27",
     "ruff>=0.7",
+    # Type + architecture gates. Both run in CI and both are blocking: mypy catches
+    # the str-into-Literal class of bug, import-linter pins the layering that broke
+    # the old gateway <-> guardrails cycle (see .importlinter).
+    "mypy>=1.13",
+    "import-linter>=2.1",
     # OTel API + SDK only (NOT the OTLP exporter): pure-python, keyless, no network,
     # so CI exercises the real GenAI span path + the CLEAR telemetry bridge fully
     # OFFLINE via the in-memory exporter — and still hits the "exporter=otlp but the
@@ -103,6 +109,48 @@ extend-immutable-calls = [
     "fastapi.File",
     "fastapi.Security",
 ]
+
+[tool.coverage.run]
+source = ["src/aegis"]
+branch = true
+
+[tool.coverage.report]
+# Branch coverage was already 96% before this gate existed — the gate is here to
+# stop it SLIDING, not to chase a number. 95 is deliberately just under the real
+# figure: tight enough that deleting a test file goes red, loose enough that one
+# refactor does not.
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    '\.\.\.',
+]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["src/aegis"]
+# Not --strict: that is 68 errors across 24 files, and the last 80% of that cost
+# buys very little signal here. This setting is the useful middle — it catches the
+# real class of bug in this codebase (a plain `str` flowing into a `Literal` field,
+# an Optional reaching a non-Optional parameter) without a rewrite.
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unreachable = true
+no_implicit_optional = true
+
+# The OPTIONAL extras, and only them. The Anthropic SDK ([anthropic]), Presidio
+# ([guardrails]) and the OTLP exporter ([otel]) are all lazy-imported behind a
+# feature flag and are deliberately absent from the default install that CI uses,
+# so "no stub found" is the expected state, not a gap to paper over. Scoped
+# per-module so a missing stub anywhere ELSE is still a hard error.
+[[tool.mypy.overrides]]
+module = [
+    "anthropic.*",
+    "presidio_analyzer.*",
+    "presidio_anonymizer.*",
+    "opentelemetry.exporter.*",
+]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -11,8 +11,8 @@ from __future__ import annotations
 
 from fastapi import Depends
 
-from aegis.gateway.config import Settings, get_settings
-from aegis.gateway.schemas import ChatCompletionRequest
+from aegis.core.config import Settings, get_settings
+from aegis.core.schemas import ChatCompletionRequest
 from aegis.guardrails import injection, policy, toxicity
 from aegis.guardrails.content import flatten_content, map_content
 from aegis.guardrails.pii_engine import PiiEngine, select_pii_engine
