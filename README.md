@@ -42,7 +42,7 @@ scorer.</sub>
 
 ## At a glance
 
-- **Offline by default** — **944 tests, 96% branch coverage**, deterministic keyless **mock provider + mock judge**; no API key, no network in CI. Real **Claude** and a real **G-Eval-inspired judge** drop in behind the same ABCs. Verify: `pytest -q`
+- **Offline by default** — **958 tests, 96% branch coverage**, deterministic keyless **mock provider + mock judge**; no API key, no network in CI. Real **Claude** and a real **G-Eval-inspired judge** drop in behind the same ABCs. Verify: `pytest -q`
 - **Guardrails (F2)** — prompt-injection (OWASP LLM01), PII redaction, allow/deny policy, toxicity — **off by default**, a byte-identical passthrough when off. [Detail](docs/guardrails.md)
 - **A judge calibrated against human labels (F3–F5)** — L1/L2/L3 + trajectory metrics + CLEAR, and **Cohen's κ = 0.933** over 30 hand-labelled cases (directional; N=30, single annotator). The 30 per-case verdicts are **committed**, so you recompute it offline with no key. [Detail](docs/evals.md)
 - **Red-team (F6–F7)** — committed **OWASP-LLM-2025** attack catalog; **18/25 detected** and the **7 that get through are named**, not rounded away (coverage-against-catalog, not a security score). Verify: `aegis redteam run`. [Detail](docs/redteam.md)
@@ -116,7 +116,7 @@ regenerates it, with **no API key and no network**.
 | Red-team detection over the OWASP catalog | **18/25 = 0.720**, with all 7 gaps named | `aegis redteam run` (~1s) | `src/aegis/redteam/baselines/redteam.json` |
 | Eval suite over the golden set | **overall 0.861** (L1 0.854, L2 0.856, L3 0.872) | `aegis eval run` (~1s) | `src/aegis/evals/baselines/golden.json` |
 | Judge agreement with human labels | **Cohen's κ 0.933**, p_o 0.967, N=30 | `aegis calibrate --from-verdicts artifacts/calibration-geval-2026-09-22.jsonl` (~1s) | [`artifacts/…jsonl`](artifacts/calibration-geval-2026-09-22.jsonl) — the 30 per-case verdicts |
-| Test suite | **944 passed, 4 skipped**, 96% branch coverage | `pytest -q --cov --cov-branch` (~10s) | CI, `--cov-fail-under=95` |
+| Test suite | **958 passed, 4 skipped**, 96% branch coverage | `pytest -q --cov --cov-branch` (~10s) | CI, `--cov-fail-under=95` |
 
 **Read the κ honestly:** N=30, a single annotator, and a calibration set written in the same
 model family as the judge. It is a directional signal with a wide interval, not a verdict on the
@@ -172,7 +172,7 @@ python3.12 -m venv .venv
 source .venv/bin/activate             # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"               # ~35s
 
-pytest -q                             # 944 passed, 4 skipped, ~10s
+pytest -q                             # 958 passed, 4 skipped, ~10s
 bash scripts/demo.sh                  # the whole pipeline end to end, ~23s, offline
 ```
 
@@ -273,10 +273,22 @@ annotator, which is exactly why this README says so), the honesty statuses that 
 CLEAR and the evidence builder, and the decision to ship a red-team catalog with **named
 gaps** instead of a rounded-up detection rate.
 
+**The same applies to September, and more sharply.** That `git log` also prints
+`7 2026-09-22`. Those seven commits span **13:50 to 15:57 — a single two-hour session** with
+the assistant, and they carry **10,217 insertions**; one of them touches **62 files**. They are
+everything from the calibration artifact to the CI gates, the README rewrite, the packaging and
+the branch protection: phases 1 through 5 of a plan, in one sitting.
+
+Nobody writes 10,000 reviewed lines in two hours, and I am not going to pretend otherwise. What
+makes that defensible is not the speed, it is that **the speed is checkable**: every figure on
+this page recomputes offline from a committed artifact, the two gates fail on a real regression
+with the case named, and CI re-derives the headline κ from committed bytes on every run. If the
+work were hollow, those checks would be the first thing to break.
+
 The parts I would defend in an interview are the gate design and the judge calibration. The
 parts an assistant wrote, I read, tested and own. Every number here is reproducible offline,
 which is the only check that actually settles the question — see
-[the two numbers, and how you reproduce them](#the-numbers-and-how-you-reproduce-them) and
+[the numbers, and how you reproduce them](#the-numbers-and-how-you-reproduce-them) and
 [`artifacts/README.md`](artifacts/README.md). The assistance policy is written down in
 [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
