@@ -52,6 +52,17 @@ async def _score_all(cases: Sequence[CalibrationCase], judge: Judge) -> list[Jud
         await _aclose_quietly(judge)
 
 
+def score_calibration(cases: Sequence[CalibrationCase], judge: Judge) -> list[JudgeVerdict]:
+    """Score the calibration set with ``judge`` and return the RAW verdicts.
+
+    Split out of ``run_calibration`` so a caller can freeze the verdicts to disk
+    before they are collapsed into a kappa: the scoring call is the only part of
+    the pipeline that needs a key and a network, and everything after it
+    (``compute_calibration``) is pure. See ``calibration.verdicts_io``.
+    """
+    return asyncio.run(_score_all(cases, judge))
+
+
 def run_calibration(
     cases: Sequence[CalibrationCase],
     judge: Judge,
@@ -61,7 +72,7 @@ def run_calibration(
 ) -> CalibrationReport:
     """Score the calibration set with ``judge`` (one event loop, judge closed on
     shutdown) and compute the per-criterion + global agreement report."""
-    verdicts = asyncio.run(_score_all(cases, judge))
+    verdicts = score_calibration(cases, judge)
     return compute_calibration(
         cases, verdicts, judge=judge.name, threshold=threshold, created=created
     )

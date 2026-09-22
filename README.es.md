@@ -26,7 +26,7 @@ gobernanza y un *CI gate* que bloquea regresiones.
 
 - **Offline por defecto** — 900+ tests, **mock provider + mock judge** deterministas y sin claves; sin API key ni red en CI. El **Claude** real y un **juez inspirado en G-Eval** real entran detrás de las mismas interfaces (ABCs).
 - **Guardrails (F2)** — inyección de prompts (OWASP LLM01), redacción de PII, política allow/deny, toxicidad — **desactivados por defecto**, *passthrough* idéntico byte a byte cuando están off.
-- **Evals (F3–F5)** — L1/L2/L3 + métricas de trayectoria + CLEAR; acuerdo del juez con etiquetas humanas **Cohen's κ ≈ 0,93** (direccional).
+- **Evals (F3–F5)** — L1/L2/L3 + métricas de trayectoria + CLEAR; acuerdo del juez con etiquetas humanas **Cohen's κ = 0,933** sobre 30 casos etiquetados a mano (direccional; N=30, un solo anotador). Los 30 veredictos caso a caso están commiteados, así que lo recomputas sin clave: `aegis calibrate --from-verdicts artifacts/calibration-geval-2026-09-22.jsonl`.
 - **Red-team (F6–F7)** — catálogo de ataques **OWASP-LLM-2025** commiteado; detección por categoría con los **gaps nombrados, no escondidos** (cobertura contra catálogo, no una nota de seguridad).
 - **Dos *CI gates* de regresión** — `aegis eval gate` + `aegis redteam gate`, deterministas y totalmente offline.
 - **Gobernanza (F8)** — evidencia mapeada a **EU AI Act Art.15 / NIST AI RMF / ISO 42001**, derivada de artefactos reales — evidencia técnica parcial, no un certificado de cumplimiento.
