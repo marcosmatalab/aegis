@@ -6,10 +6,10 @@ from collections.abc import AsyncIterator
 
 import pytest
 
+from aegis.core.schemas import ChatCompletionChunk, ChunkChoice, Delta
 from aegis.gateway.errors import UpstreamProviderError
 from aegis.gateway.main import app
 from aegis.gateway.proxy import get_provider
-from aegis.gateway.schemas import ChatCompletionChunk, ChunkChoice, Delta
 from aegis.gateway.upstream import Provider
 
 

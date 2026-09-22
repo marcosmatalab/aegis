@@ -6,9 +6,9 @@ import asyncio
 
 import pytest
 
-from aegis.gateway.config import Settings
+from aegis.core.config import Settings
+from aegis.core.schemas import ChatCompletionRequest
 from aegis.gateway.errors import ProviderNotConfiguredError
-from aegis.gateway.schemas import ChatCompletionRequest
 from aegis.gateway.upstream import (
     MockProvider,
     Provider,

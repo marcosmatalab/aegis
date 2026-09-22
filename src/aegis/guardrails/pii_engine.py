@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from aegis.gateway.config import Settings
+from aegis.core.config import Settings
 from aegis.guardrails import pii
 
 

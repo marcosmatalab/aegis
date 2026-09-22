@@ -1,0 +1,3178 @@
+{
+  "suite": "golden",
+  "judge": "mock",
+  "case_count": 32,
+  "created": 1790079707,
+  "levels": {
+    "L1": {
+      "level": "L1",
+      "mean_score": 0.8541666666666666,
+      "passed": 25,
+      "scored": 32
+    },
+    "L2": {
+      "level": "L2",
+      "mean_score": 0.8555555555555556,
+      "passed": 13,
+      "scored": 15
+    },
+    "L3": {
+      "level": "L3",
+      "mean_score": 0.871875,
+      "passed": 22,
+      "scored": 32
+    }
+  },
+  "overall_score": 0.8605324074074074,
+  "cases": [
+    {
+      "id": "weather-happy",
+      "tags": [
+        "happy-path"
+      ],
+      "l1": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "checks": {
+            "tool_called:get_weather": true,
+            "include:Madrid": true,
+            "include:30": true,
+            "exclude:error": true
+          }
+        }
+      },
+      "l2": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "relevancy": 1.0,
+          "faithfulness": 1.0,
+          "applicable": true,
+          "threshold": 0.5
+        }
+      },
+      "l3": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "exact": 1,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 0,
+          "tool_f1": 1.0,
+          "order": 1.0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "exact": 1,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 0
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 1,
+            "len_expected": 1,
+            "len_actual": 1
+          }
+        },
+        "progress_rate": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "achieved": 1,
+            "total": 1,
+            "milestones": [
+              {
+                "kind": "tool",
+                "target": "get_weather",
+                "description": "call get_weather",
+                "achieved": true
+              }
+            ]
+          }
+        },
+        "t_eval": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "matched": 1,
+            "len_expected": 1,
+            "len_actual": 1,
+            "first_divergence": null
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "clean trajectory",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "search-happy",
+      "tags": [
+        "happy-path"
+      ],
+      "l1": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "checks": {
+            "tool_called:web_search": true,
+            "include:Paris": true
+          }
+        }
+      },
+      "l2": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "relevancy": 1.0,
+          "faithfulness": 1.0,
+          "applicable": true,
+          "threshold": 0.5
+        }
+      },
+      "l3": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "exact": 1,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 0,
+          "tool_f1": 1.0,
+          "order": 1.0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "exact": 1,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 0
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 1,
+            "len_expected": 1,
+            "len_actual": 1
+          }
+        },
+        "progress_rate": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "achieved": 1,
+            "total": 1,
+            "milestones": [
+              {
+                "kind": "tool",
+                "target": "web_search",
+                "description": "call web_search",
+                "achieved": true
+              }
+            ]
+          }
+        },
+        "t_eval": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "matched": 1,
+            "len_expected": 1,
+            "len_actual": 1,
+            "first_divergence": null
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "clean trajectory",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "notool-answer-happy",
+      "tags": [
+        "happy-path",
+        "no-tools"
+      ],
+      "l1": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "checks": {
+            "include:hello": true
+          }
+        }
+      },
+      "l2": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "relevancy": 1.0,
+          "faithfulness": 1.0,
+          "applicable": true,
+          "threshold": 0.5
+        }
+      },
+      "l3": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "exact": 0,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "exact": 0,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 0
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 0,
+            "len_expected": 0,
+            "len_actual": 0
+          }
+        },
+        "progress_rate": {
+          "score": 0.0,
+          "applicable": false,
+          "breakdown": {
+            "reason": "no milestones to measure"
+          }
+        },
+        "t_eval": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "matched": 0,
+            "len_expected": 0,
+            "len_actual": 0,
+            "first_divergence": null
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "no tool calls — trajectory trivially clean",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "multi-tool-pipeline-ok",
+      "tags": [
+        "happy-path",
+        "pipeline"
+      ],
+      "l1": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "checks": {
+            "tool_called:summarize": true,
+            "tool_called:web_search": true,
+            "include:summary": true
+          }
+        }
+      },
+      "l2": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "relevancy": 1.0,
+          "faithfulness": 1.0,
+          "applicable": true,
+          "threshold": 0.5
+        }
+      },
+      "l3": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "exact": 2,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 0,
+          "tool_f1": 1.0,
+          "order": 1.0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "exact": 2,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 0
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 2,
+            "len_expected": 2,
+            "len_actual": 2
+          }
+        },
+        "progress_rate": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "achieved": 2,
+            "total": 2,
+            "milestones": [
+              {
+                "kind": "tool",
+                "target": "web_search",
+                "description": "call web_search",
+                "achieved": true
+              },
+              {
+                "kind": "tool",
+                "target": "summarize",
+                "description": "call summarize",
+                "achieved": true
+              }
+            ]
+          }
+        },
+        "t_eval": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "matched": 2,
+            "len_expected": 2,
+            "len_actual": 2,
+            "first_divergence": null
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "clean trajectory",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "duplicate-permuted-args-ok",
+      "tags": [
+        "edge",
+        "duplicate-tools"
+      ],
+      "l1": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "checks": {
+            "tool_called:convert": true
+          }
+        }
+      },
+      "l2": {
+        "score": 0.0,
+        "passed": false,
+        "reasons": [
+          "no reference or context — L2 not applicable"
+        ],
+        "breakdown": {
+          "applicable": false
+        }
+      },
+      "l3": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "exact": 2,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 0,
+          "tool_f1": 1.0,
+          "order": 1.0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "exact": 2,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 0
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 0.5,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 1,
+            "len_expected": 2,
+            "len_actual": 2
+          }
+        },
+        "progress_rate": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "achieved": 1,
+            "total": 1,
+            "milestones": [
+              {
+                "kind": "tool",
+                "target": "convert",
+                "description": "call convert",
+                "achieved": true
+              }
+            ]
+          }
+        },
+        "t_eval": {
+          "score": 0.0,
+          "applicable": true,
+          "breakdown": {
+            "matched": 0,
+            "len_expected": 2,
+            "len_actual": 2,
+            "first_divergence": 0
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "clean trajectory",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "weather-missing-keyword",
+      "tags": [
+        "l1-fail",
+        "independence-l3pass-l1fail"
+      ],
+      "l1": {
+        "score": 0.6666666666666666,
+        "passed": false,
+        "reasons": [
+          "failed include:humidity"
+        ],
+        "breakdown": {
+          "checks": {
+            "tool_called:get_weather": true,
+            "include:Madrid": true,
+            "include:humidity": false
+          }
+        }
+      },
+      "l2": {
+        "score": 0.0,
+        "passed": false,
+        "reasons": [
+          "no reference or context — L2 not applicable"
+        ],
+        "breakdown": {
+          "applicable": false
+        }
+      },
+      "l3": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "exact": 1,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 0,
+          "tool_f1": 1.0,
+          "order": 1.0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "exact": 1,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 0
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 1,
+            "len_expected": 1,
+            "len_actual": 1
+          }
+        },
+        "progress_rate": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "achieved": 1,
+            "total": 1,
+            "milestones": [
+              {
+                "kind": "tool",
+                "target": "get_weather",
+                "description": "call get_weather",
+                "achieved": true
+              }
+            ]
+          }
+        },
+        "t_eval": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "matched": 1,
+            "len_expected": 1,
+            "len_actual": 1,
+            "first_divergence": null
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "clean trajectory",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "forbidden-error-word",
+      "tags": [
+        "l1-fail",
+        "forbidden"
+      ],
+      "l1": {
+        "score": 0.6666666666666666,
+        "passed": false,
+        "reasons": [
+          "failed exclude:error"
+        ],
+        "breakdown": {
+          "checks": {
+            "tool_called:get_weather": true,
+            "include:Madrid": true,
+            "exclude:error": false
+          }
+        }
+      },
+      "l2": {
+        "score": 0.0,
+        "passed": false,
+        "reasons": [
+          "no reference or context — L2 not applicable"
+        ],
+        "breakdown": {
+          "applicable": false
+        }
+      },
+      "l3": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "exact": 1,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 0,
+          "tool_f1": 1.0,
+          "order": 1.0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "exact": 1,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 0
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 1,
+            "len_expected": 1,
+            "len_actual": 1
+          }
+        },
+        "progress_rate": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "achieved": 1,
+            "total": 1,
+            "milestones": [
+              {
+                "kind": "tool",
+                "target": "get_weather",
+                "description": "call get_weather",
+                "achieved": true
+              }
+            ]
+          }
+        },
+        "t_eval": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "matched": 1,
+            "len_expected": 1,
+            "len_actual": 1,
+            "first_divergence": null
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "clean trajectory",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "empty-output",
+      "tags": [
+        "edge",
+        "empty-output"
+      ],
+      "l1": {
+        "score": 0.0,
+        "passed": false,
+        "reasons": [
+          "failed include:Madrid"
+        ],
+        "breakdown": {
+          "checks": {
+            "include:Madrid": false
+          }
+        }
+      },
+      "l2": {
+        "score": 0.0,
+        "passed": false,
+        "reasons": [
+          "no reference or context — L2 not applicable"
+        ],
+        "breakdown": {
+          "applicable": false
+        }
+      },
+      "l3": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "exact": 0,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "exact": 0,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 0
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 0,
+            "len_expected": 0,
+            "len_actual": 0
+          }
+        },
+        "progress_rate": {
+          "score": 0.0,
+          "applicable": false,
+          "breakdown": {
+            "reason": "no milestones to measure"
+          }
+        },
+        "t_eval": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "matched": 0,
+            "len_expected": 0,
+            "len_actual": 0,
+            "first_divergence": null
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "no tool calls — trajectory trivially clean",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "whitespace-output",
+      "tags": [
+        "edge",
+        "whitespace"
+      ],
+      "l1": {
+        "score": 0.0,
+        "passed": false,
+        "reasons": [
+          "failed include:answer"
+        ],
+        "breakdown": {
+          "checks": {
+            "include:answer": false
+          }
+        }
+      },
+      "l2": {
+        "score": 0.0,
+        "passed": false,
+        "reasons": [
+          "no reference or context — L2 not applicable"
+        ],
+        "breakdown": {
+          "applicable": false
+        }
+      },
+      "l3": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "exact": 0,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "exact": 0,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 0
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 0,
+            "len_expected": 0,
+            "len_actual": 0
+          }
+        },
+        "progress_rate": {
+          "score": 0.0,
+          "applicable": false,
+          "breakdown": {
+            "reason": "no milestones to measure"
+          }
+        },
+        "t_eval": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "matched": 0,
+            "len_expected": 0,
+            "len_actual": 0,
+            "first_divergence": null
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "no tool calls — trajectory trivially clean",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "fail-closed-no-criteria",
+      "tags": [
+        "edge",
+        "fail-closed"
+      ],
+      "l1": {
+        "score": 0.0,
+        "passed": false,
+        "reasons": [
+          "no success criteria or expected tools defined (fail-closed)"
+        ],
+        "breakdown": {
+          "checks": {}
+        }
+      },
+      "l2": {
+        "score": 0.0,
+        "passed": false,
+        "reasons": [
+          "no reference or context — L2 not applicable"
+        ],
+        "breakdown": {
+          "applicable": false
+        }
+      },
+      "l3": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "exact": 0,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "exact": 0,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 0
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 0,
+            "len_expected": 0,
+            "len_actual": 0
+          }
+        },
+        "progress_rate": {
+          "score": 0.0,
+          "applicable": false,
+          "breakdown": {
+            "reason": "no milestones to measure"
+          }
+        },
+        "t_eval": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "matched": 0,
+            "len_expected": 0,
+            "len_actual": 0,
+            "first_divergence": null
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "no tool calls — trajectory trivially clean",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "extra-email-tool",
+      "tags": [
+        "l3-fail",
+        "independence-l1l2pass-l3fail"
+      ],
+      "l1": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "checks": {
+            "tool_called:web_search": true,
+            "include:Paris": true
+          }
+        }
+      },
+      "l2": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "relevancy": 1.0,
+          "faithfulness": 1.0,
+          "applicable": true,
+          "threshold": 0.5
+        }
+      },
+      "l3": {
+        "score": 0.8333333333333333,
+        "passed": false,
+        "reasons": [
+          "1 unexpected tool call(s)"
+        ],
+        "breakdown": {
+          "exact": 1,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 1,
+          "tool_f1": 0.6666666666666666,
+          "order": 1.0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 0.6666666666666666,
+          "applicable": true,
+          "breakdown": {
+            "exact": 1,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 1
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 0.5,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 1,
+            "len_expected": 1,
+            "len_actual": 2
+          }
+        },
+        "progress_rate": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "achieved": 1,
+            "total": 1,
+            "milestones": [
+              {
+                "kind": "tool",
+                "target": "web_search",
+                "description": "call web_search",
+                "achieved": true
+              }
+            ]
+          }
+        },
+        "t_eval": {
+          "score": 0.5,
+          "applicable": true,
+          "breakdown": {
+            "matched": 1,
+            "len_expected": 1,
+            "len_actual": 2,
+            "first_divergence": 1
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "clean trajectory",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "missing-summarize-tool",
+      "tags": [
+        "l3-fail",
+        "missing-tool"
+      ],
+      "l1": {
+        "score": 0.5,
+        "passed": false,
+        "reasons": [
+          "failed tool_called:summarize"
+        ],
+        "breakdown": {
+          "checks": {
+            "tool_called:summarize": false,
+            "tool_called:web_search": true
+          }
+        }
+      },
+      "l2": {
+        "score": 0.0,
+        "passed": false,
+        "reasons": [
+          "no reference or context — L2 not applicable"
+        ],
+        "breakdown": {
+          "applicable": false
+        }
+      },
+      "l3": {
+        "score": 0.5833333333333333,
+        "passed": false,
+        "reasons": [
+          "1 expected tool call(s) missing"
+        ],
+        "breakdown": {
+          "exact": 1,
+          "wrong_args": 0,
+          "missing": 1,
+          "extra": 0,
+          "tool_f1": 0.6666666666666666,
+          "order": 0.5
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 0.6666666666666666,
+          "applicable": true,
+          "breakdown": {
+            "exact": 1,
+            "wrong_args": 0,
+            "missing": 1,
+            "extra": 0
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 0.5,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 1,
+            "len_expected": 2,
+            "len_actual": 1
+          }
+        },
+        "progress_rate": {
+          "score": 0.5,
+          "applicable": true,
+          "breakdown": {
+            "achieved": 1,
+            "total": 2,
+            "milestones": [
+              {
+                "kind": "tool",
+                "target": "web_search",
+                "description": "call web_search",
+                "achieved": true
+              },
+              {
+                "kind": "tool",
+                "target": "summarize",
+                "description": "call summarize",
+                "achieved": false
+              }
+            ]
+          }
+        },
+        "t_eval": {
+          "score": 0.5,
+          "applicable": true,
+          "breakdown": {
+            "matched": 1,
+            "len_expected": 2,
+            "len_actual": 1,
+            "first_divergence": 1
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "clean trajectory",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "wrong-city-args",
+      "tags": [
+        "l3-fail",
+        "wrong-args"
+      ],
+      "l1": {
+        "score": 0.5,
+        "passed": false,
+        "reasons": [
+          "failed include:Madrid"
+        ],
+        "breakdown": {
+          "checks": {
+            "tool_called:get_weather": true,
+            "include:Madrid": false
+          }
+        }
+      },
+      "l2": {
+        "score": 0.0,
+        "passed": false,
+        "reasons": [
+          "no reference or context — L2 not applicable"
+        ],
+        "breakdown": {
+          "applicable": false
+        }
+      },
+      "l3": {
+        "score": 0.5,
+        "passed": false,
+        "reasons": [
+          "1 tool call(s) with wrong arguments"
+        ],
+        "breakdown": {
+          "exact": 0,
+          "wrong_args": 1,
+          "missing": 0,
+          "extra": 0,
+          "tool_f1": 0.0,
+          "order": 1.0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 0.0,
+          "applicable": true,
+          "breakdown": {
+            "exact": 0,
+            "wrong_args": 1,
+            "missing": 0,
+            "extra": 0
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 0.0,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 0,
+            "len_expected": 1,
+            "len_actual": 1
+          }
+        },
+        "progress_rate": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "achieved": 1,
+            "total": 1,
+            "milestones": [
+              {
+                "kind": "tool",
+                "target": "get_weather",
+                "description": "call get_weather",
+                "achieved": true
+              }
+            ]
+          }
+        },
+        "t_eval": {
+          "score": 0.0,
+          "applicable": true,
+          "breakdown": {
+            "matched": 0,
+            "len_expected": 1,
+            "len_actual": 1,
+            "first_divergence": 0
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "clean trajectory",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "misordered-pipeline",
+      "tags": [
+        "l3-fail",
+        "misorder",
+        "independence-l1l2pass-l3fail"
+      ],
+      "l1": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "checks": {
+            "tool_called:summarize": true,
+            "tool_called:web_search": true,
+            "include:summary": true
+          }
+        }
+      },
+      "l2": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "relevancy": 1.0,
+          "faithfulness": 1.0,
+          "applicable": true,
+          "threshold": 0.5
+        }
+      },
+      "l3": {
+        "score": 0.75,
+        "passed": false,
+        "reasons": [
+          "tool calls out of order"
+        ],
+        "breakdown": {
+          "exact": 2,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 0,
+          "tool_f1": 1.0,
+          "order": 0.5
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "exact": 2,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 0
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 0.5,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 1,
+            "len_expected": 2,
+            "len_actual": 2
+          }
+        },
+        "progress_rate": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "achieved": 2,
+            "total": 2,
+            "milestones": [
+              {
+                "kind": "tool",
+                "target": "web_search",
+                "description": "call web_search",
+                "achieved": true
+              },
+              {
+                "kind": "tool",
+                "target": "summarize",
+                "description": "call summarize",
+                "achieved": true
+              }
+            ]
+          }
+        },
+        "t_eval": {
+          "score": 0.0,
+          "applicable": true,
+          "breakdown": {
+            "matched": 0,
+            "len_expected": 2,
+            "len_actual": 2,
+            "first_divergence": 0
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "clean trajectory",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "unexpected-tool-none-expected",
+      "tags": [
+        "l3-fail",
+        "unexpected-tool",
+        "independence-l1pass-l3fail"
+      ],
+      "l1": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "checks": {
+            "include:4": true
+          }
+        }
+      },
+      "l2": {
+        "score": 0.0,
+        "passed": false,
+        "reasons": [
+          "no reference or context — L2 not applicable"
+        ],
+        "breakdown": {
+          "applicable": false
+        }
+      },
+      "l3": {
+        "score": 0.0,
+        "passed": false,
+        "reasons": [
+          "1 unexpected tool call(s)"
+        ],
+        "breakdown": {
+          "exact": 0,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 1,
+          "tool_f1": 0.0,
+          "order": 0.0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 0.0,
+          "applicable": true,
+          "breakdown": {
+            "exact": 0,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 1
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 0.0,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 0,
+            "len_expected": 0,
+            "len_actual": 1
+          }
+        },
+        "progress_rate": {
+          "score": 0.0,
+          "applicable": false,
+          "breakdown": {
+            "reason": "no milestones to measure"
+          }
+        },
+        "t_eval": {
+          "score": 0.0,
+          "applicable": true,
+          "breakdown": {
+            "matched": 0,
+            "len_expected": 0,
+            "len_actual": 1,
+            "first_divergence": 0
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "clean trajectory",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "hallucinated-ungrounded-output",
+      "tags": [
+        "l2-fail",
+        "independence-l1l3pass-l2fail"
+      ],
+      "l1": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "checks": {
+            "tool_called:get_weather": true,
+            "include:Madrid": true
+          }
+        }
+      },
+      "l2": {
+        "score": 0.25,
+        "passed": false,
+        "reasons": [
+          "relevancy=0.250",
+          "faithfulness=0.250"
+        ],
+        "breakdown": {
+          "relevancy": 0.25,
+          "faithfulness": 0.25,
+          "applicable": true,
+          "threshold": 0.5
+        }
+      },
+      "l3": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "exact": 1,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 0,
+          "tool_f1": 1.0,
+          "order": 1.0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "exact": 1,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 0
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 1,
+            "len_expected": 1,
+            "len_actual": 1
+          }
+        },
+        "progress_rate": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "achieved": 1,
+            "total": 1,
+            "milestones": [
+              {
+                "kind": "tool",
+                "target": "get_weather",
+                "description": "call get_weather",
+                "achieved": true
+              }
+            ]
+          }
+        },
+        "t_eval": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "matched": 1,
+            "len_expected": 1,
+            "len_actual": 1,
+            "first_divergence": null
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "clean trajectory",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "irrelevant-and-ungrounded",
+      "tags": [
+        "l2-fail",
+        "irrelevant",
+        "independence"
+      ],
+      "l1": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "checks": {
+            "tool_called:web_search": true,
+            "include:zebra": true
+          }
+        }
+      },
+      "l2": {
+        "score": 0.0,
+        "passed": false,
+        "reasons": [
+          "relevancy=0.000",
+          "faithfulness=0.000"
+        ],
+        "breakdown": {
+          "relevancy": 0.0,
+          "faithfulness": 0.0,
+          "applicable": true,
+          "threshold": 0.5
+        }
+      },
+      "l3": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "exact": 1,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 0,
+          "tool_f1": 1.0,
+          "order": 1.0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "exact": 1,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 0
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 1,
+            "len_expected": 1,
+            "len_actual": 1
+          }
+        },
+        "progress_rate": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "achieved": 1,
+            "total": 1,
+            "milestones": [
+              {
+                "kind": "tool",
+                "target": "web_search",
+                "description": "call web_search",
+                "achieved": true
+              }
+            ]
+          }
+        },
+        "t_eval": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "matched": 1,
+            "len_expected": 1,
+            "len_actual": 1,
+            "first_divergence": null
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "clean trajectory",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "reordered-copy-limitation",
+      "tags": [
+        "limitation",
+        "lexical-faithfulness"
+      ],
+      "l1": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "checks": {
+            "include:Paris": true
+          }
+        }
+      },
+      "l2": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "relevancy": 1.0,
+          "faithfulness": 1.0,
+          "applicable": true,
+          "threshold": 0.5
+        }
+      },
+      "l3": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "exact": 0,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "exact": 0,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 0
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 0,
+            "len_expected": 0,
+            "len_actual": 0
+          }
+        },
+        "progress_rate": {
+          "score": 0.0,
+          "applicable": false,
+          "breakdown": {
+            "reason": "no milestones to measure"
+          }
+        },
+        "t_eval": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "matched": 0,
+            "len_expected": 0,
+            "len_actual": 0,
+            "first_divergence": null
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "no tool calls — trajectory trivially clean",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "faithfulness-only",
+      "tags": [
+        "l2-sub",
+        "faithfulness-only"
+      ],
+      "l1": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "checks": {
+            "include:cat": true
+          }
+        }
+      },
+      "l2": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "faithfulness": 1.0,
+          "applicable": true,
+          "threshold": 0.5
+        }
+      },
+      "l3": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "exact": 0,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "exact": 0,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 0
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 0,
+            "len_expected": 0,
+            "len_actual": 0
+          }
+        },
+        "progress_rate": {
+          "score": 0.0,
+          "applicable": false,
+          "breakdown": {
+            "reason": "no milestones to measure"
+          }
+        },
+        "t_eval": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "matched": 0,
+            "len_expected": 0,
+            "len_actual": 0,
+            "first_divergence": null
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "no tool calls — trajectory trivially clean",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "relevancy-only",
+      "tags": [
+        "l2-sub",
+        "relevancy-only"
+      ],
+      "l1": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "checks": {
+            "include:Paris": true
+          }
+        }
+      },
+      "l2": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "relevancy": 1.0,
+          "applicable": true,
+          "threshold": 0.5
+        }
+      },
+      "l3": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "exact": 0,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "exact": 0,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 0
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 0,
+            "len_expected": 0,
+            "len_actual": 0
+          }
+        },
+        "progress_rate": {
+          "score": 0.0,
+          "applicable": false,
+          "breakdown": {
+            "reason": "no milestones to measure"
+          }
+        },
+        "t_eval": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "matched": 0,
+            "len_expected": 0,
+            "len_actual": 0,
+            "first_divergence": null
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "no tool calls — trajectory trivially clean",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "relevant-but-partly-unfaithful",
+      "tags": [
+        "l2-sub",
+        "divergent-subscores"
+      ],
+      "l1": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "checks": {
+            "include:Paris": true
+          }
+        }
+      },
+      "l2": {
+        "score": 0.5833333333333333,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "relevancy": 0.6666666666666666,
+          "faithfulness": 0.5,
+          "applicable": true,
+          "threshold": 0.5
+        }
+      },
+      "l3": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "exact": 0,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "exact": 0,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 0
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 0,
+            "len_expected": 0,
+            "len_actual": 0
+          }
+        },
+        "progress_rate": {
+          "score": 0.0,
+          "applicable": false,
+          "breakdown": {
+            "reason": "no milestones to measure"
+          }
+        },
+        "t_eval": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "matched": 0,
+            "len_expected": 0,
+            "len_actual": 0,
+            "first_divergence": null
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "no tool calls — trajectory trivially clean",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "calc-no-refs",
+      "tags": [
+        "l2-na"
+      ],
+      "l1": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "checks": {
+            "tool_called:calculator": true,
+            "include:4": true
+          }
+        }
+      },
+      "l2": {
+        "score": 0.0,
+        "passed": false,
+        "reasons": [
+          "no reference or context — L2 not applicable"
+        ],
+        "breakdown": {
+          "applicable": false
+        }
+      },
+      "l3": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "exact": 1,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 0,
+          "tool_f1": 1.0,
+          "order": 1.0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "exact": 1,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 0
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 1,
+            "len_expected": 1,
+            "len_actual": 1
+          }
+        },
+        "progress_rate": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "achieved": 1,
+            "total": 1,
+            "milestones": [
+              {
+                "kind": "tool",
+                "target": "calculator",
+                "description": "call calculator",
+                "achieved": true
+              }
+            ]
+          }
+        },
+        "t_eval": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "matched": 1,
+            "len_expected": 1,
+            "len_actual": 1,
+            "first_divergence": null
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "clean trajectory",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "lookup-order-na",
+      "tags": [
+        "l2-na"
+      ],
+      "l1": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "checks": {
+            "tool_called:lookup_order": true,
+            "include:shipped": true
+          }
+        }
+      },
+      "l2": {
+        "score": 0.0,
+        "passed": false,
+        "reasons": [
+          "no reference or context — L2 not applicable"
+        ],
+        "breakdown": {
+          "applicable": false
+        }
+      },
+      "l3": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "exact": 1,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 0,
+          "tool_f1": 1.0,
+          "order": 1.0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "exact": 1,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 0
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 1,
+            "len_expected": 1,
+            "len_actual": 1
+          }
+        },
+        "progress_rate": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "achieved": 1,
+            "total": 1,
+            "milestones": [
+              {
+                "kind": "tool",
+                "target": "lookup_order",
+                "description": "call lookup_order",
+                "achieved": true
+              }
+            ]
+          }
+        },
+        "t_eval": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "matched": 1,
+            "len_expected": 1,
+            "len_actual": 1,
+            "first_divergence": null
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "clean trajectory",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "multimodal-input",
+      "tags": [
+        "edge",
+        "multimodal"
+      ],
+      "l1": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "checks": {
+            "include:apple": true
+          }
+        }
+      },
+      "l2": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "relevancy": 1.0,
+          "faithfulness": 1.0,
+          "applicable": true,
+          "threshold": 0.5
+        }
+      },
+      "l3": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "exact": 0,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "exact": 0,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 0
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 0,
+            "len_expected": 0,
+            "len_actual": 0
+          }
+        },
+        "progress_rate": {
+          "score": 0.0,
+          "applicable": false,
+          "breakdown": {
+            "reason": "no milestones to measure"
+          }
+        },
+        "t_eval": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "matched": 0,
+            "len_expected": 0,
+            "len_actual": 0,
+            "first_divergence": null
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "no tool calls — trajectory trivially clean",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "unicode-keyword",
+      "tags": [
+        "edge",
+        "unicode"
+      ],
+      "l1": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "checks": {
+            "tool_called:translate": true,
+            "include:hola": true
+          }
+        }
+      },
+      "l2": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "relevancy": 1.0,
+          "faithfulness": 1.0,
+          "applicable": true,
+          "threshold": 0.5
+        }
+      },
+      "l3": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "exact": 1,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 0,
+          "tool_f1": 1.0,
+          "order": 1.0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "exact": 1,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 0
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 1,
+            "len_expected": 1,
+            "len_actual": 1
+          }
+        },
+        "progress_rate": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "achieved": 1,
+            "total": 1,
+            "milestones": [
+              {
+                "kind": "tool",
+                "target": "translate",
+                "description": "call translate",
+                "achieved": true
+              }
+            ]
+          }
+        },
+        "t_eval": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "matched": 1,
+            "len_expected": 1,
+            "len_actual": 1,
+            "first_divergence": null
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "clean trajectory",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "good-answer-extra-and-misordered",
+      "tags": [
+        "l3-fail",
+        "independence"
+      ],
+      "l1": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "checks": {
+            "tool_called:translate": true,
+            "tool_called:web_search": true,
+            "include:hola": true
+          }
+        }
+      },
+      "l2": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "relevancy": 1.0,
+          "faithfulness": 1.0,
+          "applicable": true,
+          "threshold": 0.5
+        }
+      },
+      "l3": {
+        "score": 0.75,
+        "passed": false,
+        "reasons": [
+          "tool calls out of order"
+        ],
+        "breakdown": {
+          "exact": 2,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 0,
+          "tool_f1": 1.0,
+          "order": 0.5
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "exact": 2,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 0
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 0.5,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 1,
+            "len_expected": 2,
+            "len_actual": 2
+          }
+        },
+        "progress_rate": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "achieved": 2,
+            "total": 2,
+            "milestones": [
+              {
+                "kind": "tool",
+                "target": "web_search",
+                "description": "call web_search",
+                "achieved": true
+              },
+              {
+                "kind": "tool",
+                "target": "translate",
+                "description": "call translate",
+                "achieved": true
+              }
+            ]
+          }
+        },
+        "t_eval": {
+          "score": 0.0,
+          "applicable": true,
+          "breakdown": {
+            "matched": 0,
+            "len_expected": 2,
+            "len_actual": 2,
+            "first_divergence": 0
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "clean trajectory",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "no-tools-but-tool-called",
+      "tags": [
+        "l3-fail",
+        "independence-l1pass-l3fail"
+      ],
+      "l1": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "checks": {
+            "include:hi": true
+          }
+        }
+      },
+      "l2": {
+        "score": 0.0,
+        "passed": false,
+        "reasons": [
+          "no reference or context — L2 not applicable"
+        ],
+        "breakdown": {
+          "applicable": false
+        }
+      },
+      "l3": {
+        "score": 0.0,
+        "passed": false,
+        "reasons": [
+          "1 unexpected tool call(s)"
+        ],
+        "breakdown": {
+          "exact": 0,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 1,
+          "tool_f1": 0.0,
+          "order": 0.0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 0.0,
+          "applicable": true,
+          "breakdown": {
+            "exact": 0,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 1
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 0.0,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 0,
+            "len_expected": 0,
+            "len_actual": 1
+          }
+        },
+        "progress_rate": {
+          "score": 0.0,
+          "applicable": false,
+          "breakdown": {
+            "reason": "no milestones to measure"
+          }
+        },
+        "t_eval": {
+          "score": 0.0,
+          "applicable": true,
+          "breakdown": {
+            "matched": 0,
+            "len_expected": 0,
+            "len_actual": 1,
+            "first_divergence": 0
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "clean trajectory",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "looping-agent",
+      "tags": [
+        "f4",
+        "loop",
+        "independence-l1pass-l3fail"
+      ],
+      "l1": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "checks": {
+            "tool_called:poll": true,
+            "include:done": true
+          }
+        }
+      },
+      "l2": {
+        "score": 0.0,
+        "passed": false,
+        "reasons": [
+          "no reference or context — L2 not applicable"
+        ],
+        "breakdown": {
+          "applicable": false
+        }
+      },
+      "l3": {
+        "score": 0.75,
+        "passed": false,
+        "reasons": [
+          "2 unexpected tool call(s)"
+        ],
+        "breakdown": {
+          "exact": 1,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 2,
+          "tool_f1": 0.5,
+          "order": 1.0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 0.5,
+          "applicable": true,
+          "breakdown": {
+            "exact": 1,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 2
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 0.3333333333333333,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 1,
+            "len_expected": 1,
+            "len_actual": 3
+          }
+        },
+        "progress_rate": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "achieved": 1,
+            "total": 1,
+            "milestones": [
+              {
+                "kind": "tool",
+                "target": "poll",
+                "description": "call poll",
+                "achieved": true
+              }
+            ]
+          }
+        },
+        "t_eval": {
+          "score": 0.3333333333333333,
+          "applicable": true,
+          "breakdown": {
+            "matched": 1,
+            "len_expected": 1,
+            "len_actual": 3,
+            "first_divergence": 1
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 0.09999999999999998,
+        "reasoning": "loop detected (a call repeats back-to-back or cycles); 2 redundant step(s) repeat an earlier call",
+        "findings": [
+          "loop detected (a call repeats back-to-back or cycles)",
+          "2 redundant step(s) repeat an earlier call"
+        ],
+        "has_loop": true,
+        "redundant_steps": 2,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "error-recovery",
+      "tags": [
+        "f4",
+        "error-recovery"
+      ],
+      "l1": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "checks": {
+            "tool_called:fetch": true,
+            "include:fetched": true
+          }
+        }
+      },
+      "l2": {
+        "score": 0.0,
+        "passed": false,
+        "reasons": [
+          "no reference or context — L2 not applicable"
+        ],
+        "breakdown": {
+          "applicable": false
+        }
+      },
+      "l3": {
+        "score": 0.8333333333333333,
+        "passed": false,
+        "reasons": [
+          "1 unexpected tool call(s)"
+        ],
+        "breakdown": {
+          "exact": 1,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 1,
+          "tool_f1": 0.6666666666666666,
+          "order": 1.0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 0.6666666666666666,
+          "applicable": true,
+          "breakdown": {
+            "exact": 1,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 1
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 0.5,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 1,
+            "len_expected": 1,
+            "len_actual": 2
+          }
+        },
+        "progress_rate": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "achieved": 1,
+            "total": 1,
+            "milestones": [
+              {
+                "kind": "tool",
+                "target": "fetch",
+                "description": "call fetch",
+                "achieved": true
+              }
+            ]
+          }
+        },
+        "t_eval": {
+          "score": 0.0,
+          "applicable": true,
+          "breakdown": {
+            "matched": 0,
+            "len_expected": 1,
+            "len_actual": 2,
+            "first_divergence": 0
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 0.9,
+        "reasoning": "recovered from an errored call via a later retry",
+        "findings": [
+          "recovered from an errored call via a later retry"
+        ],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": true,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "redundant-step",
+      "tags": [
+        "f4",
+        "redundant"
+      ],
+      "l1": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "checks": {
+            "tool_called:list_dir": true,
+            "tool_called:read_file": true,
+            "include:content": true
+          }
+        }
+      },
+      "l2": {
+        "score": 0.0,
+        "passed": false,
+        "reasons": [
+          "no reference or context — L2 not applicable"
+        ],
+        "breakdown": {
+          "applicable": false
+        }
+      },
+      "l3": {
+        "score": 0.9,
+        "passed": false,
+        "reasons": [
+          "1 unexpected tool call(s)"
+        ],
+        "breakdown": {
+          "exact": 2,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 1,
+          "tool_f1": 0.8,
+          "order": 1.0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 0.8,
+          "applicable": true,
+          "breakdown": {
+            "exact": 2,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 1
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 0.6666666666666666,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 2,
+            "len_expected": 2,
+            "len_actual": 3
+          }
+        },
+        "progress_rate": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "achieved": 2,
+            "total": 2,
+            "milestones": [
+              {
+                "kind": "tool",
+                "target": "list_dir",
+                "description": "call list_dir",
+                "achieved": true
+              },
+              {
+                "kind": "tool",
+                "target": "read_file",
+                "description": "call read_file",
+                "achieved": true
+              }
+            ]
+          }
+        },
+        "t_eval": {
+          "score": 0.6666666666666666,
+          "applicable": true,
+          "breakdown": {
+            "matched": 2,
+            "len_expected": 2,
+            "len_actual": 3,
+            "first_divergence": 2
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 0.8,
+        "reasoning": "1 redundant step(s) repeat an earlier call",
+        "findings": [
+          "1 redundant step(s) repeat an earlier call"
+        ],
+        "has_loop": false,
+        "redundant_steps": 1,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "partial-milestones",
+      "tags": [
+        "f4",
+        "milestones-partial"
+      ],
+      "l1": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "checks": {
+            "tool_called:search": true,
+            "tool_called:summarize": true,
+            "include:summary": true
+          }
+        }
+      },
+      "l2": {
+        "score": 0.0,
+        "passed": false,
+        "reasons": [
+          "no reference or context — L2 not applicable"
+        ],
+        "breakdown": {
+          "applicable": false
+        }
+      },
+      "l3": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "exact": 2,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 0,
+          "tool_f1": 1.0,
+          "order": 1.0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "exact": 2,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 0
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 2,
+            "len_expected": 2,
+            "len_actual": 2
+          }
+        },
+        "progress_rate": {
+          "score": 0.6666666666666666,
+          "applicable": true,
+          "breakdown": {
+            "achieved": 2,
+            "total": 3,
+            "milestones": [
+              {
+                "kind": "tool",
+                "target": "search",
+                "description": "searched",
+                "achieved": true
+              },
+              {
+                "kind": "tool",
+                "target": "summarize",
+                "description": "summarized",
+                "achieved": true
+              },
+              {
+                "kind": "output",
+                "target": "citation",
+                "description": "cited a source",
+                "achieved": false
+              }
+            ]
+          }
+        },
+        "t_eval": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "matched": 2,
+            "len_expected": 2,
+            "len_actual": 2,
+            "first_divergence": null
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "clean trajectory",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    },
+    {
+      "id": "traced-calc",
+      "tags": [
+        "f4",
+        "trace"
+      ],
+      "l1": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "checks": {
+            "tool_called:calc": true,
+            "include:42": true
+          }
+        }
+      },
+      "l2": {
+        "score": 0.0,
+        "passed": false,
+        "reasons": [
+          "no reference or context — L2 not applicable"
+        ],
+        "breakdown": {
+          "applicable": false
+        }
+      },
+      "l3": {
+        "score": 1.0,
+        "passed": true,
+        "reasons": [],
+        "breakdown": {
+          "exact": 1,
+          "wrong_args": 0,
+          "missing": 0,
+          "extra": 0,
+          "tool_f1": 1.0,
+          "order": 1.0
+        }
+      },
+      "trajectory": {
+        "tool_correctness": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "exact": 1,
+            "wrong_args": 0,
+            "missing": 0,
+            "extra": 0
+          }
+        },
+        "trajectory_accuracy": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "lcs": 1,
+            "len_expected": 1,
+            "len_actual": 1
+          }
+        },
+        "progress_rate": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "achieved": 1,
+            "total": 1,
+            "milestones": [
+              {
+                "kind": "tool",
+                "target": "calc",
+                "description": "call calc",
+                "achieved": true
+              }
+            ]
+          }
+        },
+        "t_eval": {
+          "score": 1.0,
+          "applicable": true,
+          "breakdown": {
+            "matched": 1,
+            "len_expected": 1,
+            "len_actual": 1,
+            "first_divergence": null
+          }
+        }
+      },
+      "agent_judge": {
+        "score": 1.0,
+        "reasoning": "clean trajectory",
+        "findings": [],
+        "has_loop": false,
+        "redundant_steps": 0,
+        "recovered_from_error": null,
+        "judge": "mock-trajectory"
+      }
+    }
+  ],
+  "clear": {
+    "cost": {
+      "name": "cost",
+      "status": "synthetic",
+      "applicable": true,
+      "score": null,
+      "value": 0.002,
+      "unit": "usd",
+      "basis": "SYNTHETIC mean of 1/32 traced cases (0 from real telemetry, 1 hand-authored); a homogeneous real set is needed for 'estimated' — see provider token usage + price telemetry (F1.x)"
+    },
+    "latency": {
+      "name": "latency",
+      "status": "synthetic",
+      "applicable": true,
+      "score": null,
+      "value": 120.0,
+      "unit": "ms",
+      "basis": "SYNTHETIC mean of 1/32 traced cases (0 from real telemetry, 1 hand-authored); a homogeneous real set is needed for 'measured' — see live request timing via OpenTelemetry (F1.x)"
+    },
+    "efficiency": {
+      "name": "efficiency",
+      "status": "measured",
+      "applicable": true,
+      "score": 0.782608695652174,
+      "value": 0.782608695652174,
+      "unit": "ratio",
+      "basis": "useful (exact) calls / total calls — penalizes redundant, extra, wrong-args calls"
+    },
+    "accuracy": {
+      "name": "accuracy",
+      "status": "measured",
+      "applicable": true,
+      "score": 0.8605324074074074,
+      "value": 0.8605324074074074,
+      "unit": "ratio",
+      "basis": "mean of the per-level eval scores (L1/L2/L3)"
+    },
+    "reliability": {
+      "name": "reliability",
+      "status": "measured",
+      "applicable": true,
+      "score": 0.46875,
+      "value": 0.46875,
+      "unit": "ratio",
+      "basis": "end-to-end success rate (all applicable levels pass); cross-run flakiness deferred to F5+"
+    }
+  },
+  "trajectory": {
+    "tool_correctness": {
+      "mean_score": 0.853125,
+      "scored": 32
+    },
+    "trajectory_accuracy": {
+      "mean_score": 0.78125,
+      "scored": 32
+    },
+    "progress_rate": {
+      "mean_score": 0.9603174603174603,
+      "scored": 21
+    },
+    "t_eval": {
+      "mean_score": 0.71875,
+      "scored": 32
+    }
+  }
+}

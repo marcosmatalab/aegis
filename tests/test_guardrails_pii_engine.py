@@ -6,7 +6,7 @@ import importlib.util
 
 import pytest
 
-from aegis.gateway.config import Settings
+from aegis.core.config import Settings
 from aegis.guardrails.pii_engine import select_pii_engine
 
 _PRESIDIO_INSTALLED = importlib.util.find_spec("presidio_analyzer") is not None

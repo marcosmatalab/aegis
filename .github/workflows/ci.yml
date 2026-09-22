@@ -1,31 +1,61 @@
 name: CI
 
+# A bare `push:` fires on EVERY branch, so a PR branch ran the whole matrix twice
+# for one commit: once for the push and once for the pull_request event. Six jobs
+# became twelve check runs, which made "are all six required contexts present and
+# green?" genuinely hard to answer at a glance on the PR page — the exact question
+# branch protection exists to make obvious.
+#
+# Push is now scoped to main (post-merge verification of the branch protection
+# actually guards) and everything else arrives via pull_request. Tags are handled
+# by release.yml, so they are deliberately not listed here.
 on:
   push:
+    branches: [main]
   pull_request:
+
+# A re-push to the same branch makes the previous run's result irrelevant.
+# Keyed on the ref so a PR and a main build never cancel each other.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   lint-and-test:
+    # Installs from the COMMITTED uv.lock, not from whatever the index resolves
+    # today. Before the lockfile existed, a green run only proved the code worked
+    # against that morning's dependency set.
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.12 is the floor declared in pyproject; 3.13 is the early warning for
+        # the next interpreter. A break on 3.13 alone is still a red build.
+        python-version: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.12"
-          cache: pip
+          enable-cache: true
 
-      - name: Install package (with dev extras)
-        run: pip install -e ".[dev]"
+      - name: Install from the lockfile (exact, reproducible)
+        run: uv sync --locked --extra dev --python ${{ matrix.python-version }}
 
-      - name: Lint with ruff
+      - name: Lint (ruff)
         run: |
-          ruff check .
-          ruff format --check .
+          uv run ruff check .
+          uv run ruff format --check .
 
-      - name: Run tests
-        run: pytest
+      - name: Typecheck (mypy)
+        run: uv run mypy
+
+      - name: Architecture contract (import-linter)
+        run: uv run lint-imports
+
+      - name: Tests + branch coverage floor
+        run: uv run pytest -q --cov --cov-branch --cov-fail-under=95
 
   eval-gate:
     # F7: block the PR on an eval regression vs the committed baseline. Runs the
@@ -35,17 +65,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.12"
-          cache: pip
+          enable-cache: true
 
-      - name: Install package (with dev extras)
-        run: pip install -e ".[dev]"
+      - name: Install from the lockfile
+        run: uv sync --locked --extra dev --python 3.12
 
       - name: Eval regression gate (offline, mock vs committed baseline)
-        run: aegis eval gate
+        run: uv run aegis eval gate
 
   redteam-gate:
     # F7: block the PR on a red-team regression vs the committed baseline. Scores the
@@ -57,23 +86,42 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.12"
-          cache: pip
+          enable-cache: true
 
-      - name: Install package (with dev extras)
-        run: pip install -e ".[dev]"
+      - name: Install from the lockfile
+        run: uv sync --locked --extra dev --python 3.12
 
       - name: Red-team regression gate (offline, catalog vs committed baseline)
-        run: aegis redteam gate
+        run: uv run aegis redteam gate
+
+  calibration-artifact:
+    # F5: the README's headline Cohen's kappa must stay recomputable from the
+    # COMMITTED per-case verdicts, with no key and no network. This is the job that
+    # stops the published number and its evidence drifting apart.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install from the lockfile
+        run: uv sync --locked --extra dev --python 3.12
+
+      - name: Recompute the published kappa from the committed artifact
+        run: uv run aegis calibrate --from-verdicts artifacts/calibration-geval-2026-09-22.jsonl
 
   dashboard:
-    # F9: lint + typecheck + unit-test + build the read-only dashboard. Pure Node,
-    # fully offline — npm ci from the committed lockfile; no collector/provider/model
-    # or network at test/build time (the page reads reports/ only at request time).
-    # Independent of the Python jobs (no `needs:`) so all three signal in parallel.
+    # F9: lint + typecheck + unit-test + build the read-only dashboard, and fail on a
+    # known vulnerability. Pure Node, fully offline — npm ci from the committed
+    # lockfile; no collector/provider/model or network at test/build time (the page
+    # reads reports/ only at request time). Independent of the Python jobs (no
+    # `needs:`) so all jobs signal in parallel.
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -92,6 +140,11 @@ jobs:
 
       - name: Install (clean, from lockfile)
         run: npm ci
+
+      - name: Audit (no high or critical advisories)
+        # A repo that sells security does not ship a critical advisory in its own
+        # dependency tree. This job used to pass with 1 critical + 4 high.
+        run: npm audit --audit-level=high
 
       - name: Lint (Biome)
         run: npm run lint

@@ -12,10 +12,10 @@ import asyncio
 
 from fastapi.testclient import TestClient
 
+from aegis.core.schemas import ChatCompletionRequest
 from aegis.gateway.errors import UpstreamProviderError
 from aegis.gateway.main import app
 from aegis.gateway.proxy import _sse_generator, get_provider
-from aegis.gateway.schemas import ChatCompletionRequest
 from aegis.gateway.upstream import MockProvider, Provider
 
 

@@ -16,18 +16,19 @@ from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 from typing import Any
 
-from aegis.gateway.config import Settings, get_settings
-from aegis.gateway.errors import ProviderNotConfiguredError
-from aegis.gateway.schemas import (
+from aegis.core.config import Settings, get_settings
+from aegis.core.schemas import (
     ChatCompletionChunk,
     ChatCompletionRequest,
     ChatCompletionResponse,
     Choice,
     ChunkChoice,
     Delta,
+    FinishReason,
     ResponseMessage,
     Usage,
 )
+from aegis.gateway.errors import ProviderNotConfiguredError
 
 _N_CONTENT_CHUNKS = 4  # fixed -> deterministic chunk count regardless of length
 
@@ -152,7 +153,7 @@ class MockProvider(Provider):
         created = _derive_created(h)
         answer = _canned_answer(request)
 
-        def _chunk(delta: Delta, finish_reason: str | None) -> ChatCompletionChunk:
+        def _chunk(delta: Delta, finish_reason: FinishReason | None) -> ChatCompletionChunk:
             return ChatCompletionChunk(
                 id=chunk_id,
                 created=created,

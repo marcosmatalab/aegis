@@ -1,0 +1,66 @@
+{
+  "required_status_checks": {
+    "strict": true,
+    "contexts": [
+      "lint-and-test (3.12)",
+      "lint-and-test (3.13)",
+      "eval-gate",
+      "redteam-gate",
+      "calibration-artifact",
+      "dashboard"
+    ],
+    "checks": [
+      {
+        "context": "lint-and-test (3.12)",
+        "app_id": 15368
+      },
+      {
+        "context": "lint-and-test (3.13)",
+        "app_id": 15368
+      },
+      {
+        "context": "eval-gate",
+        "app_id": 15368
+      },
+      {
+        "context": "redteam-gate",
+        "app_id": 15368
+      },
+      {
+        "context": "calibration-artifact",
+        "app_id": 15368
+      },
+      {
+        "context": "dashboard",
+        "app_id": 15368
+      }
+    ]
+  },
+  "required_signatures": {
+    "enabled": false
+  },
+  "enforce_admins": {
+    "enabled": false
+  },
+  "required_linear_history": {
+    "enabled": false
+  },
+  "allow_force_pushes": {
+    "enabled": false
+  },
+  "allow_deletions": {
+    "enabled": false
+  },
+  "block_creations": {
+    "enabled": false
+  },
+  "required_conversation_resolution": {
+    "enabled": false
+  },
+  "lock_branch": {
+    "enabled": false
+  },
+  "allow_fork_syncing": {
+    "enabled": false
+  }
+}

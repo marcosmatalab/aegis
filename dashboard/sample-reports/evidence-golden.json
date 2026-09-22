@@ -1,0 +1,218 @@
+{
+  "generated": 1790079714,
+  "suite": "golden",
+  "disclaimer": "This document is PARTIAL TECHNICAL EVIDENCE auto-generated from Aegis's own test artifacts. It maps specific technical controls to framework clauses where Aegis produces real measurements, and is NOT a compliance certificate, conformity assessment, or claim of full conformance with the EU AI Act, NIST AI RMF, or ISO/IEC 42001. Aegis maps only the small set of technical controls shown below; the majority of each framework's underlying clauses are out of scope (bundled into the aggregate out-of-scope rows), so the control counts are NOT a coverage percentage. Every value is derived from the named artifact at generation time; absent artifacts are shown as not-covered.",
+  "summary_counts": {
+    "covered": 5,
+    "partial": 5,
+    "not_covered": 1,
+    "out_of_scope": 3
+  },
+  "inputs_present": {
+    "eval": true,
+    "redteam": true,
+    "calibration": true,
+    "settings": true
+  },
+  "controls": [
+    {
+      "framework": "EU AI Act (Reg. (EU) 2024/1689)",
+      "control_id": "Article 15(1)/(3)",
+      "control_title": "Accuracy and declared accuracy metrics",
+      "status": "partial",
+      "artifact_source": "eval report",
+      "fields_read": [
+        "clear.accuracy",
+        "overall_score",
+        "levels",
+        "judge"
+      ],
+      "derived_value": "accuracy=0.861 (measured); overall=0.861; L1 25/32, L2 13/15, L3 22/32; judge=mock",
+      "caveat": "judge=mock: deterministic wiring smoke test (L2 produced by the heuristic judge), not a real-judge evaluation",
+      "verified_via": "Reg. (EU) 2024/1689 Article 15; paragraph numbering via artificialintelligenceact.eu"
+    },
+    {
+      "framework": "EU AI Act (Reg. (EU) 2024/1689)",
+      "control_id": "Article 15(4)",
+      "control_title": "Robustness (resilience incl. adversarial inputs)",
+      "status": "covered",
+      "artifact_source": "red-team report",
+      "fields_read": [
+        "overall.detection_rate",
+        "categories",
+        "known_gaps"
+      ],
+      "derived_value": "overall detection=0.72 over 25 attacks; output_toxicity(—)=0.5; pii_input(LLM02)=0.75; pii_output(LLM02)=0.666667; policy_denylist(—)=1.0; prompt_injection(LLM01)=0.636364; system_prompt_leak(LLM07)=1.0; 7 named gaps [inj-gap-leetspeak, inj-gap-system-role, inj-gap-developer-role, inj-gap-assistant-role, pii-in-gap-obfuscated-email]",
+      "caveat": "directional coverage, NOT a pass/fail compliance number; 7 named gaps deliberately slip through (disclosed, not hidden)",
+      "verified_via": "Reg. (EU) 2024/1689 Article 15; paragraph numbering via artificialintelligenceact.eu"
+    },
+    {
+      "framework": "EU AI Act (Reg. (EU) 2024/1689)",
+      "control_id": "Article 15(5)",
+      "control_title": "Cybersecurity (resilience to attempts to alter use/outputs)",
+      "status": "covered",
+      "artifact_source": "effective Settings",
+      "fields_read": [
+        "guardrails_enabled",
+        "gr_*"
+      ],
+      "derived_value": "guardrails_enabled=true; injection=on, pii_redact_input=on, policy=on(deny=0,allow=0), output_pii=block, toxicity=on@0.5, engine=regex",
+      "caveat": "effective configuration at evidence-generation time — NOT necessarily the configuration under which the eval/red-team reports were produced",
+      "verified_via": "Reg. (EU) 2024/1689 Article 15; paragraph numbering via artificialintelligenceact.eu"
+    },
+    {
+      "framework": "EU AI Act (Reg. (EU) 2024/1689)",
+      "control_id": "Articles 9/10/12/13/14",
+      "control_title": "Risk mgmt, data governance, logging, transparency, human oversight",
+      "status": "out_of_scope",
+      "artifact_source": "—",
+      "fields_read": [],
+      "derived_value": "Out of scope: Aegis is a gateway + eval layer, not the model lifecycle / management system these articles require.",
+      "caveat": "",
+      "verified_via": "Reg. (EU) 2024/1689 Article 15; paragraph numbering via artificialintelligenceact.eu"
+    },
+    {
+      "framework": "NIST AI RMF 1.0 (AI 100-1)",
+      "control_id": "MEASURE 2.3",
+      "control_title": "AI system performance measured and documented",
+      "status": "partial",
+      "artifact_source": "eval report",
+      "fields_read": [
+        "clear.accuracy",
+        "overall_score",
+        "levels",
+        "judge"
+      ],
+      "derived_value": "accuracy=0.861 (measured); overall=0.861; L1 25/32, L2 13/15, L3 22/32; judge=mock",
+      "caveat": "judge=mock: deterministic wiring smoke test (L2 produced by the heuristic judge), not a real-judge evaluation",
+      "verified_via": "NIST AI RMF 1.0 (AI 100-1, Jan 2023), MEASURE function (id verbatim; title abbreviated/paraphrased from the Core)"
+    },
+    {
+      "framework": "NIST AI RMF 1.0 (AI 100-1)",
+      "control_id": "MEASURE 2.5",
+      "control_title": "AI system demonstrated to be valid and reliable",
+      "status": "partial",
+      "artifact_source": "eval report",
+      "fields_read": [
+        "clear.reliability",
+        "clear.efficiency",
+        "judge"
+      ],
+      "derived_value": "reliability=0.469 (measured), efficiency=0.783 (measured)",
+      "caveat": "judge=mock: deterministic wiring smoke test (L2 produced by the heuristic judge), not a real-judge evaluation",
+      "verified_via": "NIST AI RMF 1.0 (AI 100-1, Jan 2023), MEASURE function (id verbatim; title abbreviated/paraphrased from the Core)"
+    },
+    {
+      "framework": "NIST AI RMF 1.0 (AI 100-1)",
+      "control_id": "MEASURE 2.6",
+      "control_title": "AI system evaluated for safety; fails safely",
+      "status": "partial",
+      "artifact_source": "red-team report",
+      "fields_read": [
+        "categories.output_toxicity",
+        "categories.pii_output"
+      ],
+      "derived_value": "safety-relevant categories: output_toxicity=0.5; pii_output=0.666667; 7 named gaps",
+      "caveat": "PARTIAL: only output-toxicity + PII-leak categories are evaluated; broad safety (self-harm, dangerous capabilities, etc.) is out of scope",
+      "verified_via": "NIST AI RMF 1.0 (AI 100-1, Jan 2023), MEASURE function (id verbatim; title abbreviated/paraphrased from the Core)"
+    },
+    {
+      "framework": "NIST AI RMF 1.0 (AI 100-1)",
+      "control_id": "MEASURE 2.7",
+      "control_title": "AI system security and resilience evaluated and documented",
+      "status": "covered",
+      "artifact_source": "red-team report",
+      "fields_read": [
+        "overall.detection_rate",
+        "categories",
+        "known_gaps"
+      ],
+      "derived_value": "overall detection=0.72 over 25 attacks; output_toxicity(—)=0.5; pii_input(LLM02)=0.75; pii_output(LLM02)=0.666667; policy_denylist(—)=1.0; prompt_injection(LLM01)=0.636364; system_prompt_leak(LLM07)=1.0; 7 named gaps [inj-gap-leetspeak, inj-gap-system-role, inj-gap-developer-role, inj-gap-assistant-role, pii-in-gap-obfuscated-email]",
+      "caveat": "directional coverage, NOT a pass/fail compliance number; 7 named gaps deliberately slip through (disclosed, not hidden)",
+      "verified_via": "NIST AI RMF 1.0 (AI 100-1, Jan 2023), MEASURE function (id verbatim; title abbreviated/paraphrased from the Core)"
+    },
+    {
+      "framework": "NIST AI RMF 1.0 (AI 100-1)",
+      "control_id": "MEASURE 2.13",
+      "control_title": "Effectiveness of the employed TEVV metrics evaluated",
+      "status": "covered",
+      "artifact_source": "calibration report",
+      "fields_read": [
+        "global.kappa",
+        "global.band",
+        "global.n_valid",
+        "judge"
+      ],
+      "derived_value": "global kappa=0.933 (p_o=0.9666666666666667, almost perfect, n=30), judge=geval",
+      "caveat": "directional agreement with one annotator applying the rubric, not ground truth",
+      "verified_via": "NIST AI RMF 1.0 (AI 100-1, Jan 2023), MEASURE function (id verbatim; title abbreviated/paraphrased from the Core)"
+    },
+    {
+      "framework": "NIST AI RMF 1.0 (AI 100-1)",
+      "control_id": "GOVERN / MAP / MANAGE",
+      "control_title": "Organizational governance, context mapping, risk treatment",
+      "status": "out_of_scope",
+      "artifact_source": "—",
+      "fields_read": [],
+      "derived_value": "Out of scope: these functions are an organizational program, not something a gateway can evidence.",
+      "caveat": "",
+      "verified_via": "NIST AI RMF 1.0 (AI 100-1, Jan 2023), MEASURE function (id verbatim; title abbreviated/paraphrased from the Core)"
+    },
+    {
+      "framework": "ISO/IEC 42001:2023",
+      "control_id": "A.6.2.4",
+      "control_title": "AI system verification and validation",
+      "status": "partial",
+      "artifact_source": "eval report",
+      "fields_read": [
+        "levels",
+        "overall_score",
+        "case_count",
+        "suite",
+        "judge"
+      ],
+      "derived_value": "V&V via L1/L2/L3 eval over 32 cases; overall=0.861; L1 25/32, L2 13/15, L3 22/32; suite=golden",
+      "caveat": "judge=mock: deterministic wiring smoke test (L2 produced by the heuristic judge), not a real-judge evaluation",
+      "verified_via": "ISO/IEC 42001:2023 Annex A (id+title paraphrased from a public listing; standard is paywalled)"
+    },
+    {
+      "framework": "ISO/IEC 42001:2023",
+      "control_id": "A.6.2.6",
+      "control_title": "AI system operation and monitoring",
+      "status": "covered",
+      "artifact_source": "effective Settings",
+      "fields_read": [
+        "guardrails_enabled",
+        "gr_*"
+      ],
+      "derived_value": "guardrails_enabled=true; injection=on, pii_redact_input=on, policy=on(deny=0,allow=0), output_pii=block, toxicity=on@0.5, engine=regex",
+      "caveat": "effective configuration at evidence-generation time — NOT necessarily the configuration under which the eval/red-team reports were produced",
+      "verified_via": "ISO/IEC 42001:2023 Annex A (id+title paraphrased from a public listing; standard is paywalled)"
+    },
+    {
+      "framework": "ISO/IEC 42001:2023",
+      "control_id": "A.6.2.8",
+      "control_title": "AI system recording of event logs",
+      "status": "not_covered",
+      "artifact_source": "effective Settings",
+      "fields_read": [
+        "otel_enabled",
+        "otel_exporter"
+      ],
+      "derived_value": "OTel tracing disabled (set AEGIS_OTEL_ENABLED=true); no request event logs",
+      "caveat": "",
+      "verified_via": "ISO/IEC 42001:2023 Annex A (id+title paraphrased from a public listing; standard is paywalled)"
+    },
+    {
+      "framework": "ISO/IEC 42001:2023",
+      "control_id": "A.2–A.5, A.7–A.10",
+      "control_title": "Policies, org roles, resources, impact assessment, data, use, third parties",
+      "status": "out_of_scope",
+      "artifact_source": "—",
+      "fields_read": [],
+      "derived_value": "Out of scope: AI management-system controls; Aegis is not an AIMS.",
+      "caveat": "",
+      "verified_via": "ISO/IEC 42001:2023 Annex A (id+title paraphrased from a public listing; standard is paywalled)"
+    }
+  ]
+}

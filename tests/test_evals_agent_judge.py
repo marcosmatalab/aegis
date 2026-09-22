@@ -6,6 +6,7 @@ import asyncio
 
 import pytest
 
+from aegis.core.config import Settings
 from aegis.evals.judge.agent import (
     AgentJudge,
     MockTrajectoryJudge,
@@ -14,7 +15,6 @@ from aegis.evals.judge.agent import (
 )
 from aegis.evals.judge.geval import JudgeNotConfiguredError
 from aegis.evals.models import EvalCase
-from aegis.gateway.config import Settings
 
 
 def _case(calls):

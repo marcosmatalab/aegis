@@ -1,0 +1,115 @@
+name: Release
+
+# Tag-triggered. Pushing v* builds the distributions, regenerates the REAL reports
+# from a fully offline run, and attaches both to the GitHub release — so every
+# release carries the evidence for the numbers its README quotes, not just code.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to build (manual re-run)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install from the lockfile
+        run: uv sync --locked --extra dev --extra reporting --python 3.12
+
+      - name: Resolve version and check it matches the tag
+        id: meta
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          [ -n "${{ github.event.inputs.tag }}" ] && TAG="${{ github.event.inputs.tag }}" && TAG="${TAG#v}"
+          VERSION="$(uv run python -c 'import aegis; print(aegis.__version__)')"
+          echo "tag=$TAG version=$VERSION"
+          # A tag that disagrees with the package version produces a release whose
+          # assets are named something the tag does not promise. Fail loudly.
+          if [ "$TAG" != "$VERSION" ]; then
+            echo "::error::tag v$TAG does not match aegis.__version__ ($VERSION)"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Re-run the gates before publishing anything
+        run: |
+          uv run ruff check .
+          uv run mypy
+          uv run lint-imports
+          uv run pytest -q --cov --cov-branch --cov-fail-under=95
+          uv run aegis eval gate
+          uv run aegis redteam gate
+
+      - name: Build wheel + sdist
+        run: uv build
+
+      - name: Generate the real reports (offline, keyless)
+        env:
+          AEGIS_GUARDRAILS_ENABLED: "true"
+        run: |
+          mkdir -p release-assets
+          uv run aegis eval run
+          uv run aegis redteam run
+          uv run aegis calibrate --from-verdicts artifacts/calibration-geval-2026-09-22.jsonl
+          uv run aegis evidence --format json
+          uv run aegis evidence --format pdf --output reports/evidence.pdf || true
+          cp reports/eval-golden.json            release-assets/
+          cp reports/redteam-redteam.json        release-assets/
+          cp reports/calibration.json            release-assets/calibration-geval.json
+          cp reports/evidence-golden.json        release-assets/
+          [ -f reports/evidence.pdf ] && cp reports/evidence.pdf release-assets/ || true
+          cp artifacts/calibration-geval-*.jsonl release-assets/
+          ls -la release-assets/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.event.inputs.tag || github.ref_name }}" \
+            --title "${{ github.event.inputs.tag || github.ref_name }}" \
+            --notes-file <(uv run python scripts/changelog_section.py "${{ steps.meta.outputs.version }}") \
+            dist/* release-assets/* \
+          || gh release upload "${{ github.event.inputs.tag || github.ref_name }}" \
+            dist/* release-assets/* --clobber
+
+  # PyPI publishing is a SEPARATE, manually-approved job. A tag push should never
+  # be able to put a permanent, un-deletable version on PyPI on its own.
+  pypi:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write # Trusted Publishing: no long-lived token in repo secrets
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # Configure a Trusted Publisher for aegis-control-plane on PyPI, or set
+          # the environment's PYPI_API_TOKEN, before enabling this job.
+          skip-existing: true

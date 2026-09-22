@@ -8,6 +8,10 @@ Subcommands:
   calibration set and write a Cohen's-kappa agreement report (per criterion +
   global). The real run needs ANTHROPIC_API_KEY + the ``[anthropic]`` extra; with
   no key it exits 2 cleanly. The kappa is DIRECTIONAL (see the README caveats).
+  ``--dump-verdicts`` freezes that run's per-case verdicts to a JSONL artifact and
+  ``--from-verdicts`` recomputes the kappa from such an artifact with NO key, NO
+  SDK and NO network — so the headline number stays reproducible after the judge
+  model is retired.
   ``aegis eval gate`` — the real F7 CI gate: run the suite on the DETERMINISTIC,
   offline mock and compare to the committed baseline; exit non-zero on regression
   (1) or a stale/misconfigured baseline (2). ``--update-baseline`` regenerates the
@@ -30,6 +34,7 @@ import sys
 import time
 from pathlib import Path
 
+from aegis.core.config import get_settings
 from aegis.evals.baseline import (
     DEFAULT_TOLERANCE,
     BaselineError,
@@ -43,7 +48,14 @@ from aegis.evals.calibration.dataset import (
     CalibrationDatasetError,
     load_calibration,
 )
-from aegis.evals.calibration.runner import run_calibration
+from aegis.evals.calibration.report import compute_calibration
+from aegis.evals.calibration.runner import score_calibration
+from aegis.evals.calibration.verdicts_io import (
+    VerdictsFileError,
+    default_verdicts_path,
+    load_verdicts,
+    write_verdicts,
+)
 from aegis.evals.dataset import DEFAULT_GOLDEN_PATH, GoldenDatasetError, load_golden
 from aegis.evals.judge.agent import MockTrajectoryJudge, build_trajectory_judge
 from aegis.evals.judge.factory import build_judge
@@ -60,7 +72,6 @@ from aegis.evals.runner import run_suite
 from aegis.evidence.builder import build_evidence
 from aegis.evidence.loader import EvidenceInputError, read_report
 from aegis.evidence.persistence import write_evidence_json
-from aegis.gateway.config import get_settings
 from aegis.gateway.errors import ProviderNotConfiguredError
 from aegis.redteam.baseline import (
     REDTEAM_DEFAULT_TOLERANCE,
@@ -152,7 +163,69 @@ def _calibrate_scope_line(name: str, section) -> str:
     )
 
 
+# argparse needs a concrete const at parser-build time. A source checkout that was
+# never built has no packaged copy; the sentinel then produces a clear error naming
+# the flag rather than an obscure "None is not a path".
+_PACKAGED_VERDICTS = default_verdicts_path() or "<no verdicts artifact packaged with this install>"
+
+
+def _calibrate_from_verdicts(args: argparse.Namespace) -> int:
+    """Recompute the agreement report from a frozen verdicts artifact.
+
+    The whole point of this path is that it reaches NOTHING: no settings-driven
+    judge is built, no key is read, no client is constructed. It is the committed
+    artifact plus ``compute_calibration``, which is pure.
+    """
+    try:
+        meta, cases, verdicts = load_verdicts(args.from_verdicts)
+    except VerdictsFileError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+
+    report = compute_calibration(
+        cases,
+        verdicts,
+        judge=meta.judge,
+        threshold=meta.threshold,
+        created=meta.created,
+    )
+
+    out = args.output or (DEFAULT_REPORTS_DIR / "calibration.json")
+    write_calibration_report(report, out)
+
+    stamp = time.strftime("%Y-%m-%d", time.gmtime(meta.created)) if meta.created else "unknown"
+    print(f"verdicts={args.from_verdicts} judge={meta.judge} model={meta.model} recorded={stamp}")
+    print(f"dataset={meta.dataset} sha256={meta.dataset_sha256[:12]} cases={report.n_cases}")
+    print(_calibrate_scope_line("relevancy", report.per_criterion["relevancy"]))
+    print(_calibrate_scope_line("faithfulness", report.per_criterion["faithfulness"]))
+    print(_calibrate_scope_line("global", report.global_))
+    print("(recomputed offline from the committed verdicts; no key, no network)")
+    print(f"report={out}")
+    return 0
+
+
 def _calibrate(args: argparse.Namespace) -> int:
+    if args.from_verdicts:
+        # Reject the combinations that would silently drop one of the two inputs
+        # rather than quietly preferring the artifact.
+        conflicts = [
+            flag
+            for flag, value in (
+                ("--judge", args.judge),
+                ("--dataset", args.dataset),
+                ("--dump-verdicts", args.dump_verdicts),
+            )
+            if value
+        ]
+        if conflicts:
+            print(
+                f"error: --from-verdicts recomputes a frozen run and cannot be combined with "
+                f"{', '.join(conflicts)}",
+                file=sys.stderr,
+            )
+            return 2
+        return _calibrate_from_verdicts(args)
+
     settings = get_settings()
     if args.judge:
         settings = settings.model_copy(update={"judge_backend": args.judge})
@@ -160,11 +233,32 @@ def _calibrate(args: argparse.Namespace) -> int:
     try:
         cases = load_calibration(args.dataset)
         judge = build_judge(settings)
-        report = run_calibration(cases, judge, created=int(time.time()))
+        created = int(time.time())
+        verdicts = score_calibration(cases, judge)
+        report = compute_calibration(cases, verdicts, judge=judge.name, created=created)
     except (CalibrationDatasetError, JudgeNotConfiguredError, ProviderNotConfiguredError) as exc:
         # A real judge selected with no key/SDK -> clean exit 2, never an offline crash.
         print(f"error: {exc}", file=sys.stderr)
         return 2
+
+    if args.dump_verdicts:
+        # Freeze the ONLY non-reproducible input (the judge's per-case output)
+        # next to the aggregate, so this run stays auditable once the model is gone.
+        # The mock judge is lexical and never calls settings.judge_model; recording
+        # that model id for a mock run would put a model in the artifact that the
+        # run never touched.
+        model = settings.judge_model if judge.name != "mock" else "none (keyless mock judge)"
+        dumped = write_verdicts(
+            args.dump_verdicts,
+            cases,
+            verdicts,
+            judge=judge.name,
+            model=model,
+            created=created,
+            dataset=args.dataset or DEFAULT_CALIBRATION_PATH,
+            threshold=report.threshold,
+        )
+        print(f"verdicts={dumped}")
 
     out = args.output or (DEFAULT_REPORTS_DIR / "calibration.json")
     write_calibration_report(report, out)
@@ -461,6 +555,30 @@ def build_parser() -> argparse.ArgumentParser:
         help="override judge backend (default: settings; geval is the real calibration)",
     )
     cal_cmd.add_argument("--output", default=None, help="report JSON path")
+    cal_cmd.add_argument(
+        "--dump-verdicts",
+        default=None,
+        metavar="PATH",
+        help="freeze this run's per-case verdicts to a JSONL artifact",
+    )
+    # --from-verdicts is the offline recompute path, so it is mutually exclusive
+    # with every flag that selects or configures a judge: passing both would
+    # silently ignore one of them.
+    # nargs="?" so a bare `--from-verdicts` uses the artifact packaged inside the
+    # wheel: someone who ran `pipx install aegis-control-plane` has no checkout and
+    # therefore no artifacts/ directory, but must still be able to reproduce the
+    # number the README quotes.
+    cal_cmd.add_argument(
+        "--from-verdicts",
+        nargs="?",
+        default=None,
+        const=_PACKAGED_VERDICTS,
+        metavar="PATH",
+        help=(
+            "recompute kappa offline from a committed verdicts artifact (no key, no "
+            "network); with no PATH, use the artifact packaged with this install"
+        ),
+    )
     cal_cmd.set_defaults(func=_calibrate)
 
     # `aegis redteam run` — offline synthetic attacks vs the F2 guardrails (F6).

@@ -8,6 +8,13 @@ from collections.abc import AsyncIterator
 
 from fastapi.testclient import TestClient
 
+from aegis.core.schemas import (
+    ChatCompletionChunk,
+    ChatCompletionResponse,
+    Choice,
+    ResponseMessage,
+    Usage,
+)
 from aegis.evals.judge.agent import MockTrajectoryJudge
 from aegis.evals.judge.mock import MockJudge
 from aegis.evals.models import CandidateOutput, EvalCase, ExpectedVerdict
@@ -15,13 +22,6 @@ from aegis.evals.runner import run_suite
 from aegis.evals.telemetry_bridge import build_measured_trace, trace_from_span
 from aegis.gateway.main import app
 from aegis.gateway.proxy import get_provider
-from aegis.gateway.schemas import (
-    ChatCompletionChunk,
-    ChatCompletionResponse,
-    Choice,
-    ResponseMessage,
-    Usage,
-)
 from aegis.gateway.upstream import Provider
 
 
