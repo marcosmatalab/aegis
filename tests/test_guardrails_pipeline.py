@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import asyncio
 
-from aegis.gateway.config import Settings
-from aegis.gateway.schemas import ChatCompletionRequest
+from aegis.core.config import Settings
+from aegis.core.schemas import ChatCompletionRequest
 from aegis.guardrails.pipeline import build_pipeline
 
 

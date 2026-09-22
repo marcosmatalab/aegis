@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 
+from aegis.core.schemas import ChatCompletionChunk
 from aegis.gateway.errors import UpstreamProviderError
 from aegis.gateway.main import app
 from aegis.gateway.proxy import get_provider
-from aegis.gateway.schemas import ChatCompletionChunk
 from aegis.gateway.upstream import Provider
 
 

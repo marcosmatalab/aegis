@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import pytest
 
+from aegis.core.config import Settings
 from aegis.gateway import telemetry as tel
-from aegis.gateway.config import Settings
 
 
 def _settings(**kw) -> Settings:

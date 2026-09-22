@@ -15,8 +15,8 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Sequence
 
-from aegis.gateway.config import Settings
-from aegis.gateway.schemas import ChatCompletionRequest
+from aegis.core.config import Settings
+from aegis.core.schemas import ChatCompletionRequest, ChatMessage
 from aegis.guardrails.pipeline import GuardrailPipeline, build_pipeline
 from aegis.redteam.models import AttackCase
 from aegis.redteam.outcome import AttackResult, classify_result
@@ -32,7 +32,11 @@ def build_redteam_settings() -> Settings:
     Every guardrail field is pinned so no ``AEGIS_*`` process env var can change the
     run (init kwargs outrank ``os.environ``).
     """
-    return Settings(
+    # pydantic-settings accepts _env_file at runtime but does not expose it on the
+    # generated __init__ signature, so the checker cannot see it. Passing None is
+    # what makes this hermetic: it stops a developer's .env leaking into a
+    # red-team run and silently changing the detection rate.
+    return Settings(  # type: ignore[call-arg]
         _env_file=None,
         guardrails_enabled=True,
         gr_injection_enabled=True,
@@ -51,7 +55,7 @@ def build_redteam_settings() -> Settings:
 async def _score_one(case: AttackCase, pipeline: GuardrailPipeline) -> AttackResult:
     if case.vector == "input":
         request = ChatCompletionRequest(
-            model=_MODEL, messages=[{"role": case.role, "content": case.payload}]
+            model=_MODEL, messages=[ChatMessage(role=case.role, content=case.payload)]
         )
         result = await pipeline.check_input(request)
     else:

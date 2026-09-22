@@ -14,20 +14,22 @@ import asyncio
 import json
 import logging
 from collections.abc import AsyncIterator
+from typing import Any
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from aegis.gateway import telemetry
-from aegis.gateway.config import Settings, get_settings
-from aegis.gateway.errors import AegisError, GuardrailBlockedError
-from aegis.gateway.schemas import (
+from aegis.core.config import Settings, get_settings
+from aegis.core.schemas import (
     ChatCompletionChunk,
     ChatCompletionRequest,
     ChatCompletionResponse,
     ChunkChoice,
     Delta,
+    FinishReason,
 )
+from aegis.gateway import telemetry
+from aegis.gateway.errors import AegisError, GuardrailBlockedError
 from aegis.gateway.upstream import Provider, build_provider
 from aegis.guardrails import GuardrailPipeline, get_guardrail_pipeline
 from aegis.guardrails.content import flatten_content
@@ -143,7 +145,7 @@ def _stamp_stream_attrs(span: object, chunks: list[ChatCompletionChunk]) -> None
 
 
 async def _sse_generator(
-    provider: Provider, request: ChatCompletionRequest, tracer: object | None = None
+    provider: Provider, request: ChatCompletionRequest, tracer: Any | None = None
 ) -> AsyncIterator[str]:
     # The span is CREATED HERE (first in the try) and ended in the SAME finally, so its
     # whole lifetime is bounded by this generator — there is no started-but-never-
@@ -181,7 +183,7 @@ async def _sse_generator(
 
 
 def _chunk_like(
-    template: ChatCompletionChunk, *, delta: Delta, finish_reason: str | None
+    template: ChatCompletionChunk, *, delta: Delta, finish_reason: FinishReason | None
 ) -> ChatCompletionChunk:
     return ChatCompletionChunk(
         id=template.id,
@@ -195,7 +197,7 @@ async def _guarded_sse_generator(
     provider: Provider,
     request: ChatCompletionRequest,
     pipeline: GuardrailPipeline,
-    tracer: object | None = None,
+    tracer: Any | None = None,
 ) -> AsyncIterator[str]:
     """Buffer the whole stream, run output guardrails, then emit.
 
@@ -229,7 +231,7 @@ async def _guarded_sse_generator(
         result = await pipeline.check_output(text)
         if result.blocked:
             yield _error_frame(
-                result.reason, "guardrail_blocked", code=result.code, param=result.param
+                result.block_reason, "guardrail_blocked", code=result.code, param=result.param
             )
             return
         if result.redacted_text is not None and chunks:
@@ -288,7 +290,7 @@ async def chat_completions(
     input_result = await pipeline.check_input(request)
     if input_result.blocked:
         raise GuardrailBlockedError(
-            input_result.reason, code=input_result.code, param=input_result.param
+            input_result.block_reason, code=input_result.code, param=input_result.param
         )
     if input_result.redacted_request is not None:
         request = input_result.redacted_request
@@ -334,7 +336,7 @@ async def chat_completions(
     output_result = await pipeline.check_output(_first_choice_text(response))
     if output_result.blocked:
         raise GuardrailBlockedError(
-            output_result.reason, code=output_result.code, param=output_result.param
+            output_result.block_reason, code=output_result.code, param=output_result.param
         )
     if output_result.redacted_text is not None:
         response = _with_redacted_content(response, output_result.redacted_text)

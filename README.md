@@ -10,8 +10,8 @@ OpenTelemetry tracing, governance evidence, and a CI gate that blocks regression
 
 [![CI](https://github.com/marcosmatalab/aegis/actions/workflows/ci.yml/badge.svg)](https://github.com/marcosmatalab/aegis/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)
-![Offline & keyless](https://img.shields.io/badge/tests-offline%20%26%20keyless-success.svg)
+[![coverage](https://img.shields.io/badge/coverage-96%25%20branch-brightgreen.svg)](https://github.com/marcosmatalab/aegis/actions/workflows/ci.yml)
+![Python 3.12 | 3.13](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue.svg)
 
 </div>
 
@@ -33,7 +33,7 @@ them.
 
 ## At a glance
 
-- **Offline by default** — 900+ tests, deterministic keyless **mock provider + mock judge**; no API key, no network in CI. Real **Claude** and a real **G-Eval-inspired judge** drop in behind the same ABCs.
+- **Offline by default** — **944 tests, 96% branch coverage**, deterministic keyless **mock provider + mock judge**; no API key, no network in CI. Real **Claude** and a real **G-Eval-inspired judge** drop in behind the same ABCs. Verify: `pytest -q`
 - **Guardrails (F2)** — prompt-injection (OWASP LLM01), PII redaction, allow/deny policy, toxicity — **off by default**, a byte-identical passthrough when off.
 - **Evals (F3–F5)** — L1/L2/L3 + trajectory metrics + CLEAR; judge agreement with human labels **Cohen's κ = 0.933** over 30 hand-labelled cases (directional; N=30, single annotator). The 30 per-case verdicts are committed, so you recompute it offline with no key: `aegis calibrate --from-verdicts artifacts/calibration-geval-2026-09-22.jsonl`.
 - **Red-team (F6–F7)** — committed **OWASP-LLM-2025** attack catalog; per-category detection with **named gaps surfaced, not hidden** (coverage-against-catalog, not a security score).
@@ -372,6 +372,28 @@ How to read this honestly — it is **coverage-against-this-catalog, NOT total s
 ---
 
 ## CI regression gate (F7 — evals + red-team)
+
+Every job below is **blocking**, **offline** and **keyless**. The two regression gates are the
+point of the project; the other jobs exist so a regression cannot arrive dressed as something
+else.
+
+| Job / step | What it catches | Verify locally |
+|---|---|---|
+| `ruff check` + `ruff format --check` | Style and formatting drift | `ruff check . && ruff format --check .` |
+| `mypy` | A `str` reaching a `Literal` field, an Optional reaching a non-Optional parameter. **Was 22 errors in 13 files** | `mypy` |
+| `lint-imports` | An upward import. The `gateway <-> guardrails` **cycle that actually existed** until the shared types moved to `aegis.core` | `lint-imports` |
+| `pytest --cov-fail-under=95` | Functional regressions **and coverage sliding** (96% branch today) | `pytest -q --cov --cov-branch` |
+| `aegis eval gate` | An eval regression vs the committed baseline, named case by case | `aegis eval gate` |
+| `aegis redteam gate` | A red-team regression vs the committed baseline, named attack by attack | `aegis redteam gate` |
+| `aegis calibrate --from-verdicts` | The README's published kappa drifting from its committed artifact | `aegis calibrate --from-verdicts artifacts/...jsonl` |
+| `npm audit --audit-level=high` | A known advisory in the dashboard's tree. **Would have failed** on 1 critical + 4 high | `cd dashboard && npm audit` |
+| Biome / `tsc` / Vitest / `next build` | Dashboard lint, types, 41 tests, build | `cd dashboard && npm run lint && npm test` |
+
+Python jobs install from the committed **`uv.lock`** on a **3.12 + 3.13 matrix**, so a green run
+proves the code works against an exact, reproducible dependency set rather than against whatever
+the index happened to resolve that morning. Dependabot keeps `pip`, `npm` and `github-actions`
+current weekly ([`.github/dependabot.yml`](.github/dependabot.yml)).
+
 
 `aegis eval gate` runs the eval suite on the **deterministic, offline MockJudge/MockProvider** and compares the result to a **committed baseline** (`src/aegis/evals/baselines/golden.json` — versioned, *not* gitignored; it is the gate contract). On a regression it exits non-zero, so a required CI check blocks the PR. The CI job is `eval-gate` in [`.github/workflows/ci.yml`](.github/workflows/ci.yml): no key, no SDK, no network.
 

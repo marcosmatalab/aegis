@@ -7,10 +7,10 @@ import json
 
 import pytest
 
+from aegis.core.config import Settings
 from aegis.evidence.builder import build_evidence
 from aegis.evidence.loader import EvidenceInputError, read_report
 from aegis.evidence.persistence import write_evidence_json
-from aegis.gateway.config import Settings
 
 
 def test_missing_default_path_is_none(tmp_path):

@@ -14,7 +14,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from aegis import __version__
-from aegis.gateway.config import get_settings
+from aegis.core.config import get_settings
 from aegis.gateway.errors import register_exception_handlers
 from aegis.gateway.proxy import router as proxy_router
 from aegis.gateway.telemetry import setup_tracing, shutdown_tracing

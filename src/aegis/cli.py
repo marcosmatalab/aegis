@@ -34,6 +34,7 @@ import sys
 import time
 from pathlib import Path
 
+from aegis.core.config import get_settings
 from aegis.evals.baseline import (
     DEFAULT_TOLERANCE,
     BaselineError,
@@ -70,7 +71,6 @@ from aegis.evals.runner import run_suite
 from aegis.evidence.builder import build_evidence
 from aegis.evidence.loader import EvidenceInputError, read_report
 from aegis.evidence.persistence import write_evidence_json
-from aegis.gateway.config import get_settings
 from aegis.gateway.errors import ProviderNotConfiguredError
 from aegis.redteam.baseline import (
     REDTEAM_DEFAULT_TOLERANCE,

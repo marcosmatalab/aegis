@@ -40,3 +40,6 @@ reports/
 *.swp
 .DS_Store
 Thumbs.db
+
+# Build artifacts from `uv build` / `python -m build`
+dist/

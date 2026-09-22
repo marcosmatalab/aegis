@@ -6,9 +6,9 @@ from collections.abc import AsyncIterator
 
 from fastapi.testclient import TestClient
 
+from aegis.core.schemas import ChatCompletionChunk, ChunkChoice, Delta
 from aegis.gateway.main import app
 from aegis.gateway.proxy import get_provider
-from aegis.gateway.schemas import ChatCompletionChunk, ChunkChoice, Delta
 from aegis.gateway.upstream import Provider
 
 _URL = "/v1/chat/completions"

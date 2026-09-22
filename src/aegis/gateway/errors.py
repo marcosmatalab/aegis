@@ -8,12 +8,13 @@ unexpected exceptions — is rendered here so the wire shape is byte-identical.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel
 from starlette.responses import JSONResponse
+from starlette.types import ExceptionHandler
 
 log = logging.getLogger("aegis.gateway")
 
@@ -205,6 +206,12 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 
 
 def register_exception_handlers(app: FastAPI) -> None:
-    app.add_exception_handler(RequestValidationError, validation_exception_handler)
-    app.add_exception_handler(AegisError, aegis_exception_handler)
+    # Starlette types a handler as taking a bare `Exception`, but dispatches it by
+    # the exact class it was registered against, so a narrower handler is correct
+    # here and unrepresentable in the signature. The casts document that, rather
+    # than widening the handlers themselves and losing the real parameter type.
+    app.add_exception_handler(
+        RequestValidationError, cast(ExceptionHandler, validation_exception_handler)
+    )
+    app.add_exception_handler(AegisError, cast(ExceptionHandler, aegis_exception_handler))
     app.add_exception_handler(Exception, unhandled_exception_handler)

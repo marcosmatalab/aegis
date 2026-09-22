@@ -21,11 +21,11 @@ import math
 import re
 from typing import Any
 
+from aegis.core.config import Settings
+from aegis.core.schemas import ChatCompletionRequest, ChatCompletionResponse, ChatMessage
 from aegis.evals.judge.base import Judge, JudgeVerdict
 from aegis.evals.judge.prompts import G_EVAL_SYSTEM, G_EVAL_TEMPLATE
 from aegis.evals.text import flatten
-from aegis.gateway.config import Settings
-from aegis.gateway.schemas import ChatCompletionRequest, ChatCompletionResponse
 from aegis.gateway.upstream import Provider
 
 _FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL | re.IGNORECASE)
@@ -134,8 +134,10 @@ class GEvalJudge(Judge):
         request = ChatCompletionRequest(
             model=self.model,  # bare model id; the provider sends it as-is
             messages=[
-                {"role": "system", "content": G_EVAL_SYSTEM},
-                {"role": "user", "content": build_prompt(criteria, output, reference, context)},
+                ChatMessage(role="system", content=G_EVAL_SYSTEM),
+                ChatMessage(
+                    role="user", content=build_prompt(criteria, output, reference, context)
+                ),
             ],
             temperature=self.temperature,
             max_tokens=self.max_tokens,

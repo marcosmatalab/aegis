@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+from aegis.core.config import Settings
 from aegis.evals.judge.base import Judge
 from aegis.evals.judge.ensemble import EnsembleJudge
 from aegis.evals.judge.geval import GEvalJudge, model_split
 from aegis.evals.judge.mock import MockJudge
-from aegis.gateway.config import Settings
 from aegis.gateway.upstream import Provider, build_provider
 
 
