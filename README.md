@@ -15,6 +15,20 @@ OpenTelemetry tracing, governance evidence, and a CI gate that blocks regression
 
 </div>
 
+---
+
+Built by **Marcos Mata García**, AI / platform engineer in Madrid, currently looking for work.
+[matagarciamarcos@gmail.com](mailto:matagarciamarcos@gmail.com) · [GitHub](https://github.com/marcosmatalab)
+
+**Why this exists.** Every team that puts an LLM in production ends up building the same layer
+by hand: something that scans the input, redacts the PII, scores whether the agent actually did
+the job, red-teams the guardrails, and stops a regression from shipping. I built that layer end
+to end so I could argue about it from evidence instead of from opinion. The parts that matter
+here are the **eval gate** and the **judge calibration**; everything else is plumbing around
+them.
+
+---
+
 ![Aegis 2-minute demo](docs/demo.gif)
 
 ## At a glance
@@ -112,11 +126,11 @@ The first run installs the dashboard's deps with `npm ci` (a minute the first ti
 
 ```bash
 # 1. Clone and enter
-git clone git@github.com:marcosmatalab/aegis.git
+git clone https://github.com/marcosmatalab/aegis.git
 cd aegis
 
 # 2. Create a virtualenv and install (dev extras include pytest + ruff)
-python -m venv .venv
+python3.12 -m venv .venv         # Python 3.12 or newer is REQUIRED (pyproject: requires-python >=3.12)
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 
@@ -479,6 +493,29 @@ cd dashboard && npm ci && npm run dev   # http://localhost:3000 — reads ../rep
 | Dashboard | Next.js + React + Recharts (read-only, server-read) |
 | Governance | `fpdf2` evidence PDF + JSON sidecar (optional `[reporting]`) |
 | CI | GitHub Actions — `eval-gate` + `redteam-gate` regression gates, fully offline |
+
+---
+
+## Provenance: how this was built
+
+This was built in an intense sprint: **185 commits between 22 and 25 June 2026**, which you
+can see for yourself with `git log --format=%ad --date=short | sort | uniq -c`. That pace is
+not a person typing alone, so here is the honest breakdown.
+
+I used an AI coding assistant heavily, for scaffolding, for test generation and for the long
+prose in these docs. What I designed and decided myself is the part that matters: the two
+gate contracts and what counts as a regression, the OWASP mapping and which categories this
+gateway can honestly claim, the 30 hand-labelled calibration cases (I labelled them, one
+annotator, which is exactly why this README says so), the honesty statuses that run through
+CLEAR and the evidence builder, and the decision to ship a red-team catalog with **named
+gaps** instead of a rounded-up detection rate.
+
+The parts I would defend in an interview are the gate design and the judge calibration. The
+parts an assistant wrote, I read, tested and own. Every number here is reproducible offline,
+which is the only check that actually settles the question — see
+[the two numbers, and how you reproduce them](#the-numbers-and-how-you-reproduce-them) and
+[`artifacts/README.md`](artifacts/README.md). The assistance policy is written down in
+[`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ---
 
