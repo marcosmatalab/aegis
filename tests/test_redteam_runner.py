@@ -19,7 +19,7 @@ def test_self_consistency_oracle_and_honest_rate():
     assert report.findings == []  # self-consistent: no attack_passed / oracle_mismatch
     # honest coverage: genuinely below 100% because named gaps slip through
     assert report.overall_detection_rate < 1.0
-    assert report.case_count == 25
+    assert report.case_count == len(load_attacks())
     assert report.known_gaps  # the gaps are surfaced, not hidden
 
 
@@ -63,7 +63,8 @@ def test_report_to_dict_persists(tmp_path):
     report = run_redteam(load_attacks(), suite="rt", created=42)
     out = write_redteam_report(report, tmp_path / "rt.json")
     data = json.loads(out.read_text(encoding="utf-8"))
-    assert data["suite"] == "rt" and data["created"] == 42 and data["case_count"] == 25
+    assert data["suite"] == "rt" and data["created"] == 42
+    assert data["case_count"] == len(load_attacks())
     assert "categories" in data and "overall" in data and "known_gaps" in data
     pi = data["categories"]["prompt_injection"]
     assert pi["owasp"] == "LLM01" and "detection_rate" in pi

@@ -208,7 +208,7 @@ def build(cap: Path, out: Path) -> None:
     # 6. the dashboard, over the very reports the run just wrote
     for name, caption in (
         ("dashboard-eval.png", "the dashboard reads the reports the run just wrote"),
-        ("dashboard-redteam.png", "18/25 detected - and the 7 that get through are named"),
+        ("dashboard-redteam.png", "19/29 detected - and the 10 that get through are named"),
         ("dashboard-kappa.png", "judge calibration: Cohen's kappa 0.933 vs human labels"),
     ):
         t.image(Path("docs") / name, hold=3400, caption=caption)

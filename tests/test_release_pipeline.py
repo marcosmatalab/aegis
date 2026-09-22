@@ -26,7 +26,7 @@ import aegis
 ROOT = Path(__file__).resolve().parent.parent
 CHANGELOG = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
 DOCS = [ROOT / "README.md", ROOT / "README.es.md", ROOT / "CHANGELOG.md", ROOT / "CONTRIBUTING.md"]
-DOCS += sorted((ROOT / "docs").glob("*.md"))
+DOCS += sorted((ROOT / "docs").rglob("*.md"))  # includes docs/adr/
 
 RELEASED = re.findall(r"^## \[(\d+\.\d+\.\d+)\]", CHANGELOG, re.MULTILINE)
 # pip/pipx/uv installing the distribution by bare name (optionally ==version) = from PyPI.
