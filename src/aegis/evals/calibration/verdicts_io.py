@@ -38,6 +38,23 @@ from aegis.evals.judge.base import JudgeVerdict
 
 FORMAT_VERSION = 1
 
+# The verdicts artifact that backs the README's headline kappa, as it is packaged
+# INSIDE the wheel. A reader who ran `pipx install aegis-control-plane` has no
+# repo checkout, so `aegis calibrate --from-verdicts` with no path falls back to
+# this copy and the published number stays reproducible from a bare install.
+# It is force-included from artifacts/ at build time (see pyproject), so there is
+# still only one source file in the repo.
+PACKAGED_VERDICTS_DIR = Path(__file__).parent / "_artifacts"
+
+
+def default_verdicts_path() -> Path | None:
+    """The newest packaged verdicts artifact, or None when running from a source
+    tree that was never built (where the repo's own artifacts/ is used instead)."""
+    if not PACKAGED_VERDICTS_DIR.is_dir():
+        return None
+    found = sorted(PACKAGED_VERDICTS_DIR.glob("calibration-*.jsonl"))
+    return found[-1] if found else None
+
 
 class VerdictsFileError(ValueError):
     """Raised when a verdicts artifact is missing, malformed or inconsistent."""

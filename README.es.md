@@ -7,9 +7,11 @@
 **La capa de control para cualquier LLM o agente** — un gateway compatible con OpenAI,
 *drop-in*, que añade guardrails, evals de trayectoria en 3 niveles con un juez calibrado
 contra etiquetas humanas, cobertura red-team OWASP, trazas OpenTelemetry, evidencia de
-gobernanza y dos *CI gates* que tumban el build ante una regresión de evals o de red-team.
+gobernanza y dos *CI gates* que **bloquean el merge** ante una regresión de evals o de red-team.
 
 [![CI](https://github.com/marcosmatalab/aegis/actions/workflows/ci.yml/badge.svg)](https://github.com/marcosmatalab/aegis/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/aegis-control-plane.svg)](https://pypi.org/project/aegis-control-plane/)
+[![release](https://img.shields.io/github/v/release/marcosmatalab/aegis.svg)](https://github.com/marcosmatalab/aegis/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![coverage](https://img.shields.io/badge/coverage-96%25%20branch-brightgreen.svg)](https://github.com/marcosmatalab/aegis/actions/workflows/ci.yml)
 ![Python 3.12 | 3.13](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue.svg)
@@ -47,7 +49,7 @@ propósito el scorer L3.</sub>
 - **Red-team (F6–F7)** — catálogo de ataques **OWASP-LLM-2025** commiteado; **18/25 detectados** y los **7 que pasan están nombrados**, no redondeados. Es cobertura contra catálogo, no una nota de seguridad. Compruébalo: `aegis redteam run`. [Detalle](docs/redteam.md)
 - **Dos gates de regresión en CI** — `aegis eval gate` + `aegis redteam gate` convierten una regresión en un evento nombrado, bloqueante y revisable dentro del PR. Deterministas, offline y sin claves. [Detalle](docs/ci-gates.md)
 - **Gobernanza (F8)** — evidencia mapeada a **EU AI Act Art.15 / NIST AI RMF / ISO 42001**, derivada de artefactos reales — evidencia técnica parcial, no un certificado de cumplimiento. [Detalle](docs/governance.md)
-- **Dashboard de solo lectura (F9)** — muestra los reports reales y nunca es más optimista que ellos; un report ausente sale como *Not available*, nunca un gráfico en blanco. [Capturas](docs/dashboard.md)
+- **Dashboard de solo lectura (F9)** — muestra los reports reales y nunca es más optimista que ellos; un report ausente sale como *Not available*, nunca un gráfico en blanco. **[Míralo en vivo](https://marcosmatalab.github.io/aegis/)** (instantánea estática de una ejecución real, y lo dice en la propia página) · [Capturas](docs/dashboard.md)
 
 > **Estado — pre-alpha, proyecto de portfolio.** F0–F9 completas y testeadas offline. El mock provider/judge sin claves sigue siendo el valor por defecto, así que todo corre sin API key. Detalle por fase en la [hoja de ruta](docs/roadmap.md).
 
@@ -67,9 +69,9 @@ y evals continuos, sin tocar su modelo ni su lógica de negocio. Aegis no es un 
 
 El diferenciador es la **profundidad de evaluación**: no solo puntuar la salida final, sino
 puntuar la *trayectoria* (cada llamada a herramienta, en orden, recuperándose de errores),
-validar el juez LLM contra etiquetas humanas, y cablearlo todo en dos gates de CI que
-convierten una regresión en un evento nombrado, bloqueante y revisable dentro del PR, en vez
-de algo que llega a producción.
+validar el juez LLM contra etiquetas humanas, y cablearlo todo en dos gates de CI que son
+**checks obligatorios en `main`**: una regresión se convierte en un evento nombrado, que
+bloquea el merge y es revisable dentro del PR, en vez de algo que llega a producción.
 
 ---
 
@@ -154,7 +156,23 @@ dashboard lee exactamente los reports que la ejecución acaba de escribir. Guía
 
 ## Quickstart
 
-**Hace falta Python 3.12 o superior** (`pyproject`: `requires-python >=3.12`).
+**Instálalo, sin clonar nada:**
+
+```bash
+pipx install aegis-control-plane   # el repo se llama "aegis"; el nombre corto está cogido en PyPI
+aegis redteam run                  # 25 ataques OWASP contra los guardrails, offline, ~1s
+aegis eval run                     # 32 casos golden, L1/L2/L3 + CLEAR, offline, ~1s
+aegis calibrate --from-verdicts    # la kappa del juez real, recomputada del artefacto empaquetado
+```
+
+O con Docker (mock sin claves por defecto, sin root, con healthcheck):
+
+```bash
+docker build -t aegis . && docker run --rm -p 8080:8080 aegis
+curl localhost:8080/health
+```
+
+**O desde el código** — **hace falta Python 3.12 o superior** (`pyproject`: `requires-python >=3.12`):
 
 ```bash
 git clone https://github.com/marcosmatalab/aegis.git && cd aegis
@@ -209,6 +227,12 @@ colarse disfrazada de otra cosa.
 | `aegis calibrate --from-verdicts` | Que la κ publicada en el README se separe de su artefacto commiteado | `aegis calibrate --from-verdicts artifacts/...jsonl` |
 | `npm audit --audit-level=high` | Una vulnerabilidad conocida en el árbol del dashboard. **Habría fallado** con 1 crítica + 4 high | `cd dashboard && npm audit` |
 | Biome / `tsc` / Vitest / `next build` | Lint, tipos, 41 tests y build del dashboard | `cd dashboard && npm run lint && npm test` |
+
+Los seis son **checks obligatorios en `main`**, así que una regresión no solo se pone en rojo:
+**bloquea el merge**. Eso vive en la configuración de GitHub y no en el repo, lo que normalmente
+lo convierte en una afirmación no verificable, así que la configuración real está exportada y
+commiteada: [`docs/branch-protection.json`](docs/branch-protection.json) (reprodúcelo con
+`gh api repos/marcosmatalab/aegis/branches/main/protection`).
 
 Los jobs de Python instalan desde el **`uv.lock`** commiteado, sobre una **matriz 3.12 + 3.13**,
 así que un build verde demuestra que el código funciona contra un conjunto de dependencias

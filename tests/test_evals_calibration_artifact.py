@@ -137,3 +137,25 @@ def test_from_verdicts_refuses_to_be_combined_with_a_judge(tmp_path, capsys):
     rc = main(["calibrate", "--from-verdicts", str(ARTIFACT), "--judge", "mock"])
     assert rc == 2
     assert "--judge" in capsys.readouterr().err
+
+
+def test_bare_from_verdicts_resolves_a_packaged_artifact_or_says_so(capsys):
+    """`pipx install aegis-control-plane` then `aegis calibrate --from-verdicts`.
+
+    That reader has no checkout, so the evidence has to travel inside the wheel
+    (pyproject force-includes it). From a source tree that was never built there
+    is no packaged copy, and the flag must fail with a message that names the
+    problem rather than crashing on a None path.
+    """
+    from aegis.evals.calibration.verdicts_io import default_verdicts_path
+
+    packaged = default_verdicts_path()
+    rc = main(["calibrate", "--from-verdicts"])
+    captured = capsys.readouterr()
+
+    if packaged is None:
+        assert rc == 2
+        assert "verdicts artifact" in captured.err
+    else:
+        assert rc == 0
+        assert "kappa=0.933" in captured.out
