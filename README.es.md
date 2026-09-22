@@ -6,40 +6,70 @@
 
 **La capa de control para cualquier LLM o agente** — un gateway compatible con OpenAI,
 *drop-in*, que añade guardrails, evals de trayectoria en 3 niveles con un juez calibrado
-contra humanos, cobertura de red-team OWASP, trazas con OpenTelemetry, evidencia de
-gobernanza y un *CI gate* que bloquea regresiones.
+contra etiquetas humanas, cobertura red-team OWASP, trazas OpenTelemetry, evidencia de
+gobernanza y dos *CI gates* que tumban el build ante una regresión de evals o de red-team.
 
 [![CI](https://github.com/marcosmatalab/aegis/actions/workflows/ci.yml/badge.svg)](https://github.com/marcosmatalab/aegis/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)
-![Offline & keyless](https://img.shields.io/badge/tests-offline%20%26%20keyless-success.svg)
+[![coverage](https://img.shields.io/badge/coverage-96%25%20branch-brightgreen.svg)](https://github.com/marcosmatalab/aegis/actions/workflows/ci.yml)
+![Python 3.12 | 3.13](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue.svg)
 
 </div>
 
-![Demo de 2 minutos de Aegis](docs/demo.gif)
+---
 
-> Los **comandos y ejemplos ejecutables** (Quickstart, CLI de cada sección, demo) viven en
-> el [README en inglés](README.md), que es la versión canónica — así nunca se desincronizan
-> con el código. Este documento explica **qué** es Aegis y **por qué** importa.
+Hecho por **Marcos Mata García**, ingeniero de IA / plataforma en Madrid, buscando trabajo
+ahora mismo.
+[matagarciamarcos@gmail.com](mailto:matagarciamarcos@gmail.com) · [GitHub](https://github.com/marcosmatalab)
+
+**Por qué existe esto.** Todo equipo que mete un LLM en producción acaba construyendo a mano
+la misma capa: algo que escanea la entrada, tapa la PII, puntúa si el agente hizo de verdad
+el trabajo, hace red-team contra sus propios guardrails, e impide que una regresión llegue a
+producción. Construí esa capa de punta a punta para poder discutirla desde la evidencia y no
+desde la opinión. Lo que importa aquí es el **gate de evals** y la **calibración del juez**;
+lo demás es fontanería alrededor.
+
+---
+
+![Demo de Aegis de punta a punta: red-team, evals, la kappa del juez recomputada offline, y el gate cazando una regresión real](docs/demo.gif)
+
+<sub>Renderizado a partir de la **salida real** de una ejecución offline con
+[`scripts/capture_demo.sh`](scripts/capture_demo.sh) +
+[`scripts/render_demo_gif.py`](scripts/render_demo_gif.py): cada cifra en pantalla la imprimió
+una herramienta de verdad. El FAIL del gate es una regresión genuina, provocada rompiendo a
+propósito el scorer L3.</sub>
 
 ## De un vistazo
 
-- **Offline por defecto** — 900+ tests, **mock provider + mock judge** deterministas y sin claves; sin API key ni red en CI. El **Claude** real y un **juez inspirado en G-Eval** real entran detrás de las mismas interfaces (ABCs).
-- **Guardrails (F2)** — inyección de prompts (OWASP LLM01), redacción de PII, política allow/deny, toxicidad — **desactivados por defecto**, *passthrough* idéntico byte a byte cuando están off.
-- **Evals (F3–F5)** — L1/L2/L3 + métricas de trayectoria + CLEAR; acuerdo del juez con etiquetas humanas **Cohen's κ = 0,933** sobre 30 casos etiquetados a mano (direccional; N=30, un solo anotador). Los 30 veredictos caso a caso están commiteados, así que lo recomputas sin clave: `aegis calibrate --from-verdicts artifacts/calibration-geval-2026-09-22.jsonl`.
-- **Red-team (F6–F7)** — catálogo de ataques **OWASP-LLM-2025** commiteado; detección por categoría con los **gaps nombrados, no escondidos** (cobertura contra catálogo, no una nota de seguridad).
-- **Dos *CI gates* de regresión** — `aegis eval gate` + `aegis redteam gate`, deterministas y totalmente offline.
-- **Gobernanza (F8)** — evidencia mapeada a **EU AI Act Art.15 / NIST AI RMF / ISO 42001**, derivada de artefactos reales — evidencia técnica parcial, no un certificado de cumplimiento.
+- **Offline por defecto** — **944 tests, 96% de cobertura de rama**, **mock provider + mock judge** deterministas y sin claves; sin API key ni red en CI. El **Claude** real y un **juez inspirado en G-Eval** real entran detrás de las mismas ABCs. Compruébalo: `pytest -q`
+- **Guardrails (F2)** — inyección de prompts (OWASP LLM01), redacción de PII, política allow/deny, toxicidad — **off por defecto**, *passthrough* idéntico byte a byte cuando están apagados. [Detalle](docs/guardrails.md)
+- **Un juez calibrado contra etiquetas humanas (F3–F5)** — L1/L2/L3 + métricas de trayectoria + CLEAR, y **Cohen's κ = 0,933** sobre 30 casos etiquetados a mano (direccional; N=30, un solo anotador). Los 30 veredictos caso a caso están **commiteados**, así que lo recomputas offline y sin clave. [Detalle](docs/evals.md)
+- **Red-team (F6–F7)** — catálogo de ataques **OWASP-LLM-2025** commiteado; **18/25 detectados** y los **7 que pasan están nombrados**, no redondeados. Es cobertura contra catálogo, no una nota de seguridad. Compruébalo: `aegis redteam run`. [Detalle](docs/redteam.md)
+- **Dos gates de regresión en CI** — `aegis eval gate` + `aegis redteam gate` convierten una regresión en un evento nombrado, bloqueante y revisable dentro del PR. Deterministas, offline y sin claves. [Detalle](docs/ci-gates.md)
+- **Gobernanza (F8)** — evidencia mapeada a **EU AI Act Art.15 / NIST AI RMF / ISO 42001**, derivada de artefactos reales — evidencia técnica parcial, no un certificado de cumplimiento. [Detalle](docs/governance.md)
+- **Dashboard de solo lectura (F9)** — muestra los reports reales y nunca es más optimista que ellos; un report ausente sale como *Not available*, nunca un gráfico en blanco. [Capturas](docs/dashboard.md)
 
-> **Estado — pre-alpha, proyecto de portfolio.** F0–F9 completas y testeadas offline. El mock provider/judge sin claves es el valor por defecto, así que todo corre sin API key. Detalle por fase en la [hoja de ruta del README en inglés](README.md#roadmap-phased).
+> **Estado — pre-alpha, proyecto de portfolio.** F0–F9 completas y testeadas offline. El mock provider/judge sin claves sigue siendo el valor por defecto, así que todo corre sin API key. Detalle por fase en la [hoja de ruta](docs/roadmap.md).
+
+## Contenido
+
+**Esta página:** [Por qué](#por-qué) · [Arquitectura](#arquitectura) · [Los números](#los-números-y-cómo-los-reproduces) · [Demo](#demo) · [Quickstart](#quickstart) · [Gates de CI](#gates-de-regresión-en-ci-f7) · [Procedencia](#procedencia-cómo-se-construyó-esto)
+
+**En profundidad, en [`docs/`](docs/)** (en inglés): [Guardrails](docs/guardrails.md) · [Provider real](docs/provider-anthropic.md) · [Evals, trayectoria y calibración](docs/evals.md) · [Red-team](docs/redteam.md) · [Los gates al completo](docs/ci-gates.md) · [Observabilidad](docs/observability.md) · [Gobernanza](docs/governance.md) · [Dashboard](docs/dashboard.md) · [Hoja de ruta](docs/roadmap.md)
 
 ---
 
 ## Por qué
 
-Un único cambio *drop-in* (`base_url`) le da a una app existente guardrails, trazas de petición y evals continuos — **sin tocar su modelo ni su lógica de negocio**. Aegis no es un modelo; es la **capa de control** alrededor de cualquier modelo o agente.
+Un único cambio *drop-in* (`base_url`) le da a una app existente guardrails, trazas de petición
+y evals continuos, sin tocar su modelo ni su lógica de negocio. Aegis no es un modelo; es la
+**capa de control** alrededor de cualquier modelo o agente.
 
-El diferenciador es la **profundidad de evaluación**: no solo puntuar la salida final, sino puntuar la *trayectoria* (cada llamada a herramienta, en orden, recuperándose de errores), validar el juez LLM contra etiquetas humanas, y cablearlo todo en un *CI gate* para que las regresiones **bloqueen el merge** en vez de llegar a producción.
+El diferenciador es la **profundidad de evaluación**: no solo puntuar la salida final, sino
+puntuar la *trayectoria* (cada llamada a herramienta, en orden, recuperándose de errores),
+validar el juez LLM contra etiquetas humanas, y cablearlo todo en dos gates de CI que
+convierten una regresión en un evento nombrado, bloqueante y revisable dentro del PR, en vez
+de algo que llega a producción.
 
 ---
 
@@ -81,28 +111,114 @@ flowchart TD
 
 ---
 
-## Capacidades
+## Los números, y cómo los reproduces
 
-> Para el detalle técnico completo de cada bloque (con sus *caveats* de honestidad y los
-> comandos), ve a la sección correspondiente del [README en inglés](README.md).
+Ninguna cifra de esta página es una afirmación. Cada una tiene un **artefacto commiteado** y un
+comando que la regenera, **sin API key y sin red**.
 
-**Guardrails (F2).** Inyección de prompts (OWASP LLM01), redacción de PII, política allow/deny y toxicidad, tanto en entrada como en salida. Están **off por defecto**: con ellos apagados, el gateway es un *passthrough* idéntico byte a byte. → [detalle](README.md#guardrails-f2)
+| Qué | Número | Cómo lo reproduces | Artefacto commiteado |
+|---|---|---|---|
+| Detección red-team sobre el catálogo OWASP | **18/25 = 0,720**, con los 7 gaps nombrados | `aegis redteam run` (~1s) | `src/aegis/redteam/baselines/redteam.json` |
+| Suite de evals sobre el golden set | **overall 0,861** (L1 0,854, L2 0,856, L3 0,872) | `aegis eval run` (~1s) | `src/aegis/evals/baselines/golden.json` |
+| Acuerdo del juez con etiquetas humanas | **Cohen's κ 0,933**, p_o 0,967, N=30 | `aegis calibrate --from-verdicts artifacts/calibration-geval-2026-09-22.jsonl` (~1s) | [`artifacts/…jsonl`](artifacts/calibration-geval-2026-09-22.jsonl) — los 30 veredictos caso a caso |
+| Suite de tests | **944 pasan, 4 skipped**, 96% cobertura de rama | `pytest -q --cov --cov-branch` (~10s) | CI, `--cov-fail-under=95` |
 
-**Provider real — Anthropic / Claude.** El Claude real entra por carga perezosa detrás de la misma ABC `Provider`, que está lista para multi-provider (OpenAI/Gemini son *seams* de interfaz, aún no implementados). → [detalle](README.md#real-provider--anthropic--claude)
+**Lee la κ con honestidad:** N=30, un solo anotador, y un set de calibración escrito por la
+misma familia de modelos que juzga. Es una señal direccional con un intervalo ancho, no un
+veredicto sobre el juez. Lo que el proyecto vende de verdad es que **los gates cazan
+regresiones**. Los *caveats* completos están en [`docs/evals.md`](docs/evals.md); la procedencia
+del artefacto, en [`artifacts/README.md`](artifacts/README.md).
 
-**Evals (F3) + trayectoria / CLEAR (F4).** Métricas L1/L2/L3 más puntuación de *trayectoria* (cada llamada a herramienta, en orden) y CLEAR. El juez de trayectoria mock es una **heurística ilustrativa, no un juez semántico** — señal para cazar regresiones, no *ground truth*. → [detalle](README.md#evals-f3)
+---
 
-**Calibración del juez (F5).** El juez LLM se trata como **direccional** y se valida contra etiquetas humanas con **Cohen's κ**, reportado con `p_o` y la matriz de confusión, sobre N=30 de un solo anotador — un CI ancho, no un veredicto preciso. El valor es que **el gate caza regresiones**, no que el juez sea verdad absoluta. → [detalle](README.md#judge-calibration-f5)
+## Demo
 
-**Red-team (F6).** Catálogo de ataques sintéticos commiteado, mapeado a OWASP-LLM-2025, con detección por categoría y los **gaps nombrados, no escondidos** (es cobertura contra catálogo, no una nota de seguridad). → [detalle](README.md#automated-red-team-f6)
+Un solo script — [`scripts/demo.sh`](scripts/demo.sh) — mueve el sistema entero de punta a punta
+sobre el mock determinista y sin claves, en diez tiempos: gateway arriba → llamada *drop-in* de
+OpenAI → PII tapada antes de que el provider la vea → inyección bloqueada → `eval run` → la κ del
+juez real recomputada desde los veredictos commiteados → `eval gate` en PASS y luego un
+**baseline manipulado (una copia) en FAIL** con la regresión nombrada → `redteam run` →
+`evidence` → el dashboard en vivo sobre los reports que acaba de escribir.
 
-**CI gate (F7) — evals + red-team.** Dos *gates* deterministas y offline (`aegis eval gate` + `aegis redteam gate`) que bloquean el PR ante una regresión frente al *baseline* commiteado. **Es el feature estrella.** → [detalle](README.md#ci-regression-gate-f7--evals--red-team)
+```bash
+bash scripts/demo.sh                   # pausado para grabar (2s entre tiempos)
+DEMO_SLEEP=0 bash scripts/demo.sh      # a fondo, smoke run (~23s, sale 0, sin procesos huérfanos)
+```
 
-**Observabilidad — OpenTelemetry (F1.x).** Un *span* de OTel por petición siguiendo las convenciones semánticas GenAI (~v1.38). **Opt-in y no-op por defecto**, y por privacidad los *spans* llevan **solo metadatos** (modelo, tokens, duración), **nunca contenido de mensajes** — para no re-filtrar la PII que los guardrails quitan. → [detalle](README.md#observability--opentelemetry-tracing-f1x)
+**Nada está preparado de antemano.** Cada número se produce en vivo, el FAIL del gate es una
+regresión real contra una copia *desechable* del baseline (el commiteado no se toca nunca), y el
+dashboard lee exactamente los reports que la ejecución acaba de escribir. Guía de grabación en
+**[DEMO.md](DEMO.md)**.
 
-**Evidencia de gobernanza (F8).** `aegis evidence` mapea los artefactos reales que Aegis ya produce a controles concretos de EU AI Act Art.15 / NIST AI RMF / ISO 42001. **No es un certificado**: cada estado se **deriva de un campo real** en tiempo de generación, nunca se escribe a mano; sin artefacto, el control queda `not_covered`. La mayoría de las cláusulas de cada marco están explícitamente fuera de alcance. → [detalle](README.md#governance-evidence-f8)
+---
 
-**Dashboard (F9).** Panel **de solo lectura** (Next.js + Recharts) que visualiza los reports reales que Aegis escribe. **Nunca más optimista que los reports**: un report ausente se muestra como **"Not available"** con el comando para generarlo, nunca un gráfico en blanco o falseado; los estados se muestran **verbatim**. → [detalle](README.md#dashboard-f9)
+## Quickstart
+
+**Hace falta Python 3.12 o superior** (`pyproject`: `requires-python >=3.12`).
+
+```bash
+git clone https://github.com/marcosmatalab/aegis.git && cd aegis
+
+python3.12 -m venv .venv
+source .venv/bin/activate             # Windows: .venv\Scripts\activate
+pip install -e ".[dev]"               # ~35s
+
+pytest -q                             # 944 passed, 4 skipped, ~10s
+bash scripts/demo.sh                  # el pipeline entero de punta a punta, ~23s, offline
+```
+
+**Mira las tres cifras de portada, offline, en unos tres segundos:**
+
+```bash
+aegis redteam run     # 25 ataques OWASP contra los guardrails -> 18/25 = 0.720, 7 gaps nombrados
+aegis eval run        # 32 casos golden, L1/L2/L3 + CLEAR -> overall 0.861
+aegis calibrate --from-verdicts artifacts/calibration-geval-2026-09-22.jsonl
+                      # el acuerdo del juez real con las etiquetas humanas -> kappa 0.933
+```
+
+**Levanta el gateway** (mock sin claves por defecto; el Claude real entra detrás de la misma ABC,
+ver [`docs/provider-anthropic.md`](docs/provider-anthropic.md)):
+
+```bash
+uvicorn aegis.gateway.main:app --port 8080
+curl http://localhost:8080/health
+# {"status":"ok","version":"0.1.0"}
+
+curl http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"mock/echo-1","messages":[{"role":"user","content":"hello"}]}'
+# Añade "stream": true para un stream SSE de frames chat.completion.chunk.
+```
+
+---
+
+## Gates de regresión en CI (F7)
+
+Todos los jobs de abajo son **bloqueantes**, **offline** y **sin claves**. Los dos gates de
+regresión son el punto del proyecto; los demás jobs existen para que una regresión no pueda
+colarse disfrazada de otra cosa.
+
+| Job / paso | Qué caza | Compruébalo en local |
+|---|---|---|
+| `ruff check` + `ruff format --check` | Deriva de estilo y formato | `ruff check . && ruff format --check .` |
+| `mypy` | Un `str` que llega a un campo `Literal`, un Optional que llega a un parámetro que no lo es. **Eran 22 errores en 13 ficheros** | `mypy` |
+| `lint-imports` | Un import hacia arriba. El **ciclo `gateway <-> guardrails` que existía de verdad** hasta que los tipos compartidos se movieron a `aegis.core` | `lint-imports` |
+| `pytest --cov-fail-under=95` | Regresiones funcionales **y caída de cobertura** (96% de rama hoy) | `pytest -q --cov --cov-branch` |
+| `aegis eval gate` | Una regresión de evals contra el baseline commiteado, nombrada caso a caso | `aegis eval gate` |
+| `aegis redteam gate` | Una regresión de red-team contra el baseline commiteado, nombrada ataque a ataque | `aegis redteam gate` |
+| `aegis calibrate --from-verdicts` | Que la κ publicada en el README se separe de su artefacto commiteado | `aegis calibrate --from-verdicts artifacts/...jsonl` |
+| `npm audit --audit-level=high` | Una vulnerabilidad conocida en el árbol del dashboard. **Habría fallado** con 1 crítica + 4 high | `cd dashboard && npm audit` |
+| Biome / `tsc` / Vitest / `next build` | Lint, tipos, 41 tests y build del dashboard | `cd dashboard && npm run lint && npm test` |
+
+Los jobs de Python instalan desde el **`uv.lock`** commiteado, sobre una **matriz 3.12 + 3.13**,
+así que un build verde demuestra que el código funciona contra un conjunto de dependencias
+exacto y reproducible, y no contra lo que el índice resolviera esa mañana. Dependabot mantiene
+`pip`, `npm` y `github-actions` al día cada semana
+([`.github/dependabot.yml`](.github/dependabot.yml)).
+
+**El contrato completo** — qué cuenta como regresión en cada gate, cuál es la garantía real
+("ninguna regresión *silenciosa*", no "ninguna regresión jamás"), y por qué no puedes esconder
+una regresión de red-team reetiquetándola como gap conocido: [`docs/ci-gates.md`](docs/ci-gates.md).
 
 ---
 
@@ -112,20 +228,50 @@ flowchart TD
 |------|------------|
 | API gateway | FastAPI + uvicorn (endpoint compatible con OpenAI) |
 | Provider real | SDK de Anthropic (perezoso, extra opcional `[anthropic]`); la ABC `Provider` está lista para multi-provider — OpenAI/Gemini son *seams* de interfaz, aún no implementados |
-| Guardrails | escáneres deterministas regex/léxico (por defecto, sin claves); Microsoft **Presidio** opcional para PII más rica (`[guardrails]`) |
-| Evals y juez | juez CoT inspirado en G-Eval (Anthropic), métricas de 3 niveles + trayectoria, Agent-as-a-Judge (backend *stub*) |
-| Red-team | catálogo de ataques sintéticos commiteado, mapeado a OWASP LLM 2025 (`redteam run` + `redteam gate`) |
-| Observabilidad | OpenTelemetry GenAI semconv (~v1.38); OTLP → Langfuse opcional (`[otel]`) |
-| Persistencia | reports JSON en disco (`reports/`, en gitignore) — sin base de datos |
-| Dashboard | Next.js + React + Recharts (solo lectura, lectura en servidor) |
+| Guardrails | escáneres deterministas de regex/léxico (por defecto, sin claves); **Presidio** de Microsoft opcional para PII más rica (`[guardrails]`) |
+| Evals y juez | juez CoT inspirado en G-Eval (Anthropic), 3 niveles + métricas de trayectoria, Agent-as-a-Judge (backend *stub*) |
+| Red-team | catálogo de ataques sintéticos commiteado y mapeado a OWASP LLM 2025 (`redteam run` + `redteam gate`) |
+| Observabilidad | semconv GenAI de OpenTelemetry (~v1.38); OTLP → Langfuse opcional (`[otel]`) |
+| Persistencia | reports JSON en disco (`reports/`, gitignorado) — sin base de datos |
+| Dashboard | Next.js + React + Recharts (solo lectura, leído en servidor) |
 | Gobernanza | PDF de evidencia con `fpdf2` + *sidecar* JSON (opcional `[reporting]`) |
-| CI | GitHub Actions — *gates* de regresión `eval-gate` + `redteam-gate`, totalmente offline |
+| CI | GitHub Actions — gates de regresión `eval-gate` + `redteam-gate`, totalmente offline |
 
 ---
 
-## Honestidad
+## Procedencia: cómo se construyó esto
 
-Esto es un **proyecto de portfolio**, no un producto con clientes. Las cifras reportadas son medidas reales sobre el *golden set* del propio proyecto — sin claims inflados. El juez LLM se trata como *direccional* y se **valida contra etiquetas humanas con Cohen's κ** ([calibración del juez (F5)](README.md#judge-calibration-f5)) — reportado con `p_o` y la matriz de confusión, sobre N=30 de un solo anotador, así que κ se lee como una señal direccional de CI ancho, no como un veredicto preciso; la propuesta de valor es que **el gate caza regresiones**, no que un juez sea *ground truth*. Los guardrails son defensa en profundidad con cobertura mapeada a OWASP — no una afirmación de detección total.
+Esto se construyó en un sprint intenso: **185 commits entre el 22 y el 25 de junio de 2026**, y
+lo puedes ver tú mismo con `git log --format=%ad --date=short | sort | uniq -c`. Ese ritmo no es
+una persona tecleando sola, así que aquí va el desglose honesto.
+
+Usé un asistente de código con IA de forma intensiva: andamiaje, generación de tests y la prosa
+larga de la documentación. Lo que diseñé y decidí yo es la parte que importa: los dos contratos
+de los gates y qué cuenta como regresión, el mapeo OWASP y qué categorías puede reclamar este
+gateway con honestidad, los 30 casos de calibración etiquetados a mano (los etiqueté yo, un solo
+anotador, que es exactamente por lo que este README lo dice), los estados de honestidad que
+recorren CLEAR y el constructor de evidencia, y la decisión de publicar un catálogo red-team con
+los **gaps nombrados** en vez de una tasa de detección redondeada hacia arriba.
+
+Las partes que defendería en una entrevista son el diseño de los gates y la calibración. Las
+partes que escribió un asistente, las leí, las testeé y las hago mías. Cada número de aquí es
+reproducible offline, que es el único control que zanja de verdad la discusión — ver
+[los números y cómo los reproduces](#los-números-y-cómo-los-reproduces) y
+[`artifacts/README.md`](artifacts/README.md). La política de asistencia está escrita en
+[`CONTRIBUTING.md`](CONTRIBUTING.md).
+
+---
+
+## Guardrails de honestidad
+
+Esto es un **proyecto de portfolio**, no un producto con clientes. Las cifras reportadas son
+medidas reales sobre el golden set del propio proyecto — sin afirmaciones infladas. El juez LLM
+se trata como *direccional* y **se valida contra etiquetas humanas con Cohen's κ**
+([calibración del juez](docs/evals.md#judge-calibration-f5)) — reportada con `p_o` y la matriz de
+confusión, sobre N=30 de un solo anotador, así que la κ se lee como una señal direccional de
+intervalo ancho, no como un veredicto preciso; la propuesta de valor es que **el gate caza
+regresiones**, no que ningún juez sea verdad absoluta. Los guardrails son defensa en profundidad
+con cobertura mapeada a OWASP — no una afirmación de detección total.
 
 ---
 
