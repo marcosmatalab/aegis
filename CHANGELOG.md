@@ -6,6 +6,22 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- **The red-team detection rate falls, on purpose: 18/25 (0.720) → 19/29 (0.655), and the named
+  gaps go 7 → 10.** Probing the guardrails directly turned up three evasions the catalog did not
+  cover and the pipeline genuinely lets through: a French override (patterns cover English and
+  Spanish only), a base64-wrapped override (the scanner decodes nothing), and zero-width-space
+  splitting (no unicode normalisation). All three are catalogued as declared gaps. A fourth case,
+  the same override via the `tool` role, is caught; it marks where the scanned-role boundary is.
+  The red-team baseline, sample reports, dashboard screenshots, demo GIF, both READMEs,
+  `docs/redteam.md`, `docs/limitations.md` and `SECURITY.md` carry the new figures.
+- Red-team tests derive the catalog size from `load_attacks()` instead of hardcoding 25, so
+  growing the catalog no longer breaks them for no reason.
+
+### Added
+- `docs/adr/`: decision records for the calibration artifact, distributing from git tags rather
+  than PyPI, the static dashboard, the `aegis.core` layer, and letting the detection rate fall.
+
 ## [0.1.1] — 2026-09-23
 
 Corrections to 0.1.0's documentation and release process. No change to the gateway, the

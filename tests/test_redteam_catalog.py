@@ -17,8 +17,10 @@ _CATEGORIES = {
 
 def test_catalog_loads_and_is_well_formed():
     cases = load_attacks()
-    assert len(cases) == 25
-    assert len({c.id for c in cases}) == 25
+    # Uniqueness is the real invariant; the exact size is not, so that growing the
+    # catalog stays a one-line change.
+    assert len({c.id for c in cases}) == len(cases)
+    assert len(cases) >= 25, "the catalog should only ever grow"
     assert {c.category for c in cases} == _CATEGORIES
 
     # derived OWASP-2025 mapping is honest (None where there is no clean slot)
