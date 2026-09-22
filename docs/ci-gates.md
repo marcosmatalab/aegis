@@ -57,6 +57,76 @@ green path past a genuine weakening.
 
 ---
 
+## The gate actually blocked two merges, and neither was a demo
+
+A sabotage test is a useful check but a weak proof: it is a failure the author chose, at a
+moment the author chose. What follows is better evidence, because nobody wanted either of these
+and both cost real time.
+
+Both are the same underlying mistake — **a required-check list and the workflow that produces
+it drifting apart** — and they drifted in opposite directions, which is what makes the pair
+worth recording.
+
+### Direction 1 — protection written for the final state, applied to an earlier branch
+
+Branch protection on `main` requires six contexts:
+
+```
+lint-and-test (3.12)   lint-and-test (3.13)   eval-gate
+redteam-gate           calibration-artifact   dashboard
+```
+
+Three of those did not exist when the work started. The Python matrix split `lint-and-test`
+into two contexts, and `calibration-artifact` was added at the same time. A branch from before
+that change therefore emits only **four** of the six.
+
+The effect on PR #28 (the first branch of the series): **eight check runs, all green, merge
+blocked** — because two required contexts were not merely failing, they were never reported at
+all, and a context that never reports stays pending forever.
+
+That is the gate behaving exactly as designed. "Required" means *required*, not "required if it
+happens to run", and a check that silently disappears is precisely the failure mode branch
+protection exists to catch.
+
+### Direction 2 — a ruleset left on the old state, applied to the final branch
+
+The more instructive one, because it was an accident rather than a consequence.
+
+A repository **ruleset** named `main-protection` predated this work and also targeted `main`.
+Rulesets do not appear in the branch-protection API, so `gh api .../branches/main/protection`
+showed a clean, correct configuration while a second mechanism was quietly enforcing a
+different one. It required:
+
+```
+eval-gate      lint-and-test      redteam-gate
+```
+
+That middle context is the **pre-matrix job name**. After the matrix split, `lint-and-test`
+could never report again under that exact name. So PR #40 — carrying the finished work, with
+all six required contexts passing, three times over — was **permanently unmergeable**, and the
+branch-protection API gave no hint why.
+
+Diagnosis took a detour through the wrong hypotheses first (stale `mergeStateStatus`, the
+`strict` up-to-date rule, an attribution flag) before `gh api repos/.../rules/branches/main`
+showed the second mechanism.
+
+### What was changed, and why
+
+The ruleset was **deleted** rather than corrected. Two enforcement mechanisms maintained in
+parallel over one branch is the actual defect; fixing the contexts inside the ruleset would
+have left the trap armed for the next rename. Classic branch protection covers the same ground
+and is the one with committed evidence in [`branch-protection.json`](branch-protection.json).
+
+### The transferable lesson
+
+Renaming a CI job **is a breaking change to branch protection**, and nothing warns you. A job
+rename and the required-context list have to move together, in the same change, or every
+subsequent PR blocks on a check that no longer exists. Adding a matrix is a rename:
+`lint-and-test` became `lint-and-test (3.12)`.
+
+
+---
+
 ---
 
 [← back to the README](../README.md)
