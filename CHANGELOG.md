@@ -47,7 +47,7 @@ aegis redteam run
   from a bare `pipx install` with no checkout.
 
 **Red-team (F6) and CI gates (F7)**
-- Committed OWASP-LLM-2025 attack catalog: **18/25 detected**, with the **7 that get through
+- Committed OWASP-LLM-2025 attack catalog: **19/29 detected**, with the **10 that get through
   named in the report** rather than rounded away.
 - `aegis eval gate` and `aegis redteam gate` compare a run to a committed baseline and exit
   non-zero on regression, naming every affected case or attack.

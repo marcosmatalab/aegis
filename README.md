@@ -45,7 +45,7 @@ scorer.</sub>
 - **Offline by default** — **944 tests, 96% branch coverage**, deterministic keyless **mock provider + mock judge**; no API key, no network in CI. Real **Claude** and a real **G-Eval-inspired judge** drop in behind the same ABCs. Verify: `pytest -q`
 - **Guardrails (F2)** — prompt-injection (OWASP LLM01), PII redaction, allow/deny policy, toxicity — **off by default**, a byte-identical passthrough when off. [Detail](docs/guardrails.md)
 - **A judge calibrated against human labels (F3–F5)** — L1/L2/L3 + trajectory metrics + CLEAR, and **Cohen's κ = 0.933** over 30 hand-labelled cases (directional; N=30, single annotator). The 30 per-case verdicts are **committed**, so you recompute it offline with no key. [Detail](docs/evals.md)
-- **Red-team (F6–F7)** — committed **OWASP-LLM-2025** attack catalog; **18/25 detected** and the **7 that get through are named**, not rounded away (coverage-against-catalog, not a security score). Verify: `aegis redteam run`. [Detail](docs/redteam.md)
+- **Red-team (F6–F7)** — committed **OWASP-LLM-2025** attack catalog; **19/29 detected** and the **10 that get through are named**, not rounded away (coverage-against-catalog, not a security score). Verify: `aegis redteam run`. [Detail](docs/redteam.md)
 - **Two CI regression gates** — `aegis eval gate` + `aegis redteam gate` turn a regression into a named, blocking, reviewable event on the PR. Both deterministic, offline and keyless. [Detail](docs/ci-gates.md)
 - **Governance (F8)** — evidence mapped to **EU AI Act Art.15 / NIST AI RMF / ISO 42001**, derived from real artifacts — partial technical evidence, not a compliance certificate. [Detail](docs/governance.md)
 - **Read-only dashboard (F9)** — renders the real reports, never more optimistic than they are; a missing report shows as *Not available*, never a blank chart. **[See it live](https://marcosmatalab.github.io/aegis/)** (a static snapshot of a real run, and it says so on the page) · [Screenshots](docs/dashboard.md)
@@ -56,7 +56,7 @@ scorer.</sub>
 
 **This page:** [Why](#why) · [Architecture](#architecture) · [The numbers](#the-numbers-and-how-you-reproduce-them) · [Demo](#demo) · [Quickstart](#quickstart) · [CI gates](#ci-regression-gates-f7) · [Provenance](#provenance-how-this-was-built)
 
-**Deep dives in [`docs/`](docs/):** [Guardrails](docs/guardrails.md) · [Real provider](docs/provider-anthropic.md) · [Evals, trajectory & calibration](docs/evals.md) · [Red-team](docs/redteam.md) · [CI gates in full](docs/ci-gates.md) · [Observability](docs/observability.md) · [Governance](docs/governance.md) · [Dashboard](docs/dashboard.md) · [Roadmap](docs/roadmap.md)
+**Deep dives in [`docs/`](docs/):** [Guardrails](docs/guardrails.md) · [Real provider](docs/provider-anthropic.md) · [Evals, trajectory & calibration](docs/evals.md) · [Red-team](docs/redteam.md) · [CI gates in full](docs/ci-gates.md) · [Observability](docs/observability.md) · [Governance](docs/governance.md) · [Dashboard](docs/dashboard.md) · [Roadmap](docs/roadmap.md) · [Decision records](docs/adr/)
 
 ---
 
@@ -113,7 +113,7 @@ regenerates it, with **no API key and no network**.
 
 | What | Number | Reproduce it | Committed artifact |
 |---|---|---|---|
-| Red-team detection over the OWASP catalog | **18/25 = 0.720**, with all 7 gaps named | `aegis redteam run` (~1s) | `src/aegis/redteam/baselines/redteam.json` |
+| Red-team detection over the OWASP catalog | **19/29 = 0.655**, with all 10 gaps named | `aegis redteam run` (~1s) | `src/aegis/redteam/baselines/redteam.json` |
 | Eval suite over the golden set | **overall 0.861** (L1 0.854, L2 0.856, L3 0.872) | `aegis eval run` (~1s) | `src/aegis/evals/baselines/golden.json` |
 | Judge agreement with human labels | **Cohen's κ 0.933**, p_o 0.967, N=30 | `aegis calibrate --from-verdicts artifacts/calibration-geval-2026-09-22.jsonl` (~1s) | [`artifacts/…jsonl`](artifacts/calibration-geval-2026-09-22.jsonl) — the 30 per-case verdicts |
 | Test suite | **944 passed, 4 skipped**, 96% branch coverage | `pytest -q --cov --cov-branch` (~10s) | CI, `--cov-fail-under=95` |
@@ -179,7 +179,7 @@ bash scripts/demo.sh                  # the whole pipeline end to end, ~23s, off
 **See the three headline numbers, offline, in about three seconds:**
 
 ```bash
-aegis redteam run     # 25 OWASP attacks vs the guardrails -> 18/25 = 0.720, 7 gaps named
+aegis redteam run     # 29 OWASP attacks vs the guardrails -> 19/29 = 0.655, 10 gaps named
 aegis eval run        # 32 golden cases, L1/L2/L3 + CLEAR -> overall 0.861
 aegis calibrate --from-verdicts artifacts/calibration-geval-2026-09-22.jsonl
                       # the real judge's agreement with human labels -> kappa 0.933

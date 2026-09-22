@@ -2,7 +2,7 @@
 
 ![Eval scorecard and CLEAR dimensions, with every status shown verbatim](dashboard-eval.png)
 
-![OWASP red-team panel: 18/25 detected and all 7 named gaps listed](dashboard-redteam.png)
+![OWASP red-team panel: 19/29 detected and all 10 named gaps listed](dashboard-redteam.png)
 
 ![Judge calibration: Cohen's kappa 0.933 against human labels, with the confusion matrix](dashboard-kappa.png)
 

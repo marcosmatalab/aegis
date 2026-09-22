@@ -18,14 +18,18 @@ subject is guardrails:
 
 - **The guardrails are defence-in-depth, not total detection.** Coverage is measured against a
   committed attack catalog and published per OWASP category. The current figure is
-  **18/25 detected**, and the **7 attacks that get through are named in the report**, not
+  **19/29 detected**, and the **10 attacks that get through are named in the report**, not
   rounded away. Reproduce it with `aegis redteam run`.
-- **Known gaps are documented, not hidden.** Leetspeak substitution, system/developer/assistant
-  role text not being scanned, obfuscated emails, a card number glued into a longer digit run,
-  and sub-threshold toxicity. They are in the catalog as `*-gap-*` cases precisely so a
-  regression in them is visible.
-- **Coverage against a catalog is not a security score.** A 0.720 detection rate means the
-  catalog is 72% detected. It says nothing about attacks the catalog does not contain.
+- **Known gaps are documented, not hidden.** Leetspeak substitution, base64-wrapped payloads,
+  zero-width-space splitting, non-English overrides beyond the covered Spanish variant,
+  system/developer/assistant role text not being scanned, obfuscated emails, a card number
+  glued into a longer digit run, and sub-threshold toxicity. They are in the catalog as
+  `*-gap-*` cases precisely so a regression in them is visible.
+- **Coverage against a catalog is not a security score.** A 0.655 detection rate means the
+  catalog is 65.5% detected. It says nothing about attacks the catalog does not contain.
+- **The number goes DOWN when coverage goes up.** It was 18/25 (0.720) until three more
+  evasions were catalogued and disclosed. A detection rate that only ever improves is a
+  managed number, not a measured one.
 
 ## Scope
 

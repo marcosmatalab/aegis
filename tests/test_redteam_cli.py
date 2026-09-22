@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 from aegis.cli import main
+from aegis.redteam.dataset import load_attacks
 
 
 def test_redteam_run_writes_report_and_summary(tmp_path, capsys):
@@ -14,7 +15,7 @@ def test_redteam_run_writes_report_and_summary(tmp_path, capsys):
     assert out.exists()
 
     report = json.loads(out.read_text(encoding="utf-8"))
-    assert report["case_count"] == 25
+    assert report["case_count"] == len(load_attacks())
     assert set(report["categories"]) >= {"prompt_injection", "pii_input", "policy_denylist"}
 
     summary = capsys.readouterr().out

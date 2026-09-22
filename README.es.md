@@ -46,7 +46,7 @@ propósito el scorer L3.</sub>
 - **Offline por defecto** — **944 tests, 96% de cobertura de rama**, **mock provider + mock judge** deterministas y sin claves; sin API key ni red en CI. El **Claude** real y un **juez inspirado en G-Eval** real entran detrás de las mismas ABCs. Compruébalo: `pytest -q`
 - **Guardrails (F2)** — inyección de prompts (OWASP LLM01), redacción de PII, política allow/deny, toxicidad — **off por defecto**, *passthrough* idéntico byte a byte cuando están apagados. [Detalle](docs/guardrails.md)
 - **Un juez calibrado contra etiquetas humanas (F3–F5)** — L1/L2/L3 + métricas de trayectoria + CLEAR, y **Cohen's κ = 0,933** sobre 30 casos etiquetados a mano (direccional; N=30, un solo anotador). Los 30 veredictos caso a caso están **commiteados**, así que lo recomputas offline y sin clave. [Detalle](docs/evals.md)
-- **Red-team (F6–F7)** — catálogo de ataques **OWASP-LLM-2025** commiteado; **18/25 detectados** y los **7 que pasan están nombrados**, no redondeados. Es cobertura contra catálogo, no una nota de seguridad. Compruébalo: `aegis redteam run`. [Detalle](docs/redteam.md)
+- **Red-team (F6–F7)** — catálogo de ataques **OWASP-LLM-2025** commiteado; **19/29 detectados** y los **10 que pasan están nombrados**, no redondeados. Es cobertura contra catálogo, no una nota de seguridad. Compruébalo: `aegis redteam run`. [Detalle](docs/redteam.md)
 - **Dos gates de regresión en CI** — `aegis eval gate` + `aegis redteam gate` convierten una regresión en un evento nombrado, bloqueante y revisable dentro del PR. Deterministas, offline y sin claves. [Detalle](docs/ci-gates.md)
 - **Gobernanza (F8)** — evidencia mapeada a **EU AI Act Art.15 / NIST AI RMF / ISO 42001**, derivada de artefactos reales — evidencia técnica parcial, no un certificado de cumplimiento. [Detalle](docs/governance.md)
 - **Dashboard de solo lectura (F9)** — muestra los reports reales y nunca es más optimista que ellos; un report ausente sale como *Not available*, nunca un gráfico en blanco. **[Míralo en vivo](https://marcosmatalab.github.io/aegis/)** (instantánea estática de una ejecución real, y lo dice en la propia página) · [Capturas](docs/dashboard.md)
@@ -57,7 +57,7 @@ propósito el scorer L3.</sub>
 
 **Esta página:** [Por qué](#por-qué) · [Arquitectura](#arquitectura) · [Los números](#los-números-y-cómo-los-reproduces) · [Demo](#demo) · [Quickstart](#quickstart) · [Gates de CI](#gates-de-regresión-en-ci-f7) · [Procedencia](#procedencia-cómo-se-construyó-esto)
 
-**En profundidad, en [`docs/`](docs/)** (en inglés): [Guardrails](docs/guardrails.md) · [Provider real](docs/provider-anthropic.md) · [Evals, trayectoria y calibración](docs/evals.md) · [Red-team](docs/redteam.md) · [Los gates al completo](docs/ci-gates.md) · [Observabilidad](docs/observability.md) · [Gobernanza](docs/governance.md) · [Dashboard](docs/dashboard.md) · [Hoja de ruta](docs/roadmap.md)
+**En profundidad, en [`docs/`](docs/)** (en inglés): [Guardrails](docs/guardrails.md) · [Provider real](docs/provider-anthropic.md) · [Evals, trayectoria y calibración](docs/evals.md) · [Red-team](docs/redteam.md) · [Los gates al completo](docs/ci-gates.md) · [Observabilidad](docs/observability.md) · [Gobernanza](docs/governance.md) · [Dashboard](docs/dashboard.md) · [Hoja de ruta](docs/roadmap.md) · [Registro de decisiones](docs/adr/)
 
 ---
 
@@ -120,7 +120,7 @@ comando que la regenera, **sin API key y sin red**.
 
 | Qué | Número | Cómo lo reproduces | Artefacto commiteado |
 |---|---|---|---|
-| Detección red-team sobre el catálogo OWASP | **18/25 = 0,720**, con los 7 gaps nombrados | `aegis redteam run` (~1s) | `src/aegis/redteam/baselines/redteam.json` |
+| Detección red-team sobre el catálogo OWASP | **19/29 = 0,655**, con los 10 gaps nombrados | `aegis redteam run` (~1s) | `src/aegis/redteam/baselines/redteam.json` |
 | Suite de evals sobre el golden set | **overall 0,861** (L1 0,854, L2 0,856, L3 0,872) | `aegis eval run` (~1s) | `src/aegis/evals/baselines/golden.json` |
 | Acuerdo del juez con etiquetas humanas | **Cohen's κ 0,933**, p_o 0,967, N=30 | `aegis calibrate --from-verdicts artifacts/calibration-geval-2026-09-22.jsonl` (~1s) | [`artifacts/…jsonl`](artifacts/calibration-geval-2026-09-22.jsonl) — los 30 veredictos caso a caso |
 | Suite de tests | **944 pasan, 4 skipped**, 96% cobertura de rama | `pytest -q --cov --cov-branch` (~10s) | CI, `--cov-fail-under=95` |
@@ -188,7 +188,7 @@ bash scripts/demo.sh                  # el pipeline entero de punta a punta, ~23
 **Mira las tres cifras de portada, offline, en unos tres segundos:**
 
 ```bash
-aegis redteam run     # 25 ataques OWASP contra los guardrails -> 18/25 = 0.720, 7 gaps nombrados
+aegis redteam run     # 29 ataques OWASP contra los guardrails -> 19/29 = 0.655, 10 gaps nombrados
 aegis eval run        # 32 casos golden, L1/L2/L3 + CLEAR -> overall 0.861
 aegis calibrate --from-verdicts artifacts/calibration-geval-2026-09-22.jsonl
                       # el acuerdo del juez real con las etiquetas humanas -> kappa 0.933
