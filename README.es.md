@@ -22,7 +22,7 @@ gobernanza y dos *CI gates* que **bloquean el merge** ante una regresión de eva
 
 Hecho por **Marcos Mata García**, ingeniero de IA / plataforma en Madrid, buscando trabajo
 ahora mismo.
-[matagarciamarcos@gmail.com](mailto:matagarciamarcos@gmail.com) · [GitHub](https://github.com/marcosmatalab)
+[LinkedIn](https://linkedin.com/in/marcosmatagarcia) · [matagarciamarcos@gmail.com](mailto:matagarciamarcos@gmail.com) · [GitHub](https://github.com/marcosmatalab)
 
 **Por qué existe esto.** Todo equipo que mete un LLM en producción acaba construyendo a mano
 la misma capa: algo que escanea la entrada, tapa la PII, puntúa si el agente hizo de verdad
@@ -233,6 +233,12 @@ Los seis son **checks obligatorios en `main`**, así que una regresión no solo 
 lo convierte en una afirmación no verificable, así que la configuración real está exportada y
 commiteada: [`docs/branch-protection.json`](docs/branch-protection.json) (reprodúcelo con
 `gh api repos/marcosmatalab/aegis/branches/main/protection`).
+
+Ya ha bloqueado dos merges que nadie quería bloquear: uno porque la rama era anterior a la
+mitad de los contextos obligatorios, y otro porque un *ruleset* olvidado seguía exigiendo el
+nombre de un job que una matriz había renombrado. Los dos están documentados en
+[`docs/ci-gates.md`](docs/ci-gates.md#the-gate-actually-blocked-two-merges-and-neither-was-a-demo),
+porque un bloqueo accidental es mejor evidencia que uno preparado.
 
 Los jobs de Python instalan desde el **`uv.lock`** commiteado, sobre una **matriz 3.12 + 3.13**,
 así que un build verde demuestra que el código funciona contra un conjunto de dependencias

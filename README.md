@@ -21,7 +21,7 @@ eval or red-team regression.
 ---
 
 Built by **Marcos Mata García**, AI / platform engineer in Madrid, currently looking for work.
-[matagarciamarcos@gmail.com](mailto:matagarciamarcos@gmail.com) · [GitHub](https://github.com/marcosmatalab)
+[LinkedIn](https://linkedin.com/in/marcosmatagarcia) · [matagarciamarcos@gmail.com](mailto:matagarciamarcos@gmail.com) · [GitHub](https://github.com/marcosmatalab)
 
 **Why this exists.** Every team that puts an LLM in production ends up building the same layer
 by hand: something that scans the input, redacts the PII, scores whether the agent actually did
@@ -224,6 +224,12 @@ All six are **required status checks on `main`**, so a regression does not merel
 makes it an unverifiable claim, so the live configuration is exported and committed:
 [`docs/branch-protection.json`](docs/branch-protection.json) (reproduce with
 `gh api repos/marcosmatalab/aegis/branches/main/protection`).
+
+It has already blocked two merges that nobody wanted blocked — once because a branch predated
+half the required contexts, once because a leftover ruleset still required a job name a matrix
+had renamed. Both are written up in
+[`docs/ci-gates.md`](docs/ci-gates.md#the-gate-actually-blocked-two-merges-and-neither-was-a-demo),
+because an accidental block is better evidence than a staged one.
 
 Python jobs install from the committed **`uv.lock`** on a **3.12 + 3.13 matrix**, so a green run
 proves the code works against an exact, reproducible dependency set rather than against whatever
