@@ -1,0 +1,57 @@
+{
+  "judge": "geval",
+  "threshold": 0.5,
+  "created": 1790077174,
+  "n_cases": 30,
+  "n_parse_failed": 0,
+  "global": {
+    "kappa": 0.9327354260089686,
+    "p_o": 0.9666666666666667,
+    "p_e": 0.5044444444444445,
+    "n_valid": 30,
+    "band": "almost perfect",
+    "confusion_matrix": {
+      "orientation": "rows=human, cols=judge; positive='pass'",
+      "human_pass_judge_pass": 13,
+      "human_pass_judge_fail": 0,
+      "human_fail_judge_pass": 1,
+      "human_fail_judge_fail": 16
+    },
+    "n_cases": 30,
+    "n_parse_failed": 0
+  },
+  "per_criterion": {
+    "relevancy": {
+      "kappa": 0.8648648648648649,
+      "p_o": 0.9333333333333333,
+      "p_e": 0.5066666666666667,
+      "n_valid": 15,
+      "band": "almost perfect",
+      "confusion_matrix": {
+        "orientation": "rows=human, cols=judge; positive='pass'",
+        "human_pass_judge_pass": 6,
+        "human_pass_judge_fail": 0,
+        "human_fail_judge_pass": 1,
+        "human_fail_judge_fail": 8
+      },
+      "n_cases": 15,
+      "n_parse_failed": 0
+    },
+    "faithfulness": {
+      "kappa": 1.0,
+      "p_o": 1.0,
+      "p_e": 0.5022222222222222,
+      "n_valid": 15,
+      "band": "almost perfect",
+      "confusion_matrix": {
+        "orientation": "rows=human, cols=judge; positive='pass'",
+        "human_pass_judge_pass": 7,
+        "human_pass_judge_fail": 0,
+        "human_fail_judge_pass": 0,
+        "human_fail_judge_fail": 8
+      },
+      "n_cases": 15,
+      "n_parse_failed": 0
+    }
+  }
+}

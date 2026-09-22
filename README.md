@@ -21,7 +21,7 @@ OpenTelemetry tracing, governance evidence, and a CI gate that blocks regression
 
 - **Offline by default** — 900+ tests, deterministic keyless **mock provider + mock judge**; no API key, no network in CI. Real **Claude** and a real **G-Eval-inspired judge** drop in behind the same ABCs.
 - **Guardrails (F2)** — prompt-injection (OWASP LLM01), PII redaction, allow/deny policy, toxicity — **off by default**, a byte-identical passthrough when off.
-- **Evals (F3–F5)** — L1/L2/L3 + trajectory metrics + CLEAR; judge agreement with human labels **Cohen's κ ≈ 0.93** (directional).
+- **Evals (F3–F5)** — L1/L2/L3 + trajectory metrics + CLEAR; judge agreement with human labels **Cohen's κ = 0.933** over 30 hand-labelled cases (directional; N=30, single annotator). The 30 per-case verdicts are committed, so you recompute it offline with no key: `aegis calibrate --from-verdicts artifacts/calibration-geval-2026-09-22.jsonl`.
 - **Red-team (F6–F7)** — committed **OWASP-LLM-2025** attack catalog; per-category detection with **named gaps surfaced, not hidden** (coverage-against-catalog, not a security score).
 - **Two CI regression gates** — `aegis eval gate` + `aegis redteam gate`, both deterministic and fully offline.
 - **Governance (F8)** — evidence mapped to **EU AI Act Art.15 / NIST AI RMF / ISO 42001**, derived from real artifacts — partial technical evidence, not a compliance certificate.
@@ -280,21 +280,40 @@ How much does the real (G-Eval-inspired) judge agree with a human? `aegis calibr
 
 | Scope | Cohen's κ | p_o | n | confusion (HpJp / HpJf / HfJp / HfJf) |
 |---|---|---|---|---|
-| Global | ≈0.93 | 0.97 | 30 | 13 / 0 / 1 / 16 |
-| Relevancy | ≈0.86 | 0.93 | 15 | 6 / 0 / 1 / 8 |
-| Faithfulness | 1.00 | 1.00 | 15 | 7 / 0 / 0 / 8 |
+| Global | 0.933 | 0.967 | 30 | 13 / 0 / 1 / 16 |
+| Relevancy | 0.865 | 0.933 | 15 | 6 / 0 / 1 / 8 |
+| Faithfulness | 1.000 | 1.000 | 15 | 7 / 0 / 0 / 8 |
 
 Rows = human, cols = judge, positive class = `pass` (HpJp = human-pass/judge-pass, etc.).
+
+**That table is not a claim — it is a committed artifact.** The run's 30 per-case verdicts
+live in [`artifacts/calibration-geval-2026-09-22.jsonl`](artifacts/calibration-geval-2026-09-22.jsonl),
+so anyone recomputes the number in about a second with **no API key, no `[anthropic]` extra
+and no network**:
+
+```bash
+aegis calibrate --from-verdicts artifacts/calibration-geval-2026-09-22.jsonl
+# global: kappa=0.933 p_o=0.967 n_valid=30 parse_failed=0 band=almost perfect
+```
+
+`compute_calibration` is a pure function over a verdict list, so freezing the verdicts is
+enough to freeze the number. `tests/test_evals_calibration_artifact.py` re-derives all three
+κ values from that file on every CI run, which is what stops this table and the artifact from
+drifting apart. Provenance, caveats and the regeneration procedure:
+[`artifacts/README.md`](artifacts/README.md).
 
 How to read this honestly — it is **not** "the judge is 93% correct":
 - **Directional, wide CI.** N=30, single annotator: one flipped label moves κ by ~0.06–0.13, so this is a directional signal, not a precise constant.
 - **Optimistic upper bound.** The calibration set was authored and labelled within the same model family as the judge, on mostly unambiguous cases. Agreement on clear cases is cheap; on independent, messy production traffic it would likely be lower. This is a ceiling, not a field estimate.
-- **The single disagreement is the finding.** Exactly one case diverges (global `HfJp = 1`, in relevancy): the judge *passed* a case the human failed. There are **zero** false-fails (`HpJf = 0` in every scope), so the judge's only observed error mode here is **over-approval** — it skews permissive, not strict. (Per-case verdicts are not yet persisted, so the specific case is not recoverable from this run; persisting them is tracked for the CI gate.)
+- **The single disagreement is the finding, and it is now named.** Exactly one case diverges (global `HfJp = 1`, in relevancy): the judge *passed* a case the human failed. There are **zero** false-fails (`HpJf = 0` in every scope), so the judge's only observed error mode here is **over-approval** — it skews permissive, not strict. Because the verdicts are persisted, the case is recoverable: it is **`cal-rel-05`**, where the output appends *"and is visible from the Moon with the naked eye"* to a correct reference. The judge scored it **exactly `0.5`** and its reasoning names the false claim correctly — so the disagreement is the `>= 0.5` binarization rounding a deliberately *partial* score toward pass, not the judge misreading the case. That distinction is only visible because the per-case verdicts are kept.
 
 As everywhere else: the judge is a **directional** signal validated against human labels, not ground truth — what the gate ultimately enforces is regression-catching, not judge correctness.
 
 ```bash
-aegis calibrate --judge geval       # real run: needs ANTHROPIC_API_KEY + the [anthropic] extra
+aegis calibrate --from-verdicts artifacts/calibration-geval-2026-09-22.jsonl
+                                    # the real number, recomputed offline — no key, no network
+aegis calibrate --judge geval       # a fresh real run: needs ANTHROPIC_API_KEY + the [anthropic] extra
+        --dump-verdicts artifacts/calibration-geval-$(date +%F).jsonl   # ... and freeze it
 aegis calibrate --judge mock        # offline wiring smoke test only (see below)
 ```
 
