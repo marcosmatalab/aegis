@@ -26,7 +26,9 @@ if (source.includes(to) && !source.includes(from)) {
   process.exit(0);
 }
 if (!source.includes(from)) {
-  console.error(`expected to find in ${PAGE}:\n  ${from}\nThe page changed shape — update this script.`);
+  console.error(
+    `expected to find in ${PAGE}:\n  ${from}\nThe page changed shape — update this script.`,
+  );
   process.exit(1);
 }
 writeFileSync(PAGE, source.replace(from, to), "utf8");
