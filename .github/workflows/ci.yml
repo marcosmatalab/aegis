@@ -1,10 +1,21 @@
 name: CI
 
+# A bare `push:` fires on EVERY branch, so a PR branch ran the whole matrix twice
+# for one commit: once for the push and once for the pull_request event. Six jobs
+# became twelve check runs, which made "are all six required contexts present and
+# green?" genuinely hard to answer at a glance on the PR page — the exact question
+# branch protection exists to make obvious.
+#
+# Push is now scoped to main (post-merge verification of the branch protection
+# actually guards) and everything else arrives via pull_request. Tags are handled
+# by release.yml, so they are deliberately not listed here.
 on:
   push:
+    branches: [main]
   pull_request:
 
 # A re-push to the same branch makes the previous run's result irrelevant.
+# Keyed on the ref so a PR and a main build never cancel each other.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

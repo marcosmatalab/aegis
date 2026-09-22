@@ -43,7 +43,7 @@ propósito el scorer L3.</sub>
 
 ## De un vistazo
 
-- **Offline por defecto** — **944 tests, 96% de cobertura de rama**, **mock provider + mock judge** deterministas y sin claves; sin API key ni red en CI. El **Claude** real y un **juez inspirado en G-Eval** real entran detrás de las mismas ABCs. Compruébalo: `pytest -q`
+- **Offline por defecto** — **958 tests, 96% de cobertura de rama**, **mock provider + mock judge** deterministas y sin claves; sin API key ni red en CI. El **Claude** real y un **juez inspirado en G-Eval** real entran detrás de las mismas ABCs. Compruébalo: `pytest -q`
 - **Guardrails (F2)** — inyección de prompts (OWASP LLM01), redacción de PII, política allow/deny, toxicidad — **off por defecto**, *passthrough* idéntico byte a byte cuando están apagados. [Detalle](docs/guardrails.md)
 - **Un juez calibrado contra etiquetas humanas (F3–F5)** — L1/L2/L3 + métricas de trayectoria + CLEAR, y **Cohen's κ = 0,933** sobre 30 casos etiquetados a mano (direccional; N=30, un solo anotador). Los 30 veredictos caso a caso están **commiteados**, así que lo recomputas offline y sin clave. [Detalle](docs/evals.md)
 - **Red-team (F6–F7)** — catálogo de ataques **OWASP-LLM-2025** commiteado; **18/25 detectados** y los **7 que pasan están nombrados**, no redondeados. Es cobertura contra catálogo, no una nota de seguridad. Compruébalo: `aegis redteam run`. [Detalle](docs/redteam.md)
@@ -123,7 +123,7 @@ comando que la regenera, **sin API key y sin red**.
 | Detección red-team sobre el catálogo OWASP | **18/25 = 0,720**, con los 7 gaps nombrados | `aegis redteam run` (~1s) | `src/aegis/redteam/baselines/redteam.json` |
 | Suite de evals sobre el golden set | **overall 0,861** (L1 0,854, L2 0,856, L3 0,872) | `aegis eval run` (~1s) | `src/aegis/evals/baselines/golden.json` |
 | Acuerdo del juez con etiquetas humanas | **Cohen's κ 0,933**, p_o 0,967, N=30 | `aegis calibrate --from-verdicts artifacts/calibration-geval-2026-09-22.jsonl` (~1s) | [`artifacts/…jsonl`](artifacts/calibration-geval-2026-09-22.jsonl) — los 30 veredictos caso a caso |
-| Suite de tests | **944 pasan, 4 skipped**, 96% cobertura de rama | `pytest -q --cov --cov-branch` (~10s) | CI, `--cov-fail-under=95` |
+| Suite de tests | **958 pasan, 4 skipped**, 96% cobertura de rama | `pytest -q --cov --cov-branch` (~10s) | CI, `--cov-fail-under=95` |
 
 **Lee la κ con honestidad:** N=30, un solo anotador, y un set de calibración escrito por la
 misma familia de modelos que juzga. Es una señal direccional con un intervalo ancho, no un
@@ -181,7 +181,7 @@ python3.12 -m venv .venv
 source .venv/bin/activate             # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"               # ~35s
 
-pytest -q                             # 944 passed, 4 skipped, ~10s
+pytest -q                             # 958 passed, 4 skipped, ~10s
 bash scripts/demo.sh                  # el pipeline entero de punta a punta, ~23s, offline
 ```
 
@@ -282,6 +282,18 @@ gateway con honestidad, los 30 casos de calibración etiquetados a mano (los eti
 anotador, que es exactamente por lo que este README lo dice), los estados de honestidad que
 recorren CLEAR y el constructor de evidencia, y la decisión de publicar un catálogo red-team con
 los **gaps nombrados** en vez de una tasa de detección redondeada hacia arriba.
+
+**Lo mismo vale para septiembre, y de forma más cruda.** Ese mismo `git log` imprime también
+`7 2026-09-22`. Esos siete commits van de las **13:50 a las 15:57 — una única sesión de dos
+horas** con el asistente, y traen **10.217 inserciones**; uno de ellos toca **62 ficheros**. Son
+todo, desde el artefacto de calibración hasta los gates de CI, la reescritura del README, el
+empaquetado y la protección de rama: las fases 1 a 5 de un plan, de una sentada.
+
+Nadie escribe 10.000 líneas revisadas en dos horas, y no voy a fingir lo contrario. Lo que
+hace eso defendible no es la velocidad, es que **la velocidad se puede comprobar**: cada cifra
+de esta página se recomputa offline desde un artefacto commiteado, los dos gates fallan ante una
+regresión real nombrando el caso, y CI vuelve a derivar la κ de portada desde bytes commiteados
+en cada ejecución. Si el trabajo fuera hueco, esos controles serían lo primero en romperse.
 
 Las partes que defendería en una entrevista son el diseño de los gates y la calibración. Las
 partes que escribió un asistente, las leí, las testeé y las hago mías. Cada número de aquí es
