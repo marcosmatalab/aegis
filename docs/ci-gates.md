@@ -34,7 +34,26 @@ aegis redteam gate --update-baseline  # regenerate the contract after an intende
 - **You cannot hide a red-team regression by calling it a "known gap".** The baseline records each attack's *prior observed* outcome **independent of the catalog's `expected_outcome`/`is_known_gap`**, so weakening a guardrail and relabeling the now-passing attack a gap **in the same PR still fails** `attack_now_passing` — a catalog edit cannot override the frozen baseline. The detection rate is **coverage-against-catalog (it includes the named gaps), never "security coverage."**
 - **Same guarantee as the eval gate: "no SILENT regression", not "no regression".** The only green path past a real weakening is `--update-baseline`, which writes a visible `blocked/redacted → passed` diff into the committed baseline — the single highest-signal line in a red-team PR — that a human must approve. A self-consistency test locks the committed baseline to a fresh hermetic run, so a guardrail/catalog change that forgets `--update-baseline` fails locally before CI. **Review is the final backstop.**
 
-**Enabling the block (one-time, maintainer action in GitHub):** Settings → Branches → branch-protection rule for `main` → *Require status checks to pass before merging* → require the **`eval-gate`** and **`redteam-gate`** checks (alongside `lint-and-test`). The check names must match the job ids **exactly** or GitHub silently never blocks. Until both are required, the jobs run and report but do not hard-block; the repo cannot self-apply branch protection, and a re-baseline PR (`--update-baseline`) needs explicit human sign-off.
+**The block is enabled.** `main` carries a branch-protection rule requiring all six checks —
+`lint-and-test (3.12)`, `lint-and-test (3.13)`, `eval-gate`, `redteam-gate`,
+`calibration-artifact` and `dashboard` — to pass before a merge, with `strict: true` so a PR
+must also be up to date with `main`. A red gate therefore blocks the merge, it does not merely
+report.
+
+This is the one claim in the repo that **cannot** be verified from the source tree, because
+branch protection lives in GitHub's settings rather than in a file. So the live configuration is
+exported and committed as [`branch-protection.json`](branch-protection.json), and anyone with
+read access can confirm it themselves:
+
+```bash
+gh api repos/marcosmatalab/aegis/branches/main/protection   | jq '.required_status_checks.contexts'
+```
+
+Two honest caveats. `enforce_admins` is **false**, so the repository owner can still merge past
+a red check — this is a solo project and a hard self-lock would be theatre; the gate's real job
+is to make a regression impossible to merge *without noticing*. And a re-baseline PR
+(`--update-baseline`) still needs explicit human sign-off, because re-baselining is exactly the
+green path past a genuine weakening.
 
 ---
 

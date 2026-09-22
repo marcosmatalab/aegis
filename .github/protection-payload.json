@@ -1,0 +1,20 @@
+{
+  "required_status_checks": {
+    "strict": true,
+    "contexts": [
+      "lint-and-test (3.12)",
+      "lint-and-test (3.13)",
+      "eval-gate",
+      "redteam-gate",
+      "calibration-artifact",
+      "dashboard"
+    ]
+  },
+  "enforce_admins": false,
+  "required_pull_request_reviews": null,
+  "restrictions": null,
+  "allow_force_pushes": false,
+  "allow_deletions": false,
+  "required_linear_history": false,
+  "required_conversation_resolution": false
+}

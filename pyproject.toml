@@ -3,7 +3,11 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "aegis"
+# The repo, the package directory and the CLI are all still "aegis"; only the
+# DISTRIBUTION name differs, because `aegis` on PyPI belongs to someone else
+# (as do aegis-gateway and aegis-llm). "control plane" is how the project
+# describes itself in its own headline, so the name is descriptive, not a patch.
+name = "aegis-control-plane"
 version = "0.1.0"
 description = "A reliability + security + governance gateway for LLMs and agents (OpenAI-compatible proxy)."
 readme = "README.md"
@@ -83,10 +87,45 @@ reporting = [
 aegis = "aegis.cli:main"
 
 [project.urls]
+Homepage = "https://github.com/marcosmatalab/aegis"
 Repository = "https://github.com/marcosmatalab/aegis"
+Issues = "https://github.com/marcosmatalab/aegis/issues"
+Changelog = "https://github.com/marcosmatalab/aegis/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/aegis"]
+
+# The frozen calibration verdicts ship INSIDE the wheel as well as living at the
+# repo root. The README tells a reader to `pipx install aegis-control-plane` and
+# then recompute the headline kappa — that has to work with no checkout, so the
+# evidence has to travel with the package. One source file, two destinations:
+# artifacts/ is where a reviewer looks, _artifacts/ is where the CLI falls back to.
+[tool.hatch.build.targets.wheel.force-include]
+"artifacts/calibration-geval-2026-09-22.jsonl" = "aegis/evals/calibration/_artifacts/calibration-geval-2026-09-22.jsonl"
+
+[tool.hatch.build.targets.sdist]
+# Without an explicit allow-list the sdist sweeps up the whole working tree —
+# dashboard/node_modules, dashboard/.next (whose dev lock file is not even
+# readable while the dev server runs), .venv and every report. Ship the things a
+# consumer can actually use: the package, its tests, and the committed evidence
+# behind the numbers in the README.
+include = [
+    "/src",
+    "/tests",
+    "/artifacts",
+    "/scripts",
+    "/docs/*.md",
+    "/README.md",
+    "/README.es.md",
+    "/CHANGELOG.md",
+    "/CONTRIBUTING.md",
+    "/SECURITY.md",
+    "/LICENSE",
+    "/pyproject.toml",
+    "/uv.lock",
+    "/.importlinter",
+]
+exclude = ["**/__pycache__", "**/*.pyc"]
 
 [tool.ruff]
 line-length = 100

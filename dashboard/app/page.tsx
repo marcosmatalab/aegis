@@ -14,10 +14,35 @@ import { evalTrend } from "@/lib/trend";
 // build-time snapshot), so a fresh `aegis eval/redteam/evidence` run shows up on
 // refresh. It passes DATA + i18n KEYS to client components; it renders no translatable
 // literal text itself, so the i18n hook (a client API) never needs to run here.
+//
+// Next requires this to be a statically-parsable literal, so it cannot be branched
+// on an env var. The GitHub Pages export flips it to "force-static" via
+// scripts/prepare-static-export.mjs, which is a deliberate, visible build step
+// rather than a hidden conditional.
 export const dynamic = "force-dynamic";
 
+// On the published Pages build, the reports directory is an absolute path on a CI
+// runner: meaningless to a visitor, and a needless leak of the build environment.
+// Show what the data IS instead of where it happened to sit.
+const SNAPSHOT_SOURCE = "dashboard/sample-reports/ (committed output of a real run)";
+
 export default async function Page() {
-  const data = await loadDashboard();
+  const isSnapshot = process.env.AEGIS_STATIC_EXPORT === "1";
+  const loaded = await loadDashboard();
+  // Normalise ONCE, here, rather than at each consumer: RunsList renders both the
+  // directory and each run's path, and a second place to forget is a second way to
+  // leak the CI runner's filesystem into a public page. Each run keeps its file
+  // NAME, which is the only part a reader gets anything from.
+  const data = isSnapshot
+    ? {
+        ...loaded,
+        reportsDir: SNAPSHOT_SOURCE,
+        evalRuns: loaded.evalRuns.map((run) => ({
+          ...run,
+          file: run.file.replaceAll("\\", "/").split("/").pop() ?? run.file,
+        })),
+      }
+    : loaded;
   return (
     <main
       style={{
@@ -28,7 +53,7 @@ export default async function Page() {
         gap: "1.25rem",
       }}
     >
-      <DashboardHeader reportsDir={data.reportsDir} />
+      <DashboardHeader reportsDir={data.reportsDir} isSnapshot={isSnapshot} />
 
       {data.evalView ? (
         <>

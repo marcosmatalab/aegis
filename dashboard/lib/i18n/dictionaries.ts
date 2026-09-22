@@ -11,6 +11,9 @@ export const en = {
   page: {
     title: "🛡️ Aegis dashboard",
     subtitlePre: "Read-only view of the real reports in ",
+    snapshotNotice:
+      "Static snapshot of a real offline run, baked at build time. Reproduce it yourself with ",
+    snapshotCommand: "bash scripts/demo.sh",
     subtitlePost:
       ". Statuses and caveats are shown verbatim; absent reports are marked, never faked.",
   },
@@ -125,6 +128,9 @@ export const es: Dict = {
   page: {
     title: "🛡️ Panel de Aegis",
     subtitlePre: "Vista de solo lectura de los reportes reales en ",
+    snapshotNotice:
+      "Instantánea estática de una ejecución offline real, generada en tiempo de build. Reprodúcela tú con ",
+    snapshotCommand: "bash scripts/demo.sh",
     subtitlePost:
       ". Los estados y las advertencias se muestran literalmente; los reportes ausentes se marcan, nunca se falsean.",
   },

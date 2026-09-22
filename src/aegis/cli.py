@@ -52,6 +52,7 @@ from aegis.evals.calibration.report import compute_calibration
 from aegis.evals.calibration.runner import score_calibration
 from aegis.evals.calibration.verdicts_io import (
     VerdictsFileError,
+    default_verdicts_path,
     load_verdicts,
     write_verdicts,
 )
@@ -160,6 +161,12 @@ def _calibrate_scope_line(name: str, section) -> str:
         f"  {name}: kappa={_fmt_stat(r.kappa)} p_o={_fmt_stat(r.p_o)} "
         f"n_valid={r.n_valid} parse_failed={section.n_parse_failed} band={r.band}"
     )
+
+
+# argparse needs a concrete const at parser-build time. A source checkout that was
+# never built has no packaged copy; the sentinel then produces a clear error naming
+# the flag rather than an obscure "None is not a path".
+_PACKAGED_VERDICTS = default_verdicts_path() or "<no verdicts artifact packaged with this install>"
 
 
 def _calibrate_from_verdicts(args: argparse.Namespace) -> int:
@@ -557,11 +564,20 @@ def build_parser() -> argparse.ArgumentParser:
     # --from-verdicts is the offline recompute path, so it is mutually exclusive
     # with every flag that selects or configures a judge: passing both would
     # silently ignore one of them.
+    # nargs="?" so a bare `--from-verdicts` uses the artifact packaged inside the
+    # wheel: someone who ran `pipx install aegis-control-plane` has no checkout and
+    # therefore no artifacts/ directory, but must still be able to reproduce the
+    # number the README quotes.
     cal_cmd.add_argument(
         "--from-verdicts",
+        nargs="?",
         default=None,
+        const=_PACKAGED_VERDICTS,
         metavar="PATH",
-        help="recompute kappa offline from a committed verdicts artifact (no key, no network)",
+        help=(
+            "recompute kappa offline from a committed verdicts artifact (no key, no "
+            "network); with no PATH, use the artifact packaged with this install"
+        ),
     )
     cal_cmd.set_defaults(func=_calibrate)
 
