@@ -27,7 +27,7 @@ dashboard reads the very reports the run just wrote. See the honesty note at the
 
 ```bash
 # Python side — the gateway + the aegis CLI
-python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+python3.12 -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 
 # Node side — the dashboard (Node 20+). The script installs the dashboard's deps on
