@@ -16,7 +16,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from aegis.gateway.schemas import ChatMessage
+from aegis.core.schemas import ChatMessage
 
 _ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 

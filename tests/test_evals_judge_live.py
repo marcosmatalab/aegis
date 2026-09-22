@@ -18,8 +18,8 @@ import os
 
 import pytest
 
+from aegis.core.config import Settings
 from aegis.evals.judge.geval import GEvalJudge
-from aegis.gateway.config import Settings
 from aegis.gateway.providers.anthropic_provider import is_available
 from aegis.gateway.upstream import build_provider
 

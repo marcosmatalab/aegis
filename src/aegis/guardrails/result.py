@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from aegis.gateway.schemas import ChatCompletionRequest
+from aegis.core.schemas import ChatCompletionRequest
 
 Stage = Literal["input", "output"]
 
@@ -29,6 +29,20 @@ class GuardrailResult:
     redacted_request: ChatCompletionRequest | None = None
     redacted_text: str | None = None
     checks_run: tuple[str, ...] = ()
+
+    @property
+    def block_reason(self) -> str:
+        """The reason text, for a result that is blocked.
+
+        ``reason`` is Optional on the model because an ALLOW carries none, but
+        ``block()`` requires one — so a blocked result always has it. mypy cannot
+        correlate the two fields, and every consumer re-narrowing ``str | None``
+        by hand would be noise. This states the invariant once, and raises rather
+        than inventing a blank reason if it is ever violated.
+        """
+        if not self.blocked or self.reason is None:
+            raise ValueError("block_reason is only defined for a blocked GuardrailResult")
+        return self.reason
 
     @classmethod
     def allow(

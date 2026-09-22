@@ -1,0 +1,50 @@
+; Architecture contract, enforced in CI by `lint-imports` (import-linter).
+;
+; WHY. Before this file existed there was a real gateway <-> guardrails import
+; cycle: `guardrails` reached up into `aegis.gateway` for ChatCompletionRequest
+; and Settings, while `gateway.proxy` imports `guardrails`. Nothing in the test
+; suite or the linter would ever have caught it. The shared types moved down into
+; `aegis.core`, and these contracts stop the cycle coming back.
+
+[importlinter]
+root_package = aegis
+
+[importlinter:contract:layers]
+name = Aegis layers (a module may import DOWN the list, never up)
+type = layers
+layers =
+    aegis.cli
+    aegis.evidence
+    aegis.evals
+    aegis.redteam
+    aegis.gateway
+    aegis.guardrails
+    aegis.core
+; Order note: `evals` sits ABOVE `redteam` because evals.persistence imports the
+; red-team report type, not the other way round. Both sit above `gateway`, which
+; the real (G-Eval) judge reaches into for the Provider ABC.
+
+[importlinter:contract:no-upward-guardrails]
+name = Guardrails must not import the HTTP layer
+type = forbidden
+source_modules =
+    aegis.guardrails
+forbidden_modules =
+    aegis.gateway
+; Redundant with the layers contract on purpose: this is the specific regression
+; that actually happened, and a named contract fails with a message that says so.
+
+[importlinter:contract:core-is-independent]
+name = Core depends on no other Aegis layer
+type = forbidden
+source_modules =
+    aegis.core
+forbidden_modules =
+    aegis.cli
+    aegis.evidence
+    aegis.evals
+    aegis.redteam
+    aegis.gateway
+    aegis.guardrails
+; What makes core a base layer rather than a grab bag: it is the one package that
+; can be imported from anywhere without dragging the rest of the system in.

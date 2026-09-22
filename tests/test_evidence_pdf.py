@@ -7,9 +7,9 @@ import importlib.util
 
 import pytest
 
+from aegis.core.config import Settings
 from aegis.evidence.builder import build_evidence
 from aegis.evidence.pdf import EvidenceRenderError, _to_latin1, render_pdf
-from aegis.gateway.config import Settings
 
 _HAS_FPDF = importlib.util.find_spec("fpdf") is not None
 _needs_fpdf = pytest.mark.skipif(not _HAS_FPDF, reason="requires the optional [reporting] extra")

@@ -6,6 +6,7 @@ import asyncio
 
 import pytest
 
+from aegis.core.schemas import ChatCompletionRequest
 from aegis.gateway.errors import (
     ProviderNotConfiguredError,
     UnsupportedFeatureError,
@@ -16,7 +17,6 @@ from aegis.gateway.providers.anthropic_provider import (
     _build_client,
     is_available,
 )
-from aegis.gateway.schemas import ChatCompletionRequest
 
 
 # --- fakes ------------------------------------------------------------------ #

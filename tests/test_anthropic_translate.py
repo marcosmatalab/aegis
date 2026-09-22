@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from aegis.core.schemas import ChatCompletionRequest
 from aegis.gateway.errors import UnsupportedFeatureError
 from aegis.gateway.providers.anthropic_translate import (
     _forbids_sampling_params,
@@ -17,7 +18,6 @@ from aegis.gateway.providers.anthropic_translate import (
     to_anthropic_params,
     translate_stream_events,
 )
-from aegis.gateway.schemas import ChatCompletionRequest
 
 
 def _req(**overrides) -> ChatCompletionRequest:

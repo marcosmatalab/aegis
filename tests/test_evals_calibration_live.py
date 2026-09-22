@@ -16,10 +16,10 @@ import os
 
 import pytest
 
+from aegis.core.config import Settings
 from aegis.evals.calibration.dataset import load_calibration
 from aegis.evals.calibration.runner import run_calibration
 from aegis.evals.judge.factory import build_judge
-from aegis.gateway.config import Settings
 from aegis.gateway.providers.anthropic_provider import is_available
 
 _KEY = os.getenv("ANTHROPIC_API_KEY")

@@ -150,8 +150,10 @@ def _milestones(case: EvalCase) -> list[tuple[str, str, str]]:
         for m in case.milestones:
             if m.tool:
                 resolved.append(("tool", m.tool, m.description))
-            else:
+            elif m.output_contains:
                 resolved.append(("output", m.output_contains, m.description))
+            else:  # pragma: no cover - Milestone._exactly_one makes this unreachable
+                raise ValueError(f"milestone carries neither tool nor output_contains: {m!r}")
         return resolved
     seen: list[str] = []
     for t in case.expected_trajectory:

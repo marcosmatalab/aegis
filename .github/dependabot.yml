@@ -1,0 +1,41 @@
+version: 2
+
+# Weekly, across all three ecosystems this repo actually has. The npm entry is the
+# one that matters most: the dashboard shipped 8 advisories (1 critical in `next`)
+# for months with nothing watching, and `npm audit --audit-level=high` is now a
+# blocking CI job — so an unattended dependency drift turns the build red rather
+# than sitting there unnoticed.
+updates:
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      # One PR for the dev toolchain instead of five. Production deps stay
+      # individual, because those are the ones worth reading one at a time.
+      dev-tooling:
+        patterns: ["pytest*", "ruff", "mypy", "import-linter", "httpx"]
+
+  - package-ecosystem: npm
+    directory: "/dashboard"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      dev-tooling:
+        patterns: ["@biomejs/*", "@testing-library/*", "@types/*", "vitest", "jsdom", "typescript"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: "chore(ci)"

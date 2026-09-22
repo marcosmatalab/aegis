@@ -3,7 +3,11 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "aegis"
+# The repo, the package directory and the CLI are all still "aegis"; only the
+# DISTRIBUTION name differs, because `aegis` on PyPI belongs to someone else
+# (as do aegis-gateway and aegis-llm). "control plane" is how the project
+# describes itself in its own headline, so the name is descriptive, not a patch.
+name = "aegis-control-plane"
 version = "0.1.0"
 description = "A reliability + security + governance gateway for LLMs and agents (OpenAI-compatible proxy)."
 readme = "README.md"
@@ -27,8 +31,14 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.3",
+    "pytest-cov>=6",
     "httpx>=0.27",
     "ruff>=0.7",
+    # Type + architecture gates. Both run in CI and both are blocking: mypy catches
+    # the str-into-Literal class of bug, import-linter pins the layering that broke
+    # the old gateway <-> guardrails cycle (see .importlinter).
+    "mypy>=1.13",
+    "import-linter>=2.1",
     # OTel API + SDK only (NOT the OTLP exporter): pure-python, keyless, no network,
     # so CI exercises the real GenAI span path + the CLEAR telemetry bridge fully
     # OFFLINE via the in-memory exporter — and still hits the "exporter=otlp but the
@@ -77,10 +87,45 @@ reporting = [
 aegis = "aegis.cli:main"
 
 [project.urls]
+Homepage = "https://github.com/marcosmatalab/aegis"
 Repository = "https://github.com/marcosmatalab/aegis"
+Issues = "https://github.com/marcosmatalab/aegis/issues"
+Changelog = "https://github.com/marcosmatalab/aegis/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/aegis"]
+
+# The frozen calibration verdicts ship INSIDE the wheel as well as living at the
+# repo root. The README tells a reader to `pipx install aegis-control-plane` and
+# then recompute the headline kappa — that has to work with no checkout, so the
+# evidence has to travel with the package. One source file, two destinations:
+# artifacts/ is where a reviewer looks, _artifacts/ is where the CLI falls back to.
+[tool.hatch.build.targets.wheel.force-include]
+"artifacts/calibration-geval-2026-09-22.jsonl" = "aegis/evals/calibration/_artifacts/calibration-geval-2026-09-22.jsonl"
+
+[tool.hatch.build.targets.sdist]
+# Without an explicit allow-list the sdist sweeps up the whole working tree —
+# dashboard/node_modules, dashboard/.next (whose dev lock file is not even
+# readable while the dev server runs), .venv and every report. Ship the things a
+# consumer can actually use: the package, its tests, and the committed evidence
+# behind the numbers in the README.
+include = [
+    "/src",
+    "/tests",
+    "/artifacts",
+    "/scripts",
+    "/docs/*.md",
+    "/README.md",
+    "/README.es.md",
+    "/CHANGELOG.md",
+    "/CONTRIBUTING.md",
+    "/SECURITY.md",
+    "/LICENSE",
+    "/pyproject.toml",
+    "/uv.lock",
+    "/.importlinter",
+]
+exclude = ["**/__pycache__", "**/*.pyc"]
 
 [tool.ruff]
 line-length = 100
@@ -103,6 +148,48 @@ extend-immutable-calls = [
     "fastapi.File",
     "fastapi.Security",
 ]
+
+[tool.coverage.run]
+source = ["src/aegis"]
+branch = true
+
+[tool.coverage.report]
+# Branch coverage was already 96% before this gate existed — the gate is here to
+# stop it SLIDING, not to chase a number. 95 is deliberately just under the real
+# figure: tight enough that deleting a test file goes red, loose enough that one
+# refactor does not.
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    '\.\.\.',
+]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["src/aegis"]
+# Not --strict: that is 68 errors across 24 files, and the last 80% of that cost
+# buys very little signal here. This setting is the useful middle — it catches the
+# real class of bug in this codebase (a plain `str` flowing into a `Literal` field,
+# an Optional reaching a non-Optional parameter) without a rewrite.
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unreachable = true
+no_implicit_optional = true
+
+# The OPTIONAL extras, and only them. The Anthropic SDK ([anthropic]), Presidio
+# ([guardrails]) and the OTLP exporter ([otel]) are all lazy-imported behind a
+# feature flag and are deliberately absent from the default install that CI uses,
+# so "no stub found" is the expected state, not a gap to paper over. Scoped
+# per-module so a missing stub anywhere ELSE is still a hard error.
+[[tool.mypy.overrides]]
+module = [
+    "anthropic.*",
+    "presidio_analyzer.*",
+    "presidio_anonymizer.*",
+    "opentelemetry.exporter.*",
+]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

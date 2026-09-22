@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from aegis.gateway.schemas import ChatCompletionRequest
+from aegis.core.schemas import ChatCompletionRequest
 from aegis.guardrails.result import GuardrailResult
 from aegis.redteam.models import AttackCase
 from aegis.redteam.outcome import AttackResult, classify_result

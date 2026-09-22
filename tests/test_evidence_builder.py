@@ -3,8 +3,8 @@ gates (mock cap, kappa-null, guardrails-off, synthetic CLEAR). No fpdf2, no I/O.
 
 from __future__ import annotations
 
+from aegis.core.config import Settings
 from aegis.evidence.builder import build_evidence
-from aegis.gateway.config import Settings
 
 
 def _eval(judge="geval"):

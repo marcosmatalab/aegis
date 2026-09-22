@@ -7,7 +7,9 @@
 #   3  PII redacted BEFORE the request reaches the provider
 #   4  prompt injection blocked (OWASP LLM01) — a clean 400, nothing forwarded
 #   5  aegis eval run        -> reports/eval-golden.json
-#   6  aegis calibrate       -> reports/calibration.json
+#   6  aegis calibrate       -> the keyless mock (a wiring smoke test), THEN the
+#                               real judge's kappa recomputed offline from the
+#                               committed verdicts -> reports/calibration.json
 #   7  aegis eval gate       -> PASS vs the committed baseline, then a tampered
 #                               baseline COPY FAILs (a real, named regression)
 #   8  aegis redteam run     -> reports/redteam-redteam.json (detection + named gaps)
@@ -16,7 +18,9 @@
 #
 # HONESTY (non-negotiable): zero hardcoded numbers. Every figure shown — eval
 # scores, Cohen's kappa, the red-team detection rate, the evidence counts — is
-# whatever the live run prints. The gate FAIL is a GENUINE regression detected
+# whatever the live run prints. That now includes the REAL judge's kappa: beat 6
+# recomputes it live from the committed per-case verdicts in artifacts/ instead of
+# quoting a figure in a comment. The gate FAIL is a GENUINE regression detected
 # against a deliberately-tampered baseline *copy*; the committed baseline is never
 # touched. Reports are written to the gitignored reports/ and read straight back
 # by the dashboard — so the dashboard shows exactly what the pipeline produced,
@@ -76,6 +80,18 @@ TAMPERED_BASELINE="${LOGDIR}/aegis-demo-tampered-baseline.$$.json"
 GATEWAY_PID=""
 DASHBOARD_PID=""
 
+# --- The committed calibration artifact (beat 6) ------------------------------
+# The frozen per-case verdicts of a REAL `--judge geval` run. Beat 6 recomputes
+# the headline kappa from these bytes, which is why the demo can show the real
+# number with no API key. Resolved (not globbed blindly) so a missing/renamed
+# artifact fails loudly here instead of silently skipping the beat.
+CALIBRATION_ARTIFACT="artifacts/calibration-geval-2026-09-22.jsonl"
+if [ ! -f "$CALIBRATION_ARTIFACT" ]; then
+  echo "FATAL: missing calibration artifact: ${CALIBRATION_ARTIFACT}" >&2
+  echo "       (regenerate it with: aegis calibrate --judge geval --dump-verdicts ...)" >&2
+  exit 1
+fi
+
 # --- Presentation -------------------------------------------------------------
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
   B=$'\033[1m'; C=$'\033[36m'; D=$'\033[2m'; Z=$'\033[0m'
@@ -129,6 +145,33 @@ wait_for_http() {  # url name timeout_s
   done
   printf ' TIMEOUT after %ss\n' "$timeout" >&2
   return 1
+}
+
+# Open a URL in the default browser, cross-platform and always best-effort.
+#
+# Called ONLY after wait_for_http has confirmed the server answers, so the browser
+# can never race the dev server (the old GIF caught Chrome's ERR_CONNECTION_REFUSED
+# because the page was opened by hand too early). Off by default for smoke/CI runs
+# (DEMO_SLEEP=0), on when the demo is paced for recording; force either way with
+# DEMO_OPEN_BROWSER=1/0. A missing opener is a note, never a failure.
+open_browser() {  # url
+  local url="$1" opener=""
+  if [ "${DEMO_OPEN_BROWSER:-auto}" = "0" ]; then return 0; fi
+  if [ "${DEMO_OPEN_BROWSER:-auto}" = "auto" ] && [ "$DEMO_SLEEP" = "0" ]; then
+    note "DEMO_SLEEP=0: not opening a browser (set DEMO_OPEN_BROWSER=1 to force)"
+    return 0
+  fi
+  if command -v cmd.exe    >/dev/null 2>&1; then opener="cmd_start"
+  elif command -v xdg-open >/dev/null 2>&1; then opener="xdg-open"
+  elif command -v open     >/dev/null 2>&1; then opener="open"
+  fi
+  case "$opener" in
+    # `cmd /c start` treats its first quoted argument as a window title, so the
+    # empty "" is required before the URL.
+    cmd_start) cmd.exe /c start "" "$url" >/dev/null 2>&1 || true ;;
+    "")        note "no browser opener found; open ${url} yourself" ;;
+    *)         "$opener" "$url" >/dev/null 2>&1 || true ;;
+  esac
 }
 
 # POST a chat-completions body, pretty-print the response, and pull out the
@@ -219,10 +262,22 @@ pause
 # 6 · Judge calibration
 # ============================================================================ #
 say "6/10 · Judge calibration — Cohen's kappa vs human labels"
-note "\$ aegis calibrate"
-"${AEGIS[@]}" calibrate
+note "\$ aegis calibrate --output reports/calibration-mock.json"
+"${AEGIS[@]}" calibrate --output "reports/calibration-mock.json"
 note "the mock kappa is a wiring smoke test, not a real calibration: it's lexical and does NOT track human judgment, so a negative/poor kappa here is EXPECTED"
-note "the REAL judge (aegis calibrate --judge geval, needs ANTHROPIC_API_KEY) scored kappa~=0.93 (p_o~=0.97) over these same 30 labels — see README section F5"
+pause
+
+# The REAL judge's agreement, recomputed LIVE from the committed per-case verdicts
+# of a real geval run. No key, no network, no hardcoded figure: whatever the
+# artifact recomputes to is what you see. This is the beat that makes the
+# zero-hardcoded-numbers rule at the top of this file true for the headline kappa
+# too. It writes the CANONICAL reports/calibration.json, so the evidence pack
+# (beat 9) and the dashboard (beat 10) both report the REAL measurement rather
+# than the mock's smoke-test number.
+note "now the REAL judge's number — recomputed offline from the committed verdicts, no API key:"
+note "\$ aegis calibrate --from-verdicts ${CALIBRATION_ARTIFACT}"
+"${AEGIS[@]}" calibrate --from-verdicts "$CALIBRATION_ARTIFACT"
+note "no ANTHROPIC_API_KEY and no network were involved: compute_calibration is pure and the verdicts are committed bytes (see artifacts/README.md)"
 pause
 
 # ============================================================================ #
@@ -292,6 +347,12 @@ if ! wait_for_http "$DASHBOARD_URL" dashboard 90; then
 fi
 say "Dashboard live at ${DASHBOARD_URL}"
 note "reading ${REPO_ROOT}/reports — the pipeline produced the data, the dashboard renders it with each report's caveats verbatim, and shows missing data as absent"
+
+# Open the browser ONLY here, after wait_for_http has already had a 2xx from the
+# dev server. Opening it by hand during a recording is what put 2.2s of Chrome's
+# ERR_CONNECTION_REFUSED into the old demo GIF: the page was requested before Next
+# was listening. Letting the script own the moment makes that race unreachable.
+open_browser "$DASHBOARD_URL"
 pause
 
 printf '\n%s\n' "${B}${C}Demo complete.${Z} Open ${DASHBOARD_URL} in a browser; press Ctrl-C to stop the gateway + dashboard."

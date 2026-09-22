@@ -10,7 +10,7 @@ import asyncio
 import httpx
 import pytest
 
-from aegis.gateway.config import get_settings
+from aegis.core.config import get_settings
 from aegis.gateway.main import app
 from aegis.gateway.upstream import MockProvider
 

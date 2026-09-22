@@ -20,8 +20,8 @@ import os
 
 import pytest
 
+from aegis.core.schemas import ChatCompletionRequest
 from aegis.gateway.providers.anthropic_provider import AnthropicProvider, is_available
-from aegis.gateway.schemas import ChatCompletionRequest
 
 _KEY = os.getenv("ANTHROPIC_API_KEY")
 _MODEL = os.getenv("AEGIS_LIVE_TEST_MODEL", "claude-opus-4-8")

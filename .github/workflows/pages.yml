@@ -1,0 +1,88 @@
+name: Pages
+
+# Publish the dashboard to GitHub Pages as a STATIC export over committed sample
+# reports (dashboard/sample-reports/, the real output of a real offline run).
+#
+# Static, not a server: the dashboard only ever READS JSON — no backend, no state,
+# no users — so everything it does at request time it can do at build time. The
+# page says outright that it is a snapshot and gives the command that reproduces
+# it, so a frozen view is never passed off as live data.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "dashboard/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time; never cancel a run that is mid-publish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+
+      - run: npm ci
+
+      # Publishing a page with a known advisory in its tree would be a poor look
+      # for this repository in particular.
+      - name: Audit before publishing anything
+        run: npm audit --audit-level=high
+
+      - name: Switch the page to build-time rendering
+        run: node scripts/prepare-static-export.mjs
+
+      - name: Build the static export
+        env:
+          AEGIS_STATIC_EXPORT: "1"
+          AEGIS_REPORTS_DIR: ${{ github.workspace }}/dashboard/sample-reports
+          # A project site is served from /<repo>, so assets need that prefix.
+          AEGIS_PAGES_BASE_PATH: /${{ github.event.repository.name }}
+        run: npm run build
+
+      - name: Check the export carries the real numbers and leaks no paths
+        run: |
+          html=out/index.html
+          for needle in "0.933" "geval" "0.861" "inj-gap-leetspeak" "Static snapshot"; do
+            grep -qF "$needle" "$html" || { echo "::error::missing from the export: $needle"; exit 1; }
+          done
+          if grep -qE '/home/runner|/github/workspace' "$html"; then
+            echo "::error::the build path leaked into the published HTML"; exit 1
+          fi
+          echo "export verified"
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dashboard/out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

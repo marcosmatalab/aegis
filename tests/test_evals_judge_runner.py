@@ -9,13 +9,13 @@ import json
 
 import pytest
 
+from aegis.core.config import Settings
+from aegis.core.schemas import ChatCompletionResponse, Choice, ResponseMessage, Usage
 from aegis.evals.judge.base import Judge, JudgeVerdict
 from aegis.evals.judge.geval import GEvalJudge
 from aegis.evals.models import EvalCase
 from aegis.evals.persistence import write_report
 from aegis.evals.runner import run_suite
-from aegis.gateway.config import Settings
-from aegis.gateway.schemas import ChatCompletionResponse, Choice, ResponseMessage, Usage
 
 
 def _judge_response(model: str, content: str) -> ChatCompletionResponse:

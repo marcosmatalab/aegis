@@ -132,7 +132,7 @@ def _telemetry_dim(
     total: int,
     budget: float | None,
     real_source: str,
-    real_status: str,
+    real_status: Literal["measured", "estimated"],
 ) -> ClearDimension:
     """Build a Cost/Latency dimension from ``(value, source)`` pairs of traced cases.
 
@@ -162,7 +162,7 @@ def _telemetry_dim(
             if real_status == "measured"
             else "real measured tokens × static list price"
         )
-        status = real_status
+        status: Status = real_status
         basis = f"{real_status.upper()} mean of {n}/{total} traced cases: {kind} (F1.x telemetry)"
     else:
         # Homogeneous rule: any hand-authored value -> synthetic, with the split shown
