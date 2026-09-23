@@ -124,6 +124,34 @@ rename and the required-context list have to move together, in the same change, 
 subsequent PR blocks on a check that no longer exists. Adding a matrix is a rename:
 `lint-and-test` became `lint-and-test (3.12)`.
 
+## Releasing
+
+A release is a `vX.Y.Z` tag plus a GitHub release. `.github/workflows/release.yml` re-runs
+the gates on the tagged code, builds the wheel and sdist, regenerates the real reports
+offline, and attaches all of it to the release, so every release carries the evidence for
+the numbers its README quotes.
+
+```bash
+# bump pyproject.toml + src/aegis/__init__.py, `uv lock`, add the CHANGELOG section, merge
+gh release create vX.Y.Z --target main --title vX.Y.Z --latest \
+  --notes-file <(python scripts/changelog_section.py X.Y.Z)
+```
+
+**Decision: tags, not PyPI.** The project is installed from its tags
+(`pipx install "git+https://github.com/marcosmatalab/aegis@vX.Y.Z"`).
+*Why:* a version on PyPI is permanent and un-deletable. Until 0.1.1 the release workflow
+carried a `pypi` job with no trusted publisher and no token behind it, so it could only fail,
+while the CHANGELOG told readers to install the package from an index that never had it. *Cost:* installs need git and build from source (a few seconds), and there is
+no install by bare package name. Adopting PyPI later means registering a trusted
+publisher, adding the publish job, and changing `tests/test_release_pipeline.py`, which
+fails on any PyPI publish step or PyPI install claim, in the same PR.
+
+**Decision: `release.yml` listens to both `push: tags` and `release: published`.**
+*Why:* `gh release create` (and the web UI) create the tag without a push event, so a
+push-only trigger silently skipped v0.1.0. *Cost:* a tag pushed with `git` and then given a
+release fires the workflow twice; a per-tag `concurrency` group serialises the two runs and
+the publish step is idempotent (create, else `upload --clobber`).
+
 
 ---
 

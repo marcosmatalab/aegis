@@ -7,9 +7,10 @@ place, so none of them has to be discovered by reading the code.
 
 - **Pre-alpha, a portfolio project.** Phases F0–F9 are complete and tested offline
   ([roadmap](roadmap.md)). It is not a product with customers or production traffic.
-- **Not yet published to PyPI, and no GitHub release has been cut.** The tag-triggered
-  release workflow (`.github/workflows/release.yml`) and the manually-approved PyPI job are in
-  place; install from source or Docker until the first `v*` tag is pushed.
+- **Not published to PyPI.** Releases are git tags with a GitHub release that carries the
+  wheel, the sdist and the evidence reports; install one with
+  `pipx install "git+https://github.com/marcosmatalab/aegis@v0.1.1"`. Why, and what it costs:
+  [ci-gates.md › Releasing](ci-gates.md#releasing).
 - **Persistence is JSON reports on disk** (`reports/`, gitignored). There is no database.
 
 ## Judge calibration (κ)
