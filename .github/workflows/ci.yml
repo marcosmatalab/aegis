@@ -33,7 +33,7 @@ jobs:
         # the next interpreter. A break on 3.13 alone is still a red build.
         python-version: ["3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -63,7 +63,7 @@ jobs:
     # Independent of lint-and-test (no `needs:`) so both signal in parallel.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -84,7 +84,7 @@ jobs:
     # the other jobs (no `needs:`) so all signal in parallel.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -103,7 +103,7 @@ jobs:
     # stops the published number and its evidence drifting apart.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -129,7 +129,7 @@ jobs:
     env:
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Node
         uses: actions/setup-node@v4
