@@ -110,3 +110,31 @@ def test_release_workflow_runs_for_releases_created_from_the_cli():
     assert re.search(r'^  push:\n    tags: \["v\*"\]', text, re.MULTILINE), (
         "release.yml no longer runs on a pushed v* tag"
     )
+
+
+def test_pages_redeploys_after_every_release_and_on_demand():
+    """The live dashboard is linked from both READMEs, but pages.yml only redeployed on a
+    `dashboard/**` change, so nothing refreshed it at release time.
+
+    It hooks the Release workflow through `workflow_run` (which runs on the default
+    branch) instead of `release: published` (which runs on the tag), because the
+    github-pages environment only accepts deployments from `main`."""
+    pages = (ROOT / ".github" / "workflows" / "pages.yml").read_text(encoding="utf-8")
+    release = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    release_name = re.search(r"^name:\s*(.+)$", release, re.MULTILINE)
+    assert release_name, "release.yml has no workflow name"
+
+    assert re.search(r"^  workflow_dispatch:", pages, re.MULTILINE), (
+        "pages.yml cannot be run by hand"
+    )
+    hook = re.search(
+        r"^  workflow_run:\n    workflows: \[\"([^\"]+)\"\]\n    types: \[completed\]",
+        pages,
+        re.MULTILINE,
+    )
+    assert hook, "pages.yml does not redeploy when a release finishes"
+    # workflow_run matches by NAME: renaming the Release workflow would silently unhook it
+    assert hook.group(1) == release_name.group(1).strip(), (
+        f"pages.yml waits for {hook.group(1)!r} but release.yml is named "
+        f"{release_name.group(1).strip()!r}"
+    )
