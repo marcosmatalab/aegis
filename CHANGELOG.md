@@ -17,17 +17,17 @@ aegis redteam run
 ```
 
 ### Fixed
-- **The LinkedIn badge pointed at someone else's profile.**
-  It now links the author's profile under the author's name, and
-  `tests/test_docs_links.py` fails on any other LinkedIn URL in the tracked tree.
+- **The LinkedIn badge pointed at someone else's profile.** It now links the author's profile
+  under the author's name, and `tests/test_docs_links.py` fails on any other LinkedIn URL in
+  the tracked tree.
 - **This CHANGELOG described a release that did not exist.** 0.1.0 said "first tagged
-  release" and gave a PyPI install command, but no tag existed and nothing is on PyPI. `v0.1.0` is now tagged on `954f5ff` (the merge of PR #40, the commit that carries
+  release" and gave a PyPI install command, but no tag existed and nothing is on PyPI.
+  `v0.1.0` is now tagged on `954f5ff` (the merge of PR #40, the commit that carries
   version 0.1.0 and this file's `[0.1.0]` section) with its GitHub release, and every
   install line points at a tag. `tests/test_release_pipeline.py` fails on a PyPI install
   claim, on an install pinned to an unreleased version, and on a released version with no tag.
 - `tests/test_docs_numbers.py` pinned only two of the four places the READMEs print the test
   count; the badge and the key-metrics cell could drift. All four are pinned now.
-
 - **Nothing redeployed the live dashboard at release time.** `pages.yml` only ran on a
   `dashboard/**` change. It now also runs after every Release run and on demand.
 
