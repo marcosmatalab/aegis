@@ -4,23 +4,28 @@ This is a portfolio project, so it is not looking for feature contributions — 
 corrections are genuinely welcome, especially anything that catches a number in the docs that
 does not reproduce.
 
-## AI assistance policy
+## How this was built
 
-This repository was built with **heavy AI coding-assistant use**, and says so on the front
-page rather than leaving it to be discovered from `git log`. The rules it was built under, and
-the rules for any future change:
+Aegis was designed and built by **Marcos Mata García** between June and September 2026: most
+of it in an intensive sprint of 185 commits between 22 and 25 June, and the release work
+(calibration artifact, CI gates, packaging, branch protection) on 22 September, mostly
+in a single two-hour session. `git log --format=%ad --date=short | sort | uniq -c` prints exactly that.
 
-1. **Declare it, never disguise it.** 185 of the commits landed between 22 and 25 June 2026.
-   That pace is stated in the README's [Provenance](README.md#provenance-how-this-was-built)
-   section. The history is not rewritten, squashed or back-dated to look more organic.
-2. **Design decisions are the author's.** The gate contracts and what counts as a regression,
-   the OWASP category mapping, the 30 hand-labelled calibration cases, the honesty statuses,
-   and the decision to publish named red-team gaps instead of a rounded-up rate.
-3. **Generated code is read, tested and owned.** "An assistant wrote it" is not a defence for
+**The design is the author's:** the gate contracts and what counts as a regression, the OWASP
+category mapping, the 30 hand-labelled calibration cases, the honesty statuses that run through
+CLEAR and the evidence builder, and the decision to publish named red-team gaps instead of a
+rounded-up rate.
+
+**AI coding assistance was used** for scaffolding, test generation and long-form docs, under
+these rules, which also apply to any future change:
+
+1. **Declare it, never disguise it.** The history is not rewritten, squashed or back-dated to
+   look more organic.
+2. **Generated code is read, tested and owned.** "An assistant wrote it" is not a defence for
    anything in here. If it ships, the author can explain it.
-4. **Every number gets an artifact or a command.** This is the rule that actually settles the
-   question, because it does not depend on anyone's word. A figure in the docs must be
-   reproducible offline — see [`artifacts/README.md`](artifacts/README.md) for the pattern.
+3. **Every number gets an artifact or a command.** A figure in the docs must be reproducible
+   offline — see [`artifacts/README.md`](artifacts/README.md) for the pattern. This is the rule
+   that settles the question, because it does not depend on anyone's word.
 
 ## Working on it
 
