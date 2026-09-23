@@ -146,12 +146,6 @@ no install by bare package name. Adopting PyPI later means registering a trusted
 publisher, adding the publish job, and changing `tests/test_release_pipeline.py`, which
 fails on any PyPI publish step or PyPI install claim, in the same PR.
 
-**Decision: `release.yml` listens to both `push: tags` and `release: published`.**
-*Why:* `gh release create` (and the web UI) create the tag without a push event, so a
-push-only trigger silently skipped v0.1.0. *Cost:* a tag pushed with `git` and then given a
-release fires the workflow twice; a per-tag `concurrency` group serialises the two runs and
-the publish step is idempotent (create, else `upload --clobber`).
-
 **Decision: the live dashboard redeploys after every release, and on demand.** Before 0.1.1,
 `pages.yml` only ran on a `dashboard/**` change, so a release never refreshed the site both
 READMEs link to. It now also runs on `workflow_run` of Release and on `workflow_dispatch`.
