@@ -29,6 +29,12 @@ updates:
     commit-message:
       prefix: "chore(deps)"
     groups:
+      # react and react-dom must be the exact same version or React refuses to render,
+      # and @types/react-dom peers on a matching @types/react. Split one-per-PR, both
+      # halves failed CI (#47, #49). Listed first: a dependency joins the first group
+      # it matches, so @types/react lands here and not in dev-tooling.
+      react:
+        patterns: ["react", "react-dom", "@types/react", "@types/react-dom"]
       dev-tooling:
         patterns: ["@biomejs/*", "@testing-library/*", "@types/*", "vitest", "jsdom", "typescript"]
 
@@ -39,3 +45,8 @@ updates:
       day: monday
     commit-message:
       prefix: "chore(ci)"
+    groups:
+      # Action bumps touch the same few workflow lines; one PR instead of four
+      # (#41, #42, #44, #45 each needed its own rebase and CI run).
+      actions:
+        patterns: ["*"]
