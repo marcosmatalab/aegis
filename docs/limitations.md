@@ -26,11 +26,13 @@ place, so none of them has to be discovered by reading the code.
 
 ## Red-team and guardrails
 
-- **18/25 is coverage against the project's own catalog, not a security score.** The catalog
-  deliberately includes payloads the deterministic scanners are known to miss, and all 7 gaps
+- **19/29 is coverage against the project's own catalog, not a security score.** The catalog
+  deliberately includes payloads the deterministic scanners are known to miss, and all 10 gaps
   are named in the report's `known_gaps`: leetspeak override, injection in the non-scanned
-  `system` / `assistant` / `developer` roles, an obfuscated email, a glued-digit credit card,
-  and sub-threshold toxicity. See [redteam.md](redteam.md).
+  `system` / `assistant` / `developer` roles, a French override (patterns cover English and
+  Spanish only), a base64-wrapped override (nothing is decoded), zero-width-space splitting (no
+  unicode normalisation), an obfuscated email, a glued-digit credit card, and sub-threshold
+  toxicity. See [redteam.md](redteam.md).
 - **Only categories the guardrails genuinely exercise are mapped** (LLM01, LLM02, LLM07).
   Tool misuse (ASI02), identity (ASI03), LLM05 and LLM03/04/08/09/10 are out of scope for a
   stateless text proxy. Non-English coverage beyond the shipped Spanish variants is a gap.

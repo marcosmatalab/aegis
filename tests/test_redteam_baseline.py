@@ -331,7 +331,10 @@ def test_committed_redteam_baseline_well_formed():
     bl = load_redteam_baseline(redteam_baseline_path("redteam"))
     assert bl["schema_version"] == 1 and bl["mode"] == "mock-offline" and bl["rate_decimals"] == 6
     ids = {c.id for c in load_attacks()}
-    assert bl["case_count"] == len(ids) == 25
+    # Derived from the catalog, not a hardcoded count: adding an attack is routine
+    # cadence work and should not break a test that is really asserting "the
+    # baseline covers exactly the catalog".
+    assert bl["case_count"] == len(ids)
     assert set(bl["attacks"]) == ids
     for atk in bl["attacks"].values():
         assert set(atk) == {"category", "outcome", "code"}
@@ -341,9 +344,13 @@ def test_committed_redteam_baseline_well_formed():
         assert set(stat) == {"total", "blocked", "redacted", "passed", "caught", "detection_rate"}
         assert 0.0 <= stat["detection_rate"] <= 1.0
         assert stat["caught"] == stat["blocked"] + stat["redacted"]
-    # the 7 named gaps are observed as passing — surfaced, never padded away
-    passed = [a for a in bl["attacks"].values() if a["outcome"] == "passed"]
-    assert len(passed) == 7
+    # Every named gap is observed as passing — surfaced, never padded away. The
+    # count comes from the catalog so disclosing a NEW gap (which lowers the
+    # headline detection rate) is a one-line catalog change, not a test edit.
+    declared_gaps = {c.id for c in load_attacks() if c.is_known_gap}
+    passed = {i for i, a in bl["attacks"].items() if a["outcome"] == "passed"}
+    assert passed == declared_gaps
+    assert declared_gaps, "a catalog with no disclosed gaps would mean a padded 100%"
 
 
 def test_committed_baseline_is_byte_idempotent(tmp_path):
