@@ -157,6 +157,13 @@ def test_readme_test_count_matches_this_session(request, readmes):
     assert f"{passed} tests" in en, f"README.md 'N tests' disagrees with '{passed} passed'"
     assert f"{passed} passed, {skipped} skipped" in readmes["es"], "README.es.md count is stale"
     assert f"{passed} tests" in readmes["es"] or f"{passed} pasan" in readmes["es"]
+    # the badge and the key-metrics cell restate it too; a stale badge is the most
+    # visible number on the page, so every spelling is pinned, in both languages
+    for lang, text in readmes.items():
+        badges = set(re.findall(r"badge/tests-(\d+)%20passing", text))
+        assert badges == {str(passed)}, f"README.{lang} tests badge says {badges}, not {passed}"
+        cells = set(re.findall(r"^\| \*\*(\d+)\*\* \| \*\*\d+%\*\*", text, re.MULTILINE))
+        assert cells == {str(passed)}, f"README.{lang} key-metrics row says {cells}, not {passed}"
 
 
 def test_readme_coverage_claim_is_at_least_the_enforced_floor(readmes):
