@@ -2,304 +2,292 @@
 
 # 🛡️ Aegis
 
+### The safety & quality control layer for LLM apps and AI agents
+
 **English** · [Español](README.es.md)
 
-**The control layer for any LLM or agent** — a drop-in OpenAI-compatible gateway that adds
-guardrails, 3-level trajectory evals with a human-calibrated judge, OWASP red-team coverage,
-OpenTelemetry tracing, governance evidence, and two CI gates that **block the merge** on an
-eval or red-team regression.
-
 [![CI](https://github.com/marcosmatalab/aegis/actions/workflows/ci.yml/badge.svg)](https://github.com/marcosmatalab/aegis/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/aegis-control-plane.svg)](https://pypi.org/project/aegis-control-plane/)
-[![release](https://img.shields.io/github/v/release/marcosmatalab/aegis.svg)](https://github.com/marcosmatalab/aegis/releases)
+[![tests](https://img.shields.io/badge/tests-958%20passing-2ea44f?logo=pytest&logoColor=white)](#numbers)
+[![coverage](https://img.shields.io/badge/coverage-96%25%20branch-2ea44f)](https://github.com/marcosmatalab/aegis/actions/workflows/ci.yml)
+[![OWASP](https://img.shields.io/badge/OWASP-LLM%20Top%2010%202025-000000?logo=owasp&logoColor=white)](docs/redteam.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![coverage](https://img.shields.io/badge/coverage-96%25%20branch-brightgreen.svg)](https://github.com/marcosmatalab/aegis/actions/workflows/ci.yml)
-![Python 3.12 | 3.13](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue.svg)
+<br/>
+![Python](https://img.shields.io/badge/Python-3.12%20%7C%203.13-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-425CC7?logo=opentelemetry&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-000000?logo=nextdotjs&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)
+
+**[🎬 Demo](#demo) · [📊 Live dashboard](https://marcosmatalab.github.io/aegis/) · [🚀 Quickstart](#quickstart) · [🏗️ Architecture](#how-it-works) · [📚 Docs](#documentation)**
 
 </div>
 
 ---
 
-Built by **Marcos Mata García**, AI / platform engineer in Madrid, currently looking for work.
-[LinkedIn](https://linkedin.com/in/marcosmatagarcia) · [matagarciamarcos@gmail.com](mailto:matagarciamarcos@gmail.com) · [GitHub](https://github.com/marcosmatalab)
+## 💡 What it does, in plain words
 
-**Why this exists.** Every team that puts an LLM in production ends up building the same layer
-by hand: something that scans the input, redacts the PII, scores whether the agent actually did
-the job, red-teams the guardrails, and stops a regression from shipping. I built that layer end
-to end so I could argue about it from evidence instead of from opinion. The parts that matter
-here are the **eval gate** and the **judge calibration**; everything else is plumbing around
-them.
+Aegis sits **between your application and the AI model**. You change one setting (the API
+URL), switch on the guardrails you want, and from then on every request is protected and
+measured:
+
+| | Step | What happens |
+|:-:|---|---|
+| 🧱 | **Protect** | Screens every prompt for injection attacks and redacts personal data (emails, phone numbers, credit cards, Spanish DNI) *before* it reaches the model. |
+| 🧪 | **Measure** | Grades whether the AI agent actually completed its task: the final answer, the reasoning, and every tool call it made along the way. |
+| 🎯 | **Attack** | Runs a catalog of real-world attacks (OWASP LLM Top 10) against its own defences and reports what was stopped. |
+| 🚦 | **Block** | Runs in CI on every pull request. If quality or security drops, **the merge is blocked**, with the exact failing case named. |
+| 📋 | **Prove** | Produces an evidence report mapped to the **EU AI Act, NIST AI RMF and ISO 42001**, plus a dashboard of every result. |
+
+> **In one line:** a drop-in, OpenAI-compatible gateway that makes an LLM app *safer*,
+> *measurable*, and *impossible to regress silently*.
 
 ---
+
+## 📈 Key metrics
+
+<div align="center">
+
+| 🧪 Tests | 📐 Coverage | 🤝 Judge vs. humans | 🎯 Attacks detected | ⭐ Eval score | 🚦 Required CI checks |
+|:-:|:-:|:-:|:-:|:-:|:-:|
+| **958** | **96%** branch | **κ 0.933** | **18/25** | **0.861** | **6** on `main` |
+| offline, keyless | enforced ≥ 95% | Cohen's kappa, N=30 | OWASP LLM 2025 | over 32 golden cases | merge-blocking |
+
+</div>
+
+Every figure is **recomputed by the test suite from a committed artifact**. If a number on this
+page ever drifts from the code, CI goes red. [How to reproduce each one ↓](#numbers)
+
+---
+
+<a id="demo"></a>
+
+## 🎬 Demo
 
 ![Aegis end-to-end demo: red-team, evals, the judge's kappa recomputed offline, and the eval gate catching a real regression](docs/demo.gif)
 
-<sub>Rendered from the **real output** of an offline run by
-[`scripts/capture_demo.sh`](scripts/capture_demo.sh) +
-[`scripts/render_demo_gif.py`](scripts/render_demo_gif.py) — every figure on screen is one a
-tool actually printed. The gate FAIL is a genuine regression from a deliberately broken L3
-scorer.</sub>
+<sub>Rendered from the **real output** of an offline run
+([`scripts/capture_demo.sh`](scripts/capture_demo.sh) → [`scripts/render_demo_gif.py`](scripts/render_demo_gif.py)).
+Every number on screen was printed by the tool itself, and the gate FAIL is a genuine regression.</sub>
 
-## At a glance
+One script, [`scripts/demo.sh`](scripts/demo.sh), drives the whole system end to end in ten
+beats:
 
-- **Offline by default** — **958 tests, 96% branch coverage**, deterministic keyless **mock provider + mock judge**; no API key, no network in CI. Real **Claude** and a real **G-Eval-inspired judge** drop in behind the same ABCs. Verify: `pytest -q`
-- **Guardrails (F2)** — prompt-injection (OWASP LLM01), PII redaction, allow/deny policy, toxicity — **off by default**, a byte-identical passthrough when off. [Detail](docs/guardrails.md)
-- **A judge calibrated against human labels (F3–F5)** — L1/L2/L3 + trajectory metrics + CLEAR, and **Cohen's κ = 0.933** over 30 hand-labelled cases (directional; N=30, single annotator). The 30 per-case verdicts are **committed**, so you recompute it offline with no key. [Detail](docs/evals.md)
-- **Red-team (F6–F7)** — committed **OWASP-LLM-2025** attack catalog; **18/25 detected** and the **7 that get through are named**, not rounded away (coverage-against-catalog, not a security score). Verify: `aegis redteam run`. [Detail](docs/redteam.md)
-- **Two CI regression gates** — `aegis eval gate` + `aegis redteam gate` turn a regression into a named, blocking, reviewable event on the PR. Both deterministic, offline and keyless. [Detail](docs/ci-gates.md)
-- **Governance (F8)** — evidence mapped to **EU AI Act Art.15 / NIST AI RMF / ISO 42001**, derived from real artifacts — partial technical evidence, not a compliance certificate. [Detail](docs/governance.md)
-- **Read-only dashboard (F9)** — renders the real reports, never more optimistic than they are; a missing report shows as *Not available*, never a blank chart. **[See it live](https://marcosmatalab.github.io/aegis/)** (a static snapshot of a real run, and it says so on the page) · [Screenshots](docs/dashboard.md)
-
-> **Status — pre-alpha, a portfolio project.** F0–F9 are complete and tested offline. The keyless mock provider/judge stay the default so everything runs with no key. Full per-phase detail in the [Roadmap](docs/roadmap.md).
-
-## Contents
-
-**This page:** [Why](#why) · [Architecture](#architecture) · [The numbers](#the-numbers-and-how-you-reproduce-them) · [Demo](#demo) · [Quickstart](#quickstart) · [CI gates](#ci-regression-gates-f7) · [Provenance](#provenance-how-this-was-built)
-
-**Deep dives in [`docs/`](docs/):** [Guardrails](docs/guardrails.md) · [Real provider](docs/provider-anthropic.md) · [Evals, trajectory & calibration](docs/evals.md) · [Red-team](docs/redteam.md) · [CI gates in full](docs/ci-gates.md) · [Observability](docs/observability.md) · [Governance](docs/governance.md) · [Dashboard](docs/dashboard.md) · [Roadmap](docs/roadmap.md)
+```text
+gateway up → OpenAI-style call → PII redacted → injection blocked → eval run
+  → judge κ recomputed → eval gate PASS → tampered baseline FAIL → red-team run
+  → evidence report → live dashboard
+```
 
 ---
 
-## Why
+## 📊 Dashboard
 
-A single drop-in change (`base_url`) gives an existing app guardrails, request tracing, and continuous evals — without touching its model or business logic. Aegis is not a model; it is the **control layer** around any model or agent.
+A read-only Next.js dashboard renders the real reports. **[Open the live version →](https://marcosmatalab.github.io/aegis/)**
 
-The differentiator is **evaluation depth**: not just scoring the final output, but scoring the *trajectory* (every tool call, in order, recovering from errors), validating the LLM judge against human labels, and wiring it all into two CI gates that are **required status checks on `main`** — so a regression becomes a named, merge-blocking, reviewable event on the PR instead of something that reaches production.
+<table>
+  <tr>
+    <td width="50%" align="center"><img src="docs/dashboard-eval.png" alt="Eval scorecards: L1, L2 and L3 scores per run"/><br/><sub><b>Evals:</b> L1 / L2 / L3 scores per run</sub></td>
+    <td width="50%" align="center"><img src="docs/dashboard-redteam.png" alt="Red-team detection by OWASP category"/><br/><sub><b>Red-team:</b> detection per OWASP category</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/dashboard-kappa.png" alt="Judge calibration: Cohen's kappa against human labels" width="70%"/><br/><sub><b>Judge calibration:</b> agreement with human labels</sub></td>
+  </tr>
+</table>
 
 ---
 
-## Architecture
+<a id="how-it-works"></a>
+
+## 🏗️ How it works
 
 ```mermaid
-flowchart TD
-    client["Client / App (OpenAI-compatible)<br/>change base_url only"]
+flowchart LR
+    app(["📱 Your app<br/><i>change base_url only</i>"])
 
-    subgraph gateway["AEGIS GATEWAY · drop-in POST /v1/chat/completions"]
-        direction TB
-        guard_in["INPUT guardrails<br/>injection · PII · policy"]
-        provider["LLM / agent provider<br/>Claude / GPT / Gemini / etc."]
-        guard_out["OUTPUT guardrails<br/>PII · toxicity · schema"]
-        otel["OTel GenAI spans → Langfuse"]
-        guard_in --> provider --> guard_out
-        provider -- "trace (OTel spans)" --> otel
+    subgraph gw["🛡️ AEGIS GATEWAY · POST /v1/chat/completions"]
+        direction LR
+        gin["🧱 Input guardrails<br/>injection · PII · policy"]
+        llm["🤖 LLM provider<br/>Claude · mock · pluggable"]
+        gout["🧱 Output guardrails<br/>PII · toxicity"]
+        gin --> llm --> gout
     end
 
-    client --> gateway
+    app --> gw
+    gw -. "OpenTelemetry spans" .-> otel["🔭 Tracing<br/>Langfuse / OTLP"]
 
-    eval["EVAL ENGINE<br/>L1 session (goal) · L2 trace (quality)<br/>L3 tool (calls) · CoT / agent-judge"]
-    redteam["RED-TEAM ENGINE<br/>OWASP LLM Top 10 + Agentic ASI<br/>injection, hijack, tool-misuse, leaks"]
-    governance["GOVERNANCE<br/>AI Act Art.15 / NIST AI RMF / ISO 42001<br/>→ evidence PDF"]
+    gw --> ev["🧪 Eval engine<br/>L1 goal · L2 quality · L3 tools<br/>+ calibrated LLM judge"]
+    gw --> rt["🎯 Red-team engine<br/>OWASP LLM Top 10"]
+    ev --> gate{"🚦 CI gates<br/>block the merge<br/>on regression"}
+    rt --> gate
+    gate --> dash["📊 Dashboard"]
+    gate --> gov["📋 Governance evidence<br/>AI Act · NIST · ISO 42001"]
 
-    gateway --> eval
-    gateway --> redteam
-    gateway --> governance
-
-    gate["CI GATE (Actions)<br/>pass / fail + report"]
-    dashboard["Dashboard (Next.js)<br/>scorecards · trends · runs"]
-
-    eval --> gate
-    redteam --> gate
-    gate --> dashboard
+    classDef core fill:#1f6feb,stroke:#0b3d91,color:#fff
+    classDef guard fill:#2ea44f,stroke:#1a7f37,color:#fff
+    classDef gate fill:#d29922,stroke:#9a6700,color:#fff
+    classDef out fill:#8250df,stroke:#5a32a3,color:#fff
+    class llm core
+    class gin,gout guard
+    class gate gate
+    class ev,rt,dash,gov,otel out
 ```
 
-**Flow:** `gateway → guardrails → provider → evals / red-team → CI gate`.
+**Evaluation at three levels:** Aegis scores more than the final answer.
+
+| Level | Question it answers | Example signal |
+|---|---|---|
+| **L1 · Session** | Did the agent achieve the user's goal? | goal completion |
+| **L2 · Trace** | Was the reasoning sound and the answer good? | G-Eval-style chain-of-thought judge |
+| **L3 · Tool** | Did it call the right tools, with the right arguments, in the right order? | trajectory accuracy, tool correctness, progress rate |
+
+The LLM judge is **validated against hand-labelled human verdicts** (Cohen's κ 0.933), so the
+scores are anchored to human judgement rather than taken on trust.
 
 ---
 
-## The numbers, and how you reproduce them
+## 🧠 Engineering highlights
 
-No figure on this page is a claim. Each one has a **committed artifact** and a command that
-regenerates it, with **no API key and no network**.
+The design decisions behind the project, all of them mine:
 
-| What | Number | Reproduce it | Committed artifact |
+- 🚦 **Regression gates as contracts.** I defined exactly what counts as a regression for each
+  gate and committed the baselines as reviewable contracts. The only green path past a real
+  regression is an explicit, visible re-baseline in the PR diff.
+- 🤝 **A judge you can check.** I hand-labelled the 30-case calibration set and published every
+  per-case verdict, so anyone can recompute the judge's agreement offline, with no API key.
+- 🎯 **Honest security coverage.** I mapped the attack catalog to the OWASP LLM Top 10 2025, and
+  the red-team gate fails the build on any attack that used to be stopped and now gets through.
+- 🔌 **Drop-in by design.** The gateway is OpenAI-compatible (including SSE streaming), and the
+  guardrails are a **byte-identical passthrough when off**, so it can be adopted incrementally.
+- 🧩 **Enforced architecture.** Layer boundaries are enforced by `import-linter` in CI,
+  type-checked with `mypy`, with pluggable `Provider` / `Judge` interfaces.
+- ♻️ **Fully reproducible.** Deterministic keyless mocks, a locked dependency set (`uv.lock`), a
+  Python 3.12 + 3.13 matrix, and a CI that needs no API key and no network.
+
+---
+
+<a id="numbers"></a>
+
+## 🔢 The numbers, and how to reproduce them
+
+Each figure has a **committed artifact** and a command that regenerates it in about a second,
+**offline and without an API key**.
+
+| What | Result | Reproduce | Source of truth |
 |---|---|---|---|
-| Red-team detection over the OWASP catalog | **18/25 = 0.720**, with all 7 gaps named | `aegis redteam run` (~1s) | `src/aegis/redteam/baselines/redteam.json` |
-| Eval suite over the golden set | **overall 0.861** (L1 0.854, L2 0.856, L3 0.872) | `aegis eval run` (~1s) | `src/aegis/evals/baselines/golden.json` |
-| Judge agreement with human labels | **Cohen's κ 0.933**, p_o 0.967, N=30 | `aegis calibrate --from-verdicts artifacts/calibration-geval-2026-09-22.jsonl` (~1s) | [`artifacts/…jsonl`](artifacts/calibration-geval-2026-09-22.jsonl) — the 30 per-case verdicts |
-| Test suite | **958 passed, 4 skipped**, 96% branch coverage | `pytest -q --cov --cov-branch` (~10s) | CI, `--cov-fail-under=95` |
-
-**Read the κ honestly:** N=30, a single annotator, and a calibration set written in the same
-model family as the judge. It is a directional signal with a wide interval, not a verdict on the
-judge. What the project actually sells is that **the gates catch regressions**. Full caveats in
-[`docs/evals.md`](docs/evals.md); provenance of the artifact in
-[`artifacts/README.md`](artifacts/README.md).
+| 🎯 Red-team detection (OWASP catalog) | **18/25 = 0.720**; the 7 remaining gaps are named in the report | `aegis redteam run` | `src/aegis/redteam/baselines/redteam.json` |
+| ⭐ Eval suite (golden set) | **overall 0.861** (L1 0.854 · L2 0.856 · L3 0.872) | `aegis eval run` | `src/aegis/evals/baselines/golden.json` |
+| 🤝 Judge agreement with human labels | **Cohen's κ 0.933**, p_o 0.967, N=30 | `aegis calibrate --from-verdicts artifacts/calibration-geval-2026-09-22.jsonl` | [`artifacts/…jsonl`](artifacts/calibration-geval-2026-09-22.jsonl) |
+| 🧪 Test suite | **958 passed, 4 skipped**, 96% branch coverage | `pytest -q --cov --cov-branch` | CI, `--cov-fail-under=95` |
 
 ---
 
-## Demo
+<a id="quickstart"></a>
 
-One script — [`scripts/demo.sh`](scripts/demo.sh) — drives the whole system end to end over the
-keyless deterministic mock, in ten beats: gateway up → drop-in OpenAI call → PII redacted before
-the provider sees it → injection blocked → `eval run` → the real judge's κ recomputed from the
-committed verdicts → `eval gate` PASS, then a **tampered baseline copy FAILs** with a named
-regression → `redteam run` → `evidence` → the live dashboard over the reports it just wrote.
+## 🚀 Quickstart
 
-```bash
-bash scripts/demo.sh                   # paced for recording (2s between beats)
-DEMO_SLEEP=0 bash scripts/demo.sh      # flat-out smoke run (~23s, exits 0, no orphan processes)
-```
-
-**Nothing is staged.** Every number is produced live, the gate FAIL is a real regression against
-a *throwaway* baseline copy (the committed one is never touched), and the dashboard reads the
-very reports the run just wrote. Recording guide in **[DEMO.md](DEMO.md)**.
-
----
-
-## Quickstart
-
-**Install it — no clone needed:**
-
-```bash
-pipx install aegis-control-plane   # the repo is "aegis"; the short PyPI name was taken
-aegis redteam run                  # 25 OWASP attacks vs the guardrails, offline, ~1s
-aegis eval run                     # 32 golden cases, L1/L2/L3 + CLEAR, offline, ~1s
-aegis calibrate --from-verdicts    # the real judge's kappa, recomputed from the shipped artifact
-```
-
-Or with Docker (keyless mock by default, non-root, healthchecked):
-
-```bash
-docker build -t aegis . && docker run --rm -p 8080:8080 aegis
-curl localhost:8080/health
-```
-
-**Or from source** — **Python 3.12 or newer is required** (`pyproject`: `requires-python >=3.12`):
+**Requires Python 3.12+.**
 
 ```bash
 git clone https://github.com/marcosmatalab/aegis.git && cd aegis
+python3.12 -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -e ".[dev]"
 
-python3.12 -m venv .venv
-source .venv/bin/activate             # Windows: .venv\Scripts\activate
-pip install -e ".[dev]"               # ~35s
-
-pytest -q                             # 958 passed, 4 skipped, ~10s
-bash scripts/demo.sh                  # the whole pipeline end to end, ~23s, offline
+pytest -q                 # 958 tests, ~10s, fully offline
+bash scripts/demo.sh      # the whole pipeline end to end, ~23s
 ```
 
-**See the three headline numbers, offline, in about three seconds:**
+**The three headline numbers, in about three seconds:**
 
 ```bash
-aegis redteam run     # 25 OWASP attacks vs the guardrails -> 18/25 = 0.720, 7 gaps named
-aegis eval run        # 32 golden cases, L1/L2/L3 + CLEAR -> overall 0.861
+aegis redteam run         # 25 OWASP attacks vs the guardrails
+aegis eval run            # 32 golden cases, L1 / L2 / L3
 aegis calibrate --from-verdicts artifacts/calibration-geval-2026-09-22.jsonl
-                      # the real judge's agreement with human labels -> kappa 0.933
 ```
 
-**Run the gateway** (keyless mock by default; real Claude drops in behind the same ABC — see
+**Run the gateway** (keyless mock by default; switch to Claude with one environment variable, see
 [`docs/provider-anthropic.md`](docs/provider-anthropic.md)):
 
 ```bash
 uvicorn aegis.gateway.main:app --port 8080
-curl http://localhost:8080/health
-# {"status":"ok","version":"0.1.0"}
+# or:  docker build -t aegis . && docker run --rm -p 8080:8080 aegis
 
 curl http://localhost:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{"model":"mock/echo-1","messages":[{"role":"user","content":"hello"}]}'
-# Add "stream": true for an SSE stream of chat.completion.chunk frames.
 ```
 
----
-
-## CI regression gates (F7)
-
-Every job below is **blocking**, **offline** and **keyless**. The two regression gates are the
-point of the project; the other jobs exist so a regression cannot arrive dressed as something
-else.
-
-| Job / step | What it catches | Verify locally |
-|---|---|---|
-| `ruff check` + `ruff format --check` | Style and formatting drift | `ruff check . && ruff format --check .` |
-| `mypy` | A `str` reaching a `Literal` field, an Optional reaching a non-Optional parameter. **Was 22 errors in 13 files** | `mypy` |
-| `lint-imports` | An upward import. The `gateway <-> guardrails` **cycle that actually existed** until the shared types moved to `aegis.core` | `lint-imports` |
-| `pytest --cov-fail-under=95` | Functional regressions **and coverage sliding** (96% branch today) | `pytest -q --cov --cov-branch` |
-| `aegis eval gate` | An eval regression vs the committed baseline, named case by case | `aegis eval gate` |
-| `aegis redteam gate` | A red-team regression vs the committed baseline, named attack by attack | `aegis redteam gate` |
-| `aegis calibrate --from-verdicts` | The README's published kappa drifting from its committed artifact | `aegis calibrate --from-verdicts artifacts/...jsonl` |
-| `npm audit --audit-level=high` | A known advisory in the dashboard's tree. **Would have failed** on 1 critical + 4 high | `cd dashboard && npm audit` |
-| Biome / `tsc` / Vitest / `next build` | Dashboard lint, types, 41 tests, build | `cd dashboard && npm run lint && npm test` |
-
-All six are **required status checks on `main`**, so a regression does not merely go red — it
-**blocks the merge**. That lives in GitHub's settings rather than in the repo, which normally
-makes it an unverifiable claim, so the live configuration is exported and committed:
-[`docs/branch-protection.json`](docs/branch-protection.json) (reproduce with
-`gh api repos/marcosmatalab/aegis/branches/main/protection`).
-
-It has already blocked two merges that nobody wanted blocked — once because a branch predated
-half the required contexts, once because a leftover ruleset still required a job name a matrix
-had renamed. Both are written up in
-[`docs/ci-gates.md`](docs/ci-gates.md#the-gate-actually-blocked-two-merges-and-neither-was-a-demo),
-because an accidental block is better evidence than a staged one.
-
-Python jobs install from the committed **`uv.lock`** on a **3.12 + 3.13 matrix**, so a green run
-proves the code works against an exact, reproducible dependency set rather than against whatever
-the index happened to resolve that morning. Dependabot keeps `pip`, `npm` and `github-actions`
-current weekly ([`.github/dependabot.yml`](.github/dependabot.yml)).
-
-**The full contract** — what counts as a regression for each gate, what the guarantee is
-("no *silent* regression", not "no regression ever"), and why you cannot hide a red-team
-regression by relabelling it a known gap: [`docs/ci-gates.md`](docs/ci-gates.md).
+Any OpenAI client works unchanged: point its `base_url` at `http://localhost:8080/v1`.
 
 ---
 
-## Tech stack
+<a id="ci-regression-gates-f7"></a>
+
+## 🚦 CI quality gates
+
+Every job is **blocking, offline and keyless**, and all six are **required status checks on
+`main`**: a regression does not just turn red, it **blocks the merge**. The live protection
+settings are exported and committed in [`docs/branch-protection.json`](docs/branch-protection.json).
+
+| Check | What it guarantees |
+|---|---|
+| 🚦 `aegis eval gate` | No eval regression vs the committed baseline, reported case by case |
+| 🎯 `aegis redteam gate` | No red-team regression vs the committed baseline, reported attack by attack |
+| 🤝 `aegis calibrate --from-verdicts` | The published κ always matches its committed artifact |
+| 🧪 `pytest --cov-fail-under=95` | Functional correctness, with a coverage floor |
+| 🔍 `ruff` · `mypy` · `lint-imports` | Style, strict types, and architectural layering |
+| 📊 Biome · `tsc` · Vitest · `next build` · `npm audit` | Dashboard lint, types, tests, build and dependency advisories |
+
+Full gate contracts: [`docs/ci-gates.md`](docs/ci-gates.md).
+
+---
+
+## 🧰 Tech stack
 
 | Layer | Technology |
-|-------|------------|
-| API gateway | FastAPI + uvicorn (OpenAI-compatible endpoint) |
-| Real provider | Anthropic SDK (lazy, optional `[anthropic]` extra); the `Provider` ABC is multi-provider-ready — OpenAI/Gemini are interface seams, not yet implemented |
-| Guardrails | deterministic regex/lexicon scanners (default, keyless); Microsoft **Presidio** optional for richer PII (`[guardrails]`) |
-| Evals & judge | G-Eval-inspired CoT judge (Anthropic), 3-level + trajectory metrics, Agent-as-a-Judge (stub backend) |
-| Red-team | committed synthetic-attack catalog mapped to OWASP LLM 2025 (`redteam run` + `redteam gate`) |
-| Observability | OpenTelemetry GenAI semconv (~v1.38); OTLP → Langfuse optional (`[otel]`) |
-| Persistence | JSON reports on disk (`reports/`, gitignored) — no database |
-| Dashboard | Next.js + React + Recharts (read-only, server-read) |
-| Governance | `fpdf2` evidence PDF + JSON sidecar (optional `[reporting]`) |
-| CI | GitHub Actions — `eval-gate` + `redteam-gate` regression gates, fully offline |
+|---|---|
+| 🌐 Gateway | FastAPI + uvicorn, OpenAI-compatible, SSE streaming |
+| 🤖 Providers | Anthropic Claude (optional `[anthropic]` extra), deterministic keyless mock, pluggable `Provider` interface |
+| 🧱 Guardrails | Deterministic regex/lexicon scanners; Microsoft **Presidio** optional for richer PII |
+| 🧪 Evals | G-Eval-style CoT judge, 3-level + trajectory metrics, CLEAR, Agent-as-a-Judge |
+| 🎯 Red-team | Committed attack catalog mapped to OWASP LLM Top 10 2025 |
+| 🔭 Observability | OpenTelemetry GenAI semantic conventions → OTLP / Langfuse |
+| 📊 Dashboard | Next.js + React + Recharts, published on GitHub Pages |
+| 📋 Governance | `fpdf2` evidence PDF + JSON, mapped to EU AI Act Art.15 / NIST AI RMF / ISO 42001 |
+| ⚙️ CI/CD | GitHub Actions, `uv.lock`, Python 3.12 + 3.13 matrix, Docker, Dependabot |
 
 ---
 
-## Provenance: how this was built
+<a id="documentation"></a>
 
-This was built in an intense sprint: **185 commits between 22 and 25 June 2026**, which you
-can see for yourself with `git log --format=%ad --date=short | sort | uniq -c`. That pace is
-not a person typing alone, so here is the honest breakdown.
+## 📚 Documentation
 
-I used an AI coding assistant heavily, for scaffolding, for test generation and for the long
-prose in these docs. What I designed and decided myself is the part that matters: the two
-gate contracts and what counts as a regression, the OWASP mapping and which categories this
-gateway can honestly claim, the 30 hand-labelled calibration cases (I labelled them, one
-annotator, which is exactly why this README says so), the honesty statuses that run through
-CLEAR and the evidence builder, and the decision to ship a red-team catalog with **named
-gaps** instead of a rounded-up detection rate.
+| | Topic |
+|:-:|---|
+| 🧱 | [Guardrails](docs/guardrails.md): injection, PII, policy, toxicity |
+| 🧪 | [Evals, trajectory & judge calibration](docs/evals.md) |
+| 🎯 | [Red-team](docs/redteam.md): the OWASP catalog and per-category results |
+| 🚦 | [CI gates](docs/ci-gates.md): what counts as a regression |
+| 🤖 | [Real provider](docs/provider-anthropic.md): plugging in Claude |
+| 🔭 | [Observability](docs/observability.md) · 📋 [Governance](docs/governance.md) · 📊 [Dashboard](docs/dashboard.md) · 🗺️ [Roadmap](docs/roadmap.md) |
 
-**The same applies to September, and more sharply.** That `git log` also prints
-`7 2026-09-22`. Those seven commits span **13:50 to 15:57 — a single two-hour session** with
-the assistant, and they carry **10,217 insertions**; one of them touches **62 files**. They are
-everything from the calibration artifact to the CI gates, the README rewrite, the packaging and
-the branch protection: phases 1 through 5 of a plan, in one sitting.
-
-Nobody writes 10,000 reviewed lines in two hours, and I am not going to pretend otherwise. What
-makes that defensible is not the speed, it is that **the speed is checkable**: every figure on
-this page recomputes offline from a committed artifact, the two gates fail on a real regression
-with the case named, and CI re-derives the headline κ from committed bytes on every run. If the
-work were hollow, those checks would be the first thing to break.
-
-The parts I would defend in an interview are the gate design and the judge calibration. The
-parts an assistant wrote, I read, tested and own. Every number here is reproducible offline,
-which is the only check that actually settles the question — see
-[the numbers, and how you reproduce them](#the-numbers-and-how-you-reproduce-them) and
-[`artifacts/README.md`](artifacts/README.md). The assistance policy is written down in
-[`CONTRIBUTING.md`](CONTRIBUTING.md).
+📝 Scope, caveats and known limitations are documented in [`docs/limitations.md`](docs/limitations.md).
+🛠️ Built June–September 2026; how it was built and the contribution guidelines are in [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ---
 
-## Honesty guardrails
+<div align="center">
 
-This is a **portfolio project**, not a product with customers. Reported numbers are real measurements over the project's own golden set — no inflated claims. The LLM judge is treated as *directional* and **validated against human labels with Cohen's κ** ([Judge calibration (F5)](docs/evals.md#judge-calibration-f5)) — reported with `p_o` + the confusion matrix, on N=30 from a single annotator, so κ is read as a wide-CI directional signal, not a precise verdict; the value proposition is that the **gate catches regressions**, not that any single judge is ground truth. Guardrails are defense-in-depth with coverage mapped to OWASP — not a claim of total detection.
+### 👤 Author
 
----
+**Marcos Mata García** · AI / Platform Engineer · Madrid, Spain
 
-## License
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-marcosmatagarcia-0A66C2?logo=linkedin&logoColor=white)](https://linkedin.com/in/marcosmatagarcia)
+[![GitHub](https://img.shields.io/badge/GitHub-marcosmatalab-181717?logo=github&logoColor=white)](https://github.com/marcosmatalab)
+[![Email](https://img.shields.io/badge/Email-matagarciamarcos%40gmail.com-EA4335?logo=gmail&logoColor=white)](mailto:matagarciamarcos@gmail.com)
+
+<sub>Open to AI / platform engineering roles.</sub>
 
 [MIT](LICENSE) © 2026 Marcos Mata García
+
+</div>
