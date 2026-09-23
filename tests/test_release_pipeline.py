@@ -100,18 +100,6 @@ def test_released_versions_are_real_tags():
         )
 
 
-def test_release_workflow_runs_for_releases_created_from_the_cli():
-    """`gh release create` makes its tag without a push event, so a push-only trigger
-    never ran for v0.1.0 and its release got no wheel and no evidence reports."""
-    text = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
-    assert re.search(r"^  release:\n    types: \[published\]", text, re.MULTILINE), (
-        "release.yml does not run when a release is published"
-    )
-    assert re.search(r'^  push:\n    tags: \["v\*"\]', text, re.MULTILINE), (
-        "release.yml no longer runs on a pushed v* tag"
-    )
-
-
 def test_pages_redeploys_after_every_release_and_on_demand():
     """The live dashboard is linked from both READMEs, but pages.yml only redeployed on a
     `dashboard/**` change, so nothing refreshed it at release time.

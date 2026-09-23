@@ -28,9 +28,6 @@ aegis redteam run
 - `tests/test_docs_numbers.py` pinned only two of the four places the READMEs print the test
   count; the badge and the key-metrics cell could drift. All four are pinned now.
 
-- **`release.yml` never ran for a release created with `gh release create`**, because such a
-  release makes its tag without a push event. It now also runs on `release: published`
-  (serialised per tag), so every release gets its wheel, sdist and evidence reports.
 - **Nothing redeployed the live dashboard at release time.** `pages.yml` only ran on a
   `dashboard/**` change. It now also runs after every Release run and on demand.
 
