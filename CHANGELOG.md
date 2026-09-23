@@ -6,16 +6,47 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-09-23
+
+Corrections to 0.1.0's documentation and release process. No change to the gateway, the
+guardrails, the scoring or any published figure.
+
+```bash
+pipx install "git+https://github.com/marcosmatalab/aegis@v0.1.1"   # Python 3.12+
+aegis redteam run
+```
+
+### Fixed
+- **The LinkedIn badge pointed at someone else's profile.** It now links the author's profile
+  under the author's name, and `tests/test_docs_links.py` fails on any other LinkedIn URL in
+  the tracked tree.
+- **This CHANGELOG described a release that did not exist.** 0.1.0 said "first tagged
+  release" and gave a PyPI install command, but no tag existed and nothing is on PyPI.
+  `v0.1.0` is now tagged on `954f5ff` (the merge of PR #40, the commit that carries
+  version 0.1.0 and this file's `[0.1.0]` section) with its GitHub release, and every
+  install line points at a tag. `tests/test_release_pipeline.py` fails on a PyPI install
+  claim, on an install pinned to an unreleased version, and on a released version with no tag.
+- `tests/test_docs_numbers.py` pinned only two of the four places the READMEs print the test
+  count; the badge and the key-metrics cell could drift. All four are pinned now.
+- **Nothing redeployed the live dashboard at release time.** `pages.yml` only ran on a
+  `dashboard/**` change. It now also runs after every Release run and on demand.
+
+### Removed
+- The `pypi` job in `release.yml`. It had no trusted publisher and no token behind it, so it
+  could only fail on every tag. The project is distributed from its tags; see
+  [`docs/ci-gates.md`](docs/ci-gates.md#releasing).
+
 ## [0.1.0] — 2026-09-22
 
 First tagged release. F0–F9 complete, tested offline and keyless.
 
-The **distribution** is published as `aegis-control-plane` because `aegis`, `aegis-gateway`
-and `aegis-llm` are all taken on PyPI by other authors. The repository, the Python package and
-the CLI command are all still `aegis`:
+The **distribution** is named `aegis-control-plane` because `aegis`, `aegis-gateway` and
+`aegis-llm` are all taken on PyPI by other authors; it is not published to PyPI. The
+repository, the Python package and the CLI command are all still `aegis`. Install this
+release from its tag (Python 3.12+):
 
 ```bash
-pipx install aegis-control-plane
+pipx install "git+https://github.com/marcosmatalab/aegis@v0.1.0"
 aegis redteam run
 ```
 
@@ -76,5 +107,6 @@ aegis redteam run
 - `scripts/demo.sh` no longer hardcodes the κ figure it promised not to hardcode; it recomputes
   it live from the committed artifact, and opens the browser only after the readiness wait.
 
-[Unreleased]: https://github.com/marcosmatalab/aegis/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/marcosmatalab/aegis/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/marcosmatalab/aegis/releases/tag/v0.1.1
 [0.1.0]: https://github.com/marcosmatalab/aegis/releases/tag/v0.1.0
