@@ -110,5 +110,5 @@ These are not style preferences; the project's whole claim rests on them.
 - **Re-baselining is a reviewed act.** `--update-baseline` is the one green path past a genuine
   regression, so the diff must be visible and explained in the PR.
 - **Declare the assistance.** The history shows a 185-commit sprint and a 2-hour session. Both
-  are stated in the README. Do not rewrite history to smooth it; a cleaned-up log is both
+  are stated in `CONTRIBUTING.md`, which the README links to. Do not rewrite history to smooth it; a cleaned-up log is both
   detectable and a contradiction of what the project sells.
