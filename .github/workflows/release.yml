@@ -3,6 +3,8 @@ name: Release
 # Tag-triggered. Pushing v* builds the distributions, regenerates the REAL reports
 # from a fully offline run, and attaches both to the GitHub release — so every
 # release carries the evidence for the numbers its README quotes, not just code.
+# `gh release create` creates its tag through the API, and that fires this `push`
+# trigger too (v0.1.0 was cut that way and got its wheel, sdist and reports).
 on:
   push:
     tags: ["v*"]
@@ -21,12 +23,12 @@ jobs:
     outputs:
       version: ${{ steps.meta.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
 
@@ -93,23 +95,3 @@ jobs:
             dist/* release-assets/* \
           || gh release upload "${{ github.event.inputs.tag || github.ref_name }}" \
             dist/* release-assets/* --clobber
-
-  # PyPI publishing is a SEPARATE, manually-approved job. A tag push should never
-  # be able to put a permanent, un-deletable version on PyPI on its own.
-  pypi:
-    needs: build
-    runs-on: ubuntu-latest
-    environment: pypi
-    permissions:
-      id-token: write # Trusted Publishing: no long-lived token in repo secrets
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-
-      - uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          # Configure a Trusted Publisher for aegis-control-plane on PyPI, or set
-          # the environment's PYPI_API_TOKEN, before enabling this job.
-          skip-existing: true

@@ -7,12 +7,20 @@ name: Pages
 # no users — so everything it does at request time it can do at build time. The
 # page says outright that it is a snapshot and gives the command that reproduces
 # it, so a frozen view is never passed off as live data.
+#
+# Three triggers: a dashboard change on main, every finished release, and by hand.
+# The release hook is `workflow_run`, not `release: published`: workflow_run runs on
+# the default branch, and the github-pages environment only accepts deployments from
+# main, so a tag-ref run would be refused. It matches the Release workflow by NAME.
 on:
   push:
     branches: [main]
     paths:
       - "dashboard/**"
       - ".github/workflows/pages.yml"
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -34,9 +42,9 @@ jobs:
     env:
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
@@ -73,7 +81,7 @@ jobs:
 
       - uses: actions/configure-pages@v5
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: dashboard/out
 
