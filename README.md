@@ -87,7 +87,7 @@ OpenAI-style error it already knows how to handle:
 
 | 🧪 Tests | 📐 Coverage | 🤝 Judge vs. humans | 🎯 Attacks detected | ⭐ Eval score | 🚦 Required CI checks |
 |:-:|:-:|:-:|:-:|:-:|:-:|
-| **968** | **96%** branch | **κ 0.933** | **18/25** | **0.861** | **6** on `main` |
+| **968** | **96%** branch | **κ 0.933** | **19/29** | **0.861** | **6** on `main` |
 | offline, keyless | enforced ≥ 95% | Cohen's kappa, N=30 | OWASP LLM 2025 | over 32 golden cases | merge-blocking |
 
 </div>
@@ -229,7 +229,7 @@ Each figure has a **committed artifact** and a command that regenerates it in se
 
 | What | Result | Reproduce | Source of truth |
 |---|---|---|---|
-| 🎯 Red-team detection (OWASP catalog) | **18/25 = 0.720**; the 7 remaining gaps are named in the report | `aegis redteam run` | `src/aegis/redteam/baselines/redteam.json` |
+| 🎯 Red-team detection (OWASP catalog) | **19/29 = 0.655**; the 10 remaining gaps are named in the report | `aegis redteam run` | `src/aegis/redteam/baselines/redteam.json` |
 | ⭐ Eval suite (golden set) | **overall 0.861** (L1 0.854 · L2 0.856 · L3 0.872) | `aegis eval run` | `src/aegis/evals/baselines/golden.json` |
 | 🤝 Judge agreement with human labels | **Cohen's κ 0.933**, p_o 0.967, N=30 | `aegis calibrate --from-verdicts artifacts/calibration-geval-2026-09-22.jsonl` | [`artifacts/…jsonl`](artifacts/calibration-geval-2026-09-22.jsonl) |
 | 🧪 Test suite | **968 passed, 4 skipped**, 96% branch coverage | `pytest -q --cov --cov-branch` | CI, `--cov-fail-under=95` |
@@ -254,7 +254,7 @@ bash scripts/demo.sh      # the whole pipeline end to end, ~23s
 **The three headline numbers, in about three seconds:**
 
 ```bash
-aegis redteam run         # 25 OWASP attacks vs the guardrails
+aegis redteam run         # 29 OWASP attacks vs the guardrails
 aegis eval run            # 32 golden cases, L1 / L2 / L3
 aegis calibrate --from-verdicts artifacts/calibration-geval-2026-09-22.jsonl
 ```

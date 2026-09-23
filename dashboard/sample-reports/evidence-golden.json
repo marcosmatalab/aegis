@@ -1,5 +1,5 @@
 {
-  "generated": 1790079714,
+  "generated": 1790081057,
   "suite": "golden",
   "disclaimer": "This document is PARTIAL TECHNICAL EVIDENCE auto-generated from Aegis's own test artifacts. It maps specific technical controls to framework clauses where Aegis produces real measurements, and is NOT a compliance certificate, conformity assessment, or claim of full conformance with the EU AI Act, NIST AI RMF, or ISO/IEC 42001. Aegis maps only the small set of technical controls shown below; the majority of each framework's underlying clauses are out of scope (bundled into the aggregate out-of-scope rows), so the control counts are NOT a coverage percentage. Every value is derived from the named artifact at generation time; absent artifacts are shown as not-covered.",
   "summary_counts": {
@@ -42,8 +42,8 @@
         "categories",
         "known_gaps"
       ],
-      "derived_value": "overall detection=0.72 over 25 attacks; output_toxicity(—)=0.5; pii_input(LLM02)=0.75; pii_output(LLM02)=0.666667; policy_denylist(—)=1.0; prompt_injection(LLM01)=0.636364; system_prompt_leak(LLM07)=1.0; 7 named gaps [inj-gap-leetspeak, inj-gap-system-role, inj-gap-developer-role, inj-gap-assistant-role, pii-in-gap-obfuscated-email]",
-      "caveat": "directional coverage, NOT a pass/fail compliance number; 7 named gaps deliberately slip through (disclosed, not hidden)",
+      "derived_value": "overall detection=0.655172 over 29 attacks; output_toxicity(—)=0.5; pii_input(LLM02)=0.75; pii_output(LLM02)=0.666667; policy_denylist(—)=1.0; prompt_injection(LLM01)=0.533333; system_prompt_leak(LLM07)=1.0; 10 named gaps [inj-gap-leetspeak, inj-gap-system-role, inj-gap-developer-role, inj-gap-assistant-role, pii-in-gap-obfuscated-email]",
+      "caveat": "directional coverage, NOT a pass/fail compliance number; 10 named gaps deliberately slip through (disclosed, not hidden)",
       "verified_via": "Reg. (EU) 2024/1689 Article 15; paragraph numbering via artificialintelligenceact.eu"
     },
     {
@@ -112,7 +112,7 @@
         "categories.output_toxicity",
         "categories.pii_output"
       ],
-      "derived_value": "safety-relevant categories: output_toxicity=0.5; pii_output=0.666667; 7 named gaps",
+      "derived_value": "safety-relevant categories: output_toxicity=0.5; pii_output=0.666667; 10 named gaps",
       "caveat": "PARTIAL: only output-toxicity + PII-leak categories are evaluated; broad safety (self-harm, dangerous capabilities, etc.) is out of scope",
       "verified_via": "NIST AI RMF 1.0 (AI 100-1, Jan 2023), MEASURE function (id verbatim; title abbreviated/paraphrased from the Core)"
     },
@@ -127,8 +127,8 @@
         "categories",
         "known_gaps"
       ],
-      "derived_value": "overall detection=0.72 over 25 attacks; output_toxicity(—)=0.5; pii_input(LLM02)=0.75; pii_output(LLM02)=0.666667; policy_denylist(—)=1.0; prompt_injection(LLM01)=0.636364; system_prompt_leak(LLM07)=1.0; 7 named gaps [inj-gap-leetspeak, inj-gap-system-role, inj-gap-developer-role, inj-gap-assistant-role, pii-in-gap-obfuscated-email]",
-      "caveat": "directional coverage, NOT a pass/fail compliance number; 7 named gaps deliberately slip through (disclosed, not hidden)",
+      "derived_value": "overall detection=0.655172 over 29 attacks; output_toxicity(—)=0.5; pii_input(LLM02)=0.75; pii_output(LLM02)=0.666667; policy_denylist(—)=1.0; prompt_injection(LLM01)=0.533333; system_prompt_leak(LLM07)=1.0; 10 named gaps [inj-gap-leetspeak, inj-gap-system-role, inj-gap-developer-role, inj-gap-assistant-role, pii-in-gap-obfuscated-email]",
+      "caveat": "directional coverage, NOT a pass/fail compliance number; 10 named gaps deliberately slip through (disclosed, not hidden)",
       "verified_via": "NIST AI RMF 1.0 (AI 100-1, Jan 2023), MEASURE function (id verbatim; title abbreviated/paraphrased from the Core)"
     },
     {
