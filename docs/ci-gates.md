@@ -152,6 +152,15 @@ push-only trigger silently skipped v0.1.0. *Cost:* a tag pushed with `git` and t
 release fires the workflow twice; a per-tag `concurrency` group serialises the two runs and
 the publish step is idempotent (create, else `upload --clobber`).
 
+**Decision: the live dashboard redeploys after every release, and on demand.** Before 0.1.1,
+`pages.yml` only ran on a `dashboard/**` change, so a release never refreshed the site both
+READMEs link to. It now also runs on `workflow_run` of Release and on `workflow_dispatch`.
+*Why `workflow_run` and not `release: published`:* the `github-pages` environment only accepts
+deployments from `main`, and a `release` run executes on the tag ref, which it would refuse;
+`workflow_run` executes on the default branch. *Cost:* it deploys `main`'s dashboard, not the
+tag's (they only differ if the dashboard changed after the tag), and it depends on the Release
+workflow's name, which `tests/test_release_pipeline.py` pins against `release.yml`.
+
 
 ---
 

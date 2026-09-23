@@ -31,6 +31,8 @@ aegis redteam run
 - **`release.yml` never ran for a release created with `gh release create`**, because such a
   release makes its tag without a push event. It now also runs on `release: published`
   (serialised per tag), so every release gets its wheel, sdist and evidence reports.
+- **Nothing redeployed the live dashboard at release time.** `pages.yml` only ran on a
+  `dashboard/**` change. It now also runs after every Release run and on demand.
 
 ### Removed
 - The `pypi` job in `release.yml`. It had no trusted publisher and no token behind it, so it
