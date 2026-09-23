@@ -6,6 +6,16 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-09-23
+
+Red-team coverage grows and the headline rate falls with it. No change to the gateway, the
+guardrails' behaviour or the scoring.
+
+```bash
+pipx install "git+https://github.com/marcosmatalab/aegis@v0.1.2"   # Python 3.12+
+aegis redteam run   # overall: detected=19/29 rate=0.655, 10 known gaps
+```
+
 ### Changed
 - **The red-team detection rate falls, on purpose: 18/25 (0.720) → 19/29 (0.655), and the named
   gaps go 7 → 10.** Probing the guardrails directly turned up three evasions the catalog did not
@@ -123,6 +133,7 @@ aegis redteam run
 - `scripts/demo.sh` no longer hardcodes the κ figure it promised not to hardcode; it recomputes
   it live from the committed artifact, and opens the browser only after the readiness wait.
 
-[Unreleased]: https://github.com/marcosmatalab/aegis/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/marcosmatalab/aegis/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/marcosmatalab/aegis/releases/tag/v0.1.2
 [0.1.1]: https://github.com/marcosmatalab/aegis/releases/tag/v0.1.1
 [0.1.0]: https://github.com/marcosmatalab/aegis/releases/tag/v0.1.0
