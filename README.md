@@ -7,7 +7,7 @@
 **English** · [Español](README.es.md)
 
 [![CI](https://github.com/marcosmatalab/aegis/actions/workflows/ci.yml/badge.svg)](https://github.com/marcosmatalab/aegis/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-958%20passing-2ea44f?logo=pytest&logoColor=white)](#numbers)
+[![tests](https://img.shields.io/badge/tests-962%20passing-2ea44f?logo=pytest&logoColor=white)](#numbers)
 [![coverage](https://img.shields.io/badge/coverage-96%25%20branch-2ea44f)](https://github.com/marcosmatalab/aegis/actions/workflows/ci.yml)
 [![OWASP](https://img.shields.io/badge/OWASP-LLM%20Top%2010%202025-000000?logo=owasp&logoColor=white)](docs/redteam.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -87,7 +87,7 @@ OpenAI-style error it already knows how to handle:
 
 | 🧪 Tests | 📐 Coverage | 🤝 Judge vs. humans | 🎯 Attacks detected | ⭐ Eval score | 🚦 Required CI checks |
 |:-:|:-:|:-:|:-:|:-:|:-:|
-| **958** | **96%** branch | **κ 0.933** | **18/25** | **0.861** | **6** on `main` |
+| **962** | **96%** branch | **κ 0.933** | **18/25** | **0.861** | **6** on `main` |
 | offline, keyless | enforced ≥ 95% | Cohen's kappa, N=30 | OWASP LLM 2025 | over 32 golden cases | merge-blocking |
 
 </div>
@@ -240,7 +240,7 @@ Each figure has a **committed artifact** and a command that regenerates it in se
 | 🎯 Red-team detection (OWASP catalog) | **18/25 = 0.720**; the 7 remaining gaps are named in the report | `aegis redteam run` | `src/aegis/redteam/baselines/redteam.json` |
 | ⭐ Eval suite (golden set) | **overall 0.861** (L1 0.854 · L2 0.856 · L3 0.872) | `aegis eval run` | `src/aegis/evals/baselines/golden.json` |
 | 🤝 Judge agreement with human labels | **Cohen's κ 0.933**, p_o 0.967, N=30 | `aegis calibrate --from-verdicts artifacts/calibration-geval-2026-09-22.jsonl` | [`artifacts/…jsonl`](artifacts/calibration-geval-2026-09-22.jsonl) |
-| 🧪 Test suite | **958 passed, 4 skipped**, 96% branch coverage | `pytest -q --cov --cov-branch` | CI, `--cov-fail-under=95` |
+| 🧪 Test suite | **962 passed, 4 skipped**, 96% branch coverage | `pytest -q --cov --cov-branch` | CI, `--cov-fail-under=95` |
 
 ---
 
@@ -255,7 +255,7 @@ git clone https://github.com/marcosmatalab/aegis.git && cd aegis
 python3.12 -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 
-pytest -q                 # 958 tests, ~10s, fully offline
+pytest -q                 # 962 tests, ~10s, fully offline
 bash scripts/demo.sh      # the whole pipeline end to end, ~23s
 ```
 
@@ -344,7 +344,7 @@ Full gate contracts: [`docs/ci-gates.md`](docs/ci-gates.md).
 
 **Marcos Mata García** · AI / Platform Engineer · Madrid, Spain
 
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-marcosmatagarcia-0A66C2?logo=linkedin&logoColor=white)](https://linkedin.com/in/marcosmatagarcia)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Marcos%20Mata%20Garc%C3%ADa-0A66C2?logo=linkedin&logoColor=white)](https://www.linkedin.com/in/marcos-mata-garc%C3%ADa/)
 [![GitHub](https://img.shields.io/badge/GitHub-marcosmatalab-181717?logo=github&logoColor=white)](https://github.com/marcosmatalab)
 [![Email](https://img.shields.io/badge/Email-matagarciamarcos%40gmail.com-EA4335?logo=gmail&logoColor=white)](mailto:matagarciamarcos@gmail.com)
 
