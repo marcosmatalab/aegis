@@ -7,17 +7,9 @@
 **Español** · [English](README.md)
 
 [![CI](https://github.com/marcosmatalab/aegis/actions/workflows/ci.yml/badge.svg)](https://github.com/marcosmatalab/aegis/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-968%20passing-2ea44f?logo=pytest&logoColor=white)](#numeros)
-[![coverage](https://img.shields.io/badge/coverage-96%25%20branch-2ea44f)](https://github.com/marcosmatalab/aegis/actions/workflows/ci.yml)
-[![OWASP](https://img.shields.io/badge/OWASP-LLM%20Top%2010%202025-000000?logo=owasp&logoColor=white)](docs/redteam.md)
+[![release](https://img.shields.io/github/v/release/marcosmatalab/aegis?label=release)](https://github.com/marcosmatalab/aegis/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-<br/>
 ![Python](https://img.shields.io/badge/Python-3.12%20%7C%203.13-3776AB?logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
-![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-425CC7?logo=opentelemetry&logoColor=white)
-![Next.js](https://img.shields.io/badge/Next.js-000000?logo=nextdotjs&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
-![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)
 
 **[🎬 Demo](#demo) · [📊 Dashboard en vivo](https://marcosmatalab.github.io/aegis/) · [🚀 Quickstart](#quickstart) · [🏗️ Arquitectura](#como-funciona) · [📚 Docs](#documentacion)**
 
@@ -30,6 +22,14 @@
 Aegis se coloca **entre tu aplicación y el modelo de IA**. Cambias un único ajuste (la URL de
 la API), activas los guardrails que quieras y, a partir de ahí, cada petición queda protegida
 y medida:
+
+<a id="demo"></a>
+
+![Demo de Aegis de punta a punta: red-team, evals, la kappa del juez recomputada offline, y el gate cazando una regresión real](docs/demo.gif)
+
+<sub>Renderizado a partir de la **salida real** de una ejecución offline
+([`scripts/capture_demo.sh`](scripts/capture_demo.sh) → [`scripts/render_demo_gif.py`](scripts/render_demo_gif.py)).
+Cada cifra en pantalla la imprimió la propia herramienta, y el FAIL del gate es una regresión genuina.</sub>
 
 | | Paso | Qué ocurre |
 |:-:|---|---|
@@ -97,15 +97,7 @@ de esta página se separa del código, CI se pone en rojo. [Cómo reproducir cad
 
 ---
 
-<a id="demo"></a>
-
 ## 🎬 Demo
-
-![Demo de Aegis de punta a punta: red-team, evals, la kappa del juez recomputada offline, y el gate cazando una regresión real](docs/demo.gif)
-
-<sub>Renderizado a partir de la **salida real** de una ejecución offline
-([`scripts/capture_demo.sh`](scripts/capture_demo.sh) → [`scripts/render_demo_gif.py`](scripts/render_demo_gif.py)).
-Cada cifra en pantalla la imprimió la propia herramienta, y el FAIL del gate es una regresión genuina.</sub>
 
 Un solo script, [`scripts/demo.sh`](scripts/demo.sh), recorre el sistema entero de punta a
 punta en diez pasos:
