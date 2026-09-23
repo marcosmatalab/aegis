@@ -8,7 +8,7 @@ build-backend = "hatchling.build"
 # (as do aegis-gateway and aegis-llm). "control plane" is how the project
 # describes itself in its own headline, so the name is descriptive, not a patch.
 name = "aegis-control-plane"
-version = "0.1.0"
+version = "0.1.1"
 description = "A reliability + security + governance gateway for LLMs and agents (OpenAI-compatible proxy)."
 readme = "README.md"
 requires-python = ">=3.12"

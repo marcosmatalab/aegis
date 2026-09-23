@@ -1,11 +1,19 @@
 name: Release
 
-# Tag-triggered. Pushing v* builds the distributions, regenerates the REAL reports
-# from a fully offline run, and attaches both to the GitHub release — so every
-# release carries the evidence for the numbers its README quotes, not just code.
+# Builds the distributions, regenerates the REAL reports from a fully offline run,
+# and attaches both to the GitHub release — so every release carries the evidence
+# for the numbers its README quotes, not just code.
+#
+# Two entry points, because they are two different GitHub events: `git push` of a
+# v* tag fires `push`, but a release created with `gh release create` (or the web
+# UI) creates its tag without a push event, so it only fires `release`. v0.1.0 was
+# cut that way and this workflow never ran for it. The publish step is idempotent
+# (create, else upload --clobber), so a tag that fires both events is harmless.
 on:
   push:
     tags: ["v*"]
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       tag:
@@ -14,6 +22,11 @@ on:
 
 permissions:
   contents: write
+
+# A tag that fires both `push` and `release` builds once at a time, never in parallel.
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -93,23 +106,3 @@ jobs:
             dist/* release-assets/* \
           || gh release upload "${{ github.event.inputs.tag || github.ref_name }}" \
             dist/* release-assets/* --clobber
-
-  # PyPI publishing is a SEPARATE, manually-approved job. A tag push should never
-  # be able to put a permanent, un-deletable version on PyPI on its own.
-  pypi:
-    needs: build
-    runs-on: ubuntu-latest
-    environment: pypi
-    permissions:
-      id-token: write # Trusted Publishing: no long-lived token in repo secrets
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-
-      - uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          # Configure a Trusted Publisher for aegis-control-plane on PyPI, or set
-          # the environment's PYPI_API_TOKEN, before enabling this job.
-          skip-existing: true
