@@ -7,17 +7,9 @@
 **English** · [Español](README.es.md)
 
 [![CI](https://github.com/marcosmatalab/aegis/actions/workflows/ci.yml/badge.svg)](https://github.com/marcosmatalab/aegis/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-968%20passing-2ea44f?logo=pytest&logoColor=white)](#numbers)
-[![coverage](https://img.shields.io/badge/coverage-96%25%20branch-2ea44f)](https://github.com/marcosmatalab/aegis/actions/workflows/ci.yml)
-[![OWASP](https://img.shields.io/badge/OWASP-LLM%20Top%2010%202025-000000?logo=owasp&logoColor=white)](docs/redteam.md)
+[![release](https://img.shields.io/github/v/release/marcosmatalab/aegis?label=release)](https://github.com/marcosmatalab/aegis/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-<br/>
 ![Python](https://img.shields.io/badge/Python-3.12%20%7C%203.13-3776AB?logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
-![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-425CC7?logo=opentelemetry&logoColor=white)
-![Next.js](https://img.shields.io/badge/Next.js-000000?logo=nextdotjs&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
-![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)
 
 **[🎬 Demo](#demo) · [📊 Live dashboard](https://marcosmatalab.github.io/aegis/) · [🚀 Quickstart](#quickstart) · [🏗️ Architecture](#how-it-works) · [📚 Docs](#documentation)**
 
@@ -30,6 +22,14 @@
 Aegis sits **between your application and the AI model**. You change one setting (the API
 URL), switch on the guardrails you want, and from then on every request is protected and
 measured:
+
+<a id="demo"></a>
+
+![Aegis end-to-end demo: red-team, evals, the judge's kappa recomputed offline, and the eval gate catching a real regression](docs/demo.gif)
+
+<sub>Rendered from the **real output** of an offline run
+([`scripts/capture_demo.sh`](scripts/capture_demo.sh) → [`scripts/render_demo_gif.py`](scripts/render_demo_gif.py)).
+Every number on screen was printed by the tool itself, and the gate FAIL is a genuine regression.</sub>
 
 | | Step | What happens |
 |:-:|---|---|
@@ -97,15 +97,7 @@ page ever drifts from the code, CI goes red. [How to reproduce each one ↓](#nu
 
 ---
 
-<a id="demo"></a>
-
 ## 🎬 Demo
-
-![Aegis end-to-end demo: red-team, evals, the judge's kappa recomputed offline, and the eval gate catching a real regression](docs/demo.gif)
-
-<sub>Rendered from the **real output** of an offline run
-([`scripts/capture_demo.sh`](scripts/capture_demo.sh) → [`scripts/render_demo_gif.py`](scripts/render_demo_gif.py)).
-Every number on screen was printed by the tool itself, and the gate FAIL is a genuine regression.</sub>
 
 One script, [`scripts/demo.sh`](scripts/demo.sh), drives the whole system end to end in ten
 beats:
