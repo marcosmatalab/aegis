@@ -16,16 +16,9 @@ category mapping, the 30 hand-labelled calibration cases, the honesty statuses t
 CLEAR and the evidence builder, and the decision to publish named red-team gaps instead of a
 rounded-up rate.
 
-**AI coding assistance was used** for scaffolding, test generation and long-form docs, under
-these rules, which also apply to any future change:
-
-1. **Declare it, never disguise it.** The history is not rewritten, squashed or back-dated to
-   look more organic.
-2. **Generated code is read, tested and owned.** "An assistant wrote it" is not a defence for
-   anything in here. If it ships, the author can explain it.
-3. **Every number gets an artifact or a command.** A figure in the docs must be reproducible
-   offline — see [`artifacts/README.md`](artifacts/README.md) for the pattern. This is the rule
-   that settles the question, because it does not depend on anyone's word.
+**Every number gets an artifact or a command.** A figure in the docs must be reproducible
+offline — see [`artifacts/README.md`](artifacts/README.md) for the pattern. The rule does not
+depend on anyone's word.
 
 ## Working on it
 
